@@ -25,7 +25,10 @@
         input, select { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 12px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 14px; }
         label { font-size: 13px; color: #bbb; }
         
-        .map-box { width: 100%; height: 300px; border-radius: 8px; margin-bottom: 10px; }
+        .ride-option { background: #2a2a2a; border: 2px solid #444; border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .ride-option.selected { border-color: #00e676; background: #1a332c; }
+        
+        .map-box { width: 100%; height: 280px; border-radius: 8px; margin-bottom: 10px; }
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #333; color: #ff9800; }
         .pin-box { font-size: 26px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; }
     </style>
@@ -42,22 +45,46 @@
 
     <!-- ================= واجهة الراكب ================= -->
     <div id="passengerView" class="container">
+        <!-- الخطوة 1: خطط مشوارك (من وإلى) -->
         <div class="card" id="passengerFormCard">
-            <h3>📍 حدد موقعك على الخريطة واطلب رحلتك</h3>
-            <div id="passengerSelectMap" class="map-box"></div>
-            <button class="btn" type="button" onclick="getCurrentLocation()">📍 تثبيت موقعي الحالي</button>
+            <h3>📍 خطط لمشوارك</h3>
+            <label>مكان الاستلام (من)</label>
+            <input type="text" id="pStart" value="فؤاد بيومي، الحي السابع" placeholder="ادخل مكان الاستلام" />
             
-            <label style="margin-top:10px; display:block;">موقف الوصول (الوجهة)</label>
-            <select id="pEnd">
-                <option value="موقف بلبيس الجديد">موقف بلبيس الجديد</option>
-                <option value="موقف الزقازيق الأحرار">موقف الزقازيق الأحرار</option>
-                <option value="Garden 8 - التجمع الخامس">Garden 8 - التجمع الخامس</option>
-            </select>
+            <label>الوجهة (إلى)</label>
+            <input type="text" id="pEndInput" value="موقف بلبيس الجديد" placeholder="الى أين؟" />
+
             <label>رقم الهاتف</label>
             <input type="tel" id="pPhone" placeholder="01xxxxxxxxx" maxlength="11" />
-            <button class="btn btn-green" onclick="requestTrip()">بحث عن كابتن 🔍</button>
+            
+            <button class="btn" onclick="goToRideSelection()">التالي: اختيار نوع المركبة ➔</button>
         </div>
 
+        <!-- الخطوة 2: اختيار نوع المشوار (سيارة / سكوتتر) مثل أوبير -->
+        <div class="card" id="passengerRideSelectCard" style="display:none;">
+            <h3>🚗 اختيار مشوار</h3>
+            
+            <div class="ride-option selected" id="opt-car" onclick="selectVehicle('ملاكي - UberX', '139 ج.م')">
+                <div>
+                    <strong>سيارة ملاكي (UberX)</strong>
+                    <div style="font-size:12px; color:#aaa;">أسرع، تكيف كامل</div>
+                </div>
+                <div style="font-weight:bold; font-size:16px;">139 ج.م</div>
+            </div>
+
+            <div class="ride-option" id="opt-bike" onclick="selectVehicle('سكوتتر - موتوسيكل', '114 ج.م')">
+                <div>
+                    <strong>سكوتتر (موتوسيكل)</strong>
+                    <div style="font-size:12px; color:#aaa;">لتجاوز الزحام المروري</div>
+                </div>
+                <div style="font-weight:bold; font-size:16px;">114 ج.م</div>
+            </div>
+
+            <button class="btn btn-green" onclick="requestTripFinal()">اطلب الآن 🚀</button>
+            <button class="btn" style="background:#333; color:#fff;" onclick="backToForm()">الرجوع لتعديل العنوان ↺</button>
+        </div>
+
+        <!-- الخطوة 3: حالة الرحلة وانتظار الكابتن -->
         <div class="card" id="passengerStatusCard" style="display:none; text-align:center;">
             <span class="status-badge" id="tripStateBadge">جاري البحث عن كابتن...</span>
             <p id="tripDetailsText" style="margin-top: 15px; font-size: 15px;"></p>
@@ -84,10 +111,9 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let currentRole = 'passenger';
-        let passSelectMap;
-        let pickupMarker, captainMarker;
         let activeTripId = null;
-        let selectedLat = 30.0444, selectedLng = 31.2357;
+        let selectedVehicleType = "ملاكي - UberX";
+        let selectedPrice = "139 ج.م";
         let generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
         let captainInTrip = false;
         let fetchInterval = null;
@@ -99,19 +125,6 @@
                 document.getElementById('captainView').style.display = 'none';
                 document.querySelectorAll('.role-tab')[0].classList.add('active');
                 document.querySelectorAll('.role-tab')[1].classList.remove('active');
-                setTimeout(() => {
-                    if (!passSelectMap) {
-                        passSelectMap = L.map('passengerSelectMap').setView([30.0444, 31.2357], 13);
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(passSelectMap);
-                        passSelectMap.on('click', function(e) {
-                            selectedLat = e.latlng.lat;
-                            selectedLng = e.latlng.lng;
-                            if (pickupMarker) passSelectMap.removeLayer(pickupMarker);
-                            pickupMarker = L.marker([selectedLat, selectedLng]).addTo(passSelectMap).bindPopup("موقع القيام").openPopup();
-                        });
-                    }
-                    passSelectMap.invalidateSize();
-                }, 200);
             } else {
                 document.getElementById('passengerView').style.display = 'none';
                 document.getElementById('captainView').style.display = 'block';
@@ -121,27 +134,39 @@
             }
         }
 
-        function getCurrentLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(pos => {
-                    selectedLat = pos.coords.latitude;
-                    selectedLng = pos.coords.longitude;
-                    passSelectMap.setView([selectedLat, selectedLng], 15);
-                    if (pickupMarker) passSelectMap.removeLayer(pickupMarker);
-                    pickupMarker = L.marker([selectedLat, selectedLng]).addTo(passSelectMap).bindPopup("موقعك الحالي").openPopup();
-                    alert('تم تثبيت موقعك بنجاح ✅');
-                }, () => { alert('تعذر تحديد الموقع'); }, { enableHighAccuracy: true });
+        function goToRideSelection() {
+            const phone = document.getElementById('pPhone').value.trim();
+            if (!phone) { alert('ادخل رقم الهاتف'); return; }
+            document.getElementById('passengerFormCard').style.display = 'none';
+            document.getElementById('passengerRideSelectCard').style.display = 'block';
+        }
+
+        function backToForm() {
+            document.getElementById('passengerRideSelectCard').style.display = 'none';
+            document.getElementById('passengerFormCard').style.display = 'block';
+        }
+
+        function selectVehicle(type, price) {
+            selectedVehicleType = type;
+            selectedPrice = price;
+            document.getElementById('opt-car').classList.remove('selected');
+            document.getElementById('opt-bike').classList.remove('selected');
+            if (type.includes('ملاكي')) {
+                document.getElementById('opt-car').classList.add('selected');
+            } else {
+                document.getElementById('opt-bike').classList.add('selected');
             }
         }
 
-        async function requestTrip() {
+        async function requestTripFinal() {
             const phone = document.getElementById('pPhone').value.trim();
-            if (!phone) { alert('ادخل رقم الهاتف'); return; }
+            const startLoc = document.getElementById('pStart').value;
+            const endLoc = document.getElementById('pEndInput').value;
 
             const payload = {
-                start_station: `موقع الراكب (${selectedLat.toFixed(4)}, ${selectedLng.toFixed(4)})`,
-                end_station: document.getElementById('pEnd').value,
-                trip_price: "85 ج.م",
+                start_station: `${startLoc} [${selectedVehicleType}]`,
+                end_station: endLoc,
+                trip_price: selectedPrice,
                 user_mobile: phone,
                 status: 'pending',
                 trip_pin: generatedPin
@@ -162,9 +187,9 @@
 
                 if (!res.ok || !result.length) {
                     const basicPayload = {
-                        start_station: `موقع الراكب`,
-                        end_station: document.getElementById('pEnd').value,
-                        trip_price: "85 ج.م",
+                        start_station: startLoc,
+                        end_station: endLoc,
+                        trip_price: selectedPrice,
                         user_mobile: phone
                     };
                     res = await fetch(`${SUPABASE_URL}/rest/v1/trips_data`, {
@@ -182,7 +207,7 @@
 
                 if (res.ok && result.length > 0) {
                     activeTripId = result[0].id;
-                    document.getElementById('passengerFormCard').style.display = 'none';
+                    document.getElementById('passengerRideSelectCard').style.display = 'none';
                     const statusCard = document.getElementById('passengerStatusCard');
                     statusCard.style.display = 'block';
                     document.getElementById('tripStateBadge').innerText = "⏳ جارِ انتظار قبول الكابتن...";
@@ -239,7 +264,7 @@
                     found = true;
                     html += `
                         <div style="background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; text-align:right;">
-                            <div>📍 القيام: ${t.start_station}</div>
+                            <div>📍 الاستلام: ${t.start_station}</div>
                             <div>🎯 الوجهة: ${t.end_station}</div>
                             <div>💰 السعر: ${t.trip_price}</div>
                             <div>📱 الراكب: ${t.user_mobile}</div>
@@ -266,30 +291,10 @@
             content.innerHTML = `
                 <div class="card">
                     <h3>🚗 في طريقك للراكب</h3>
-                    <div id="captainMap" class="map-box"></div>
-                    <a id="navBtn" class="btn btn-blue" target="_blank">🗺️ فتح الاتجاهات لمكان الراكب</a>
+                    <a id="navBtn" class="btn btn-blue" target="_blank" href="https://www.google.com/maps/search/?api=1&query=Cairo">🗺️ فتح الاتجاهات لمكان الراكب</a>
                     <button class="btn btn-green" onclick="arriveToPassenger(${tripId}, '${endStation}')" style="margin-top:10px;">وصلت لمكان الراكب (أدخل PIN) 📍</button>
                 </div>
             `;
-
-            setTimeout(() => {
-                const capMap = L.map('captainMap').setView([selectedLat, selectedLng], 14);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(capMap);
-                L.marker([selectedLat, selectedLng]).addTo(capMap).bindPopup("📍 مكان الراكب المطلوب").openPopup();
-                
-                document.getElementById('navBtn').href = `https://www.google.com/maps/dir/?api=1&destination=${selectedLat},${selectedLng}`;
-
-                if (navigator.geolocation) {
-                    navigator.geolocation.watchPosition(async (pos) => {
-                        const lat = pos.coords.latitude;
-                        const lng = pos.coords.longitude;
-                        if (captainMarker) capMap.removeLayer(captainMarker);
-                        captainMarker = L.marker([lat, lng]).addTo(capMap).bindPopup("🚗 مكانك الحالي").openPopup();
-
-                        await supabaseClient.from('driver_locations').upsert([{ driver_id: tripId, latitude: lat, longitude: lng }]);
-                    }, null, { enableHighAccuracy: true });
-                }
-            }, 300);
         }
 
         async function arriveToPassenger(tripId, endStation) {
