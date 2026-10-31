@@ -39,11 +39,11 @@
             <h3>📍 حدد موقع الانطلاق والوجهة بدقة</h3>
             
             <label>مكان الاستلام (من):</label>
-            <input type="text" id="pStartInput" placeholder="اسحب الدبوس أو اكتب اسم الشارع..." oninput="searchAddress(this.value, 'start')" />
+            <input type="text" id="pStartInput" placeholder="اكتب اسم الشارع أو المنطقة..." oninput="searchAddress(this.value, 'start')" />
             <div id="startResults" class="search-results"></div>
 
             <label>الوجهة (إلى):</label>
-            <input type="text" id="pEndInput" placeholder="اسحب الدبوس أو اكتب الوجهة..." oninput="searchAddress(this.value, 'end')" />
+            <input type="text" id="pEndInput" placeholder="اكتب الوجهة النهائية..." oninput="searchAddress(this.value, 'end')" />
             <div id="endResults" class="search-results"></div>
 
             <div id="passengerMap" class="map-container"></div>
@@ -90,35 +90,19 @@
             startMarker.on('dragend', async (e) => {
                 const p = startMarker.getLatLng();
                 startLat = p.lat; startLng = p.lng;
-                const addr = await reverseGeocode(startLat, startLng);
-                if(addr) document.getElementById('pStartInput').value = addr;
                 fetchRouteOSRM();
             });
 
             endMarker.on('dragend', async (e) => {
                 const p = endMarker.getLatLng();
                 endLat = p.lat; endLng = p.lng;
-                const addr = await reverseGeocode(endLat, endLng);
-                if(addr) document.getElementById('pEndInput').value = addr;
                 fetchRouteOSRM();
             });
 
-            // تعيين قيم افتراضية واضحة للبداية
             document.getElementById('pStartInput').value = "مصر الجديدة";
             document.getElementById('pEndInput').value = "المعادي";
             fetchRouteOSRM();
         };
-
-        async function reverseGeocode(lat, lon) {
-            try {
-                const res = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
-                const data = await (await fetch(res)).json();
-                if (data && data.address) {
-                    return data.address.road || data.address.suburb || data.address.city || "منطقة محددة";
-                }
-            } catch (e) {}
-            return null;
-        }
 
         let searchTimeout;
         function searchAddress(query, type) {
@@ -180,40 +164,41 @@
 
         async function requestTripFinal() {
             const phone = document.getElementById('pPhone').value.trim();
-            const startName = document.getElementById('pStartInput').value || "مصر الجديدة";
-            const endName = document.getElementById('pEndInput').value || "المعادي";
-            if (!phone || phone.length < 11) { alert('الرجاء إدخال رقم هاتف صحيح مكون من 11 رقماً'); return; }
+            const startName = document.getElementById('pStartInput').value.trim() || "مصر الجديدة";
+            const endName = document.getElementById('pEndInput').value.trim() || "المعادي";
+            
+            if (!phone || phone.length < 11) { 
+                alert('الرجاء إدخال رقم هاتف صحيح مكون من 11 رقماً'); 
+                return; 
+            }
 
-            const payload = {
-                start_station: startName,
-                end_station: endName,
-                trip_price: `${finalPrice} ج.م`,
-                user_mobile: phone,
-                status: 'pending',
-                trip_pin: generatedPin
-            };
+            // استخدام Supabase Client مباشرة لإدخال البيانات بشكل آمن ومضمون
+            const { data, error } = await supabaseClient
+                .from('trips_data')
+                .insert([
+                    {
+                        start_station: startName,
+                        end_station: endName,
+                        trip_price: `${finalPrice} ج.م`,
+                        user_mobile: phone,
+                        status: 'pending',
+                        trip_pin: generatedPin
+                    }
+                ])
+                .select();
 
-            let res = await fetch(`${SUPABASE_URL}/rest/v1/trips_data`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'apikey': SUPABASE_KEY, 
-                    'Authorization': `Bearer ${SUPABASE_KEY}`, 
-                    'Prefer': 'return=representation' 
-                },
-                body: JSON.stringify(payload)
-            });
-            let result = await res.json();
-
-            if (res.ok && result.length > 0) {
-                activeTripId = result[0].id;
+            if (error) {
+                console.error("Supabase Error:", error);
+                alert('خطأ في إرسال الطلب لقاعدة البيانات: ' + error.message);
+            } else if (data && data.length > 0) {
+                activeTripId = data[0].id;
                 document.getElementById('passengerFormCard').style.display = 'none';
                 document.getElementById('passengerStatusCard').style.display = 'block';
                 document.getElementById('passengerPinContainer').style.display = 'block';
                 document.getElementById('tripPinCode').innerText = generatedPin;
                 listenToTripStatus();
             } else {
-                alert('خطأ في إرسال الطلب، تأكد من الاتصال');
+                alert('تم الإرسال ولكن لم يتم استرجاع بيانات الرحلة.');
             }
         }
 
