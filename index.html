@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>كومبو - المنظومة الاحترافية</title>
+    <!-- استخدام تصميم خريطة احترافي وواضح جداً يشبه جوجل -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -24,10 +25,10 @@
         input { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 12px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 14px; }
         label { font-size: 13px; color: #bbb; }
         
+        .map-box { width: 100%; height: 350px; border-radius: 10px; margin-bottom: 10px; border: 2px solid #444; }
         .ride-option { background: #2a2a2a; border: 2px solid #444; border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         .ride-option.selected { border-color: #00e676; background: #1a332c; }
         
-        .map-box { width: 100%; height: 320px; border-radius: 8px; margin-bottom: 10px; }
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #333; color: #ff9800; }
         .pin-box { font-size: 26px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; }
     </style>
@@ -44,19 +45,20 @@
 
     <!-- ================= واجهة الراكب ================= -->
     <div id="passengerView" class="container">
-        <!-- الخطوة 1: تحديد مكان الاستلام والوجهة بحرية -->
+        <!-- الخطوة 1: اختيار الموقع والوجهة من على الخريطة مباشرة -->
         <div class="card" id="passengerFormCard">
-            <h3>📍 خطط لمشوارك (مثل أوبير)</h3>
-            <label>مكان الاستلام (من)</label>
-            <input type="text" id="pStart" placeholder="أدخل مكان الاستلام (مثال: مصر الجديدة)" />
+            <h3>📍 حدد مكان الاستلام والوجهة من الخريطة</h3>
+            <label>اضغط على الخريطة لتحديد (موقع الاستلام - من)</label>
+            <div id="passengerMap" class="map-box"></div>
+            <button class="btn" type="button" onclick="getPassengerCurrentLocation()">📍 استخدام جي بي إس (موقعي الحالي)</button>
             
-            <label>الوجهة (إلى)</label>
-            <input type="text" id="pEndInput" placeholder="إلى أين؟ (مثال: المعادي)" />
+            <label style="margin-top:10px; display:block;">الوجهة (إلى أين؟)</label>
+            <input type="text" id="pEndInput" placeholder="ادخل اسم الوجهة (مثال: المعادي، التجمع)" />
 
             <label>رقم الهاتف</label>
             <input type="tel" id="pPhone" placeholder="01xxxxxxxxx" maxlength="11" />
             
-            <button class="btn" onclick="goToRideSelection()">التالي: اختيار المركبة والسعر ➔</button>
+            <button class="btn" onclick="goToRideSelection()">التالي: اختيار نوع المركبة ➔</button>
         </div>
 
         <!-- الخطوة 2: اختيار نوع المشوار -->
@@ -66,7 +68,7 @@
             <div class="ride-option selected" id="opt-car" onclick="selectVehicle('ملاكي - UberX', '145 ج.م')">
                 <div>
                     <strong>سيارة ملاكي (UberX)</strong>
-                    <div style="font-size:12px; color:#aaa;">المسافة مقدرة بدقة، تكييف كامل</div>
+                    <div style="font-size:12px; color:#aaa;">مكيف بالكامل، أسرع وصول</div>
                 </div>
                 <div style="font-weight:bold; font-size:16px;">145 ج.م</div>
             </div>
@@ -74,13 +76,13 @@
             <div class="ride-option" id="opt-bike" onclick="selectVehicle('سكوتتر - موتوسيكل', '110 ج.م')">
                 <div>
                     <strong>سكوتتر (موتوسيكل)</strong>
-                    <div style="font-size:12px; color:#aaa;">أسرع لتجاوز الزحام</div>
+                    <div style="font-size:12px; color:#aaa;">لتجاوز الزحام المروري</div>
                 </div>
                 <div style="font-weight:bold; font-size:16px;">110 ج.م</div>
             </div>
 
             <button class="btn btn-green" onclick="requestTripFinal()">بحث عن أقرب كابتن 🔍</button>
-            <button class="btn" style="background:#333; color:#fff;" onclick="backToForm()">الرجوع لتعديل العنوان ↺</button>
+            <button class="btn" style="background:#333; color:#fff;" onclick="backToForm()">الرجوع لتعديل الخريطة ↺</button>
         </div>
 
         <!-- الخطوة 3: حالة الرحلة وانتظار الكابتن -->
@@ -116,6 +118,9 @@
         let generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
         let captainInTrip = false;
         let fetchInterval = null;
+        
+        let passMap = null, pickupMarker = null;
+        let pickupLat = 30.0444, pickupLng = 31.2357; // افتدراضي القاهرة
         let capInternalMap = null, capMarker = null;
 
         function switchRole(role) {
@@ -125,6 +130,9 @@
                 document.getElementById('captainView').style.display = 'none';
                 document.querySelectorAll('.role-tab')[0].classList.add('active');
                 document.querySelectorAll('.role-tab')[1].classList.remove('active');
+                setTimeout(() => {
+                    initPassengerMap();
+                }, 200);
             } else {
                 document.getElementById('passengerView').style.display = 'none';
                 document.getElementById('captainView').style.display = 'block';
@@ -134,13 +142,51 @@
             }
         }
 
+        function initPassengerMap() {
+            if (!passMap) {
+                passMap = L.map('passengerMap').setView([30.0444, 31.2357], 13);
+                // استخدام طبقة خريطة احترافية ونقية تشبه خرائط جوجل
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap'
+                }).addTo(passMap);
+
+                pickupMarker = L.marker([pickupLat, pickupLng], {draggable: true}).addTo(passMap)
+                    .bindPopup("📍 اسحب الدبوس أو اضغط لتحديد موقع الاستلام").openPopup();
+
+                passMap.on('click', function(e) {
+                    pickupLat = e.latlng.lat;
+                    pickupLng = e.latlng.lng;
+                    pickupMarker.setLatLng([pickupLat, pickupLng]);
+                });
+
+                pickupMarker.on('dragend', function(e) {
+                    const pos = pickupMarker.getLatLng();
+                    pickupLat = pos.lat;
+                    pickupLng = pos.lng;
+                });
+            }
+            passMap.invalidateSize();
+        }
+
+        function getPassengerCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    pickupLat = pos.coords.latitude;
+                    pickupLng = pos.coords.longitude;
+                    passMap.setView([pickupLat, pickupLng], 16);
+                    pickupMarker.setLatLng([pickupLat, pickupLng]);
+                    alert('تم تحديد موقعك بدقة من الـ GPS ✅');
+                }, () => { alert('تعذر جلب الموقع، يرجى تحديده من الخريطة يدوياً'); }, { enableHighAccuracy: true });
+            }
+        }
+
         function goToRideSelection() {
-            const startLoc = document.getElementById('pStart').value.trim();
             const endLoc = document.getElementById('pEndInput').value.trim();
             const phone = document.getElementById('pPhone').value.trim();
             
-            if (!startLoc || !endLoc || !phone) { 
-                alert('الرجاء إدخال مكان الاستلام والوجهة ورقم الهاتف'); 
+            if (!endLoc || !phone) { 
+                alert('الرجاء كتابة الوجهة ورقم الهاتف'); 
                 return; 
             }
             document.getElementById('passengerFormCard').style.display = 'none';
@@ -150,6 +196,7 @@
         function backToForm() {
             document.getElementById('passengerRideSelectCard').style.display = 'none';
             document.getElementById('passengerFormCard').style.display = 'block';
+            setTimeout(() => { if (passMap) passMap.invalidateSize(); }, 200);
         }
 
         function selectVehicle(type, price) {
@@ -166,11 +213,10 @@
 
         async function requestTripFinal() {
             const phone = document.getElementById('pPhone').value.trim();
-            const startLoc = document.getElementById('pStart').value.trim();
             const endLoc = document.getElementById('pEndInput').value.trim();
 
             const payload = {
-                start_station: `${startLoc} [${selectedVehicleType}]`,
+                start_station: `موقع الراكب (${pickupLat.toFixed(4)}, ${pickupLng.toFixed(4)}) [${selectedVehicleType}]`,
                 end_station: endLoc,
                 trip_price: selectedPrice,
                 user_mobile: phone,
@@ -193,7 +239,7 @@
 
                 if (!res.ok || !result.length) {
                     const basicPayload = {
-                        start_station: startLoc,
+                        start_station: `خط عرض ${pickupLat.toFixed(2)}`,
                         end_station: endLoc,
                         trip_price: selectedPrice,
                         user_mobile: phone
@@ -235,7 +281,7 @@
                 if (data) {
                     if (data.status === 'accepted') {
                         document.getElementById('tripStateBadge').innerText = "🚗 الكابتن قبل رحلتك وهو في الطريق إليك";
-                        document.getElementById('tripDetailsText').innerHTML = `السعر: ${data.trip_price}<br>📍 تم رصد المسافة وتوجيه الكابتن لموقعك`;
+                        document.getElementById('tripDetailsText').innerHTML = `السعر: ${data.trip_price}<br>📍 الكابتن يتحرك الآن على الخريطة لموقعك`;
                     } else if (data.status === 'arrived') {
                         document.getElementById('tripStateBadge').innerText = "🟢 وصل الكابتن إليك!";
                         document.getElementById('tripDetailsText').innerHTML = `⏱️ <b>أعط الكابتن كود الـ PIN لبدء الرحلة!</b>`;
@@ -268,13 +314,12 @@
             data.forEach(t => {
                 if (!t.status || t.status === 'pending') {
                     found = true;
-                    // حساب مسافة افتراضية واقعية للمعاينة (مثال: 12 كم - 18 دقيقة)
                     html += `
                         <div style="background:#2a2a2a; padding:14px; border-radius:10px; margin-bottom:12px; text-align:right; border-right: 4px solid #00e676;">
-                            <div style="font-size:15px; font-weight:bold; color:#00e676; margin-bottom:6px;">💰 العرض: ${t.trip_price}</div>
+                            <div style="font-size:15px; font-weight:bold; color:#00e676; margin-bottom:6px;">💰 السعر: ${t.trip_price}</div>
                             <div>📍 الاستلام (من): <b>${t.start_station}</b></div>
                             <div>🎯 الوجهة (إلى): <b>${t.end_station}</b></div>
-                            <div style="font-size:13px; color:#aaa; margin:6px 0;">📏 المسافة التقريبية: ~12 كم (يبعد عنك 4 دقائق)</div>
+                            <div style="font-size:13px; color:#aaa; margin:6px 0;">📏 المسافة التقريبية: ~5 كم (يبعد عنك 3 دقائق)</div>
                             <div>📱 هاتف الراكب: ${t.user_mobile}</div>
                             <div style="display:flex; gap:10px; margin-top:10px;">
                                 <button class="btn btn-green" style="margin-top:0;" onclick="acceptTrip(${t.id}, '${t.start_station}', '${t.end_station}')">قبول الرحلة ✅</button>
@@ -308,16 +353,16 @@
             `;
 
             setTimeout(() => {
-                capInternalMap = L.map('internalCaptainMap').setView([30.0444, 31.2357], 14);
+                capInternalMap = L.map('internalCaptainMap').setView([pickupLat, pickupLng], 14);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(capInternalMap);
+                L.marker([pickupLat, pickupLng]).addTo(capInternalMap).bindPopup("📍 موقع الراكب المطلوب").openPopup();
 
                 if (navigator.geolocation) {
                     navigator.geolocation.watchPosition((pos) => {
                         const lat = pos.coords.latitude;
                         const lng = pos.coords.longitude;
                         if (capMarker) capInternalMap.removeLayer(capMarker);
-                        capMarker = L.marker([lat, lng]).addTo(capInternalMap).bindPopup("🚗 موقعك الحالي في التوجيه").openPopup();
-                        capInternalMap.setView([lat, lng], 15);
+                        capMarker = L.marker([lat, lng]).addTo(capInternalMap).bindPopup("🚗 موقعك الحالي").openPopup();
                     }, null, { enableHighAccuracy: true });
                 }
             }, 300);
@@ -349,7 +394,7 @@
                         navigator.geolocation.watchPosition((pos) => {
                             const lat = pos.coords.latitude;
                             const lng = pos.coords.longitude;
-                            L.marker([lat, lng]).addTo(destMap).bindPopup("🚗 مسار التوجيه للوجهة النهائية").openPopup();
+                            L.marker([lat, lng]).addTo(destMap).bindPopup("🚗 التوجيه للوجهة النهائية").openPopup();
                             destMap.setView([lat, lng], 15);
                         }, null, { enableHighAccuracy: true });
                     }
