@@ -2,138 +2,311 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق سكة</title>
-    <!-- روابط مكتبة الخرائط العالمية الكاملة والمباشرة بدون أي اختصارات -->
-    <link rel="stylesheet" href="https://unpkg.com" />
-    <script src="https://unpkg.com"></script>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
-        body { background-color: #eef2f3; height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        
-        /* الخريطة الحية تأخذ الشاشة بالكامل */
-        #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>كومبو - المنظومة الكاملة</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-        .bottom-sheet {
-            position: absolute; bottom: 0; left: 0; right: 0;
-            background: white; border-top-left-radius: 25px; border-top-right-radius: 25px;
-            padding: 25px; box-shadow: 0 -8px 24px rgba(0,0,0,0.2); z-index: 10;
-            max-height: 60%; overflow-y: auto; padding-bottom: 40px;
-        }
-        .hidden { display: none !important; }
-        .btn { width: 100%; background: #000; color: white; border: none; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 12px; }
-        .btn-secondary { background: #f0f0f0; color: #333; }
-        .btn-danger { background: #e53935; color: white; }
-        .trip-card { border: 1px solid #eaeaea; padding: 16px; border-radius: 14px; background: #fafafa; margin-bottom: 12px; }
-        .price { font-size: 26px; font-weight: bold; color: #000; text-align: center; margin: 12px 0; }
-        .info-row { display: flex; justify-content: space-between; margin: 10px 0; font-size: 14px; color: #555; }
-        .timer { font-size: 20px; color: #d32f2f; text-align: center; font-weight: bold; margin: 10px 0; }
-        input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ccc; border-radius: 10px; font-size: 15px; }
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 12px; color: #333; }
+        .header { background: #0056b3; color: white; padding: 14px; border-radius: 10px; text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 12px; }
+        .card { background: white; padding: 16px; margin-bottom: 12px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .btn { background: #00875a; color: white; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 8px; width: 100%; }
+        .btn-map { background: #0288d1; margin-top: 6px; margin-bottom: 10px; font-size: 13px; padding: 10px; border-radius: 6px; }
+        .btn-secondary { background: #0056b3; }
+        .btn-driver { background: #d97706; }
+        input, select { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+        label { font-size: 13px; font-weight: bold; color: #444; }
+        .msg { padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 13px; font-weight: bold; display: none; }
+        .msg-error { background: #ffebee; color: #c62828; }
+        .msg-success { background: #e8f5e9; color: #2e7d32; }
+        .modal-map { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 92%; max-width: 450px; border-radius: 12px; padding: 14px; }
+        #map { width: 100%; height: 280px; border-radius: 8px; margin-top: 8px; }
+        .role-selector { display: flex; gap: 10px; margin-bottom: 12px; }
+        .role-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; background: #e0e0e0; color: #333; }
+        .role-btn.active { background: #0056b3; color: white; }
     </style>
 </head>
 <body>
 
-    <!-- حاوية الخريطة الحية -->
-    <div id="map"></div>
+    <div class="header">🚗 تطبيق كومبو - النقل الجماعي</div>
 
-    <!-- 1. شاشة اختيار وضع الدخول -->
-    <div id="role-selection" class="bottom-sheet">
-        <h3 style="text-align:center; margin-bottom:18px; font-size: 20px;">مرحباً بك في سكة</h3>
-        <button class="btn" onclick="document.getElementById('role-selection').classList.add('hidden'); document.getElementById('passenger-ui').classList.remove('hidden');">أنا راكب (طلب رحلة)</button>
-        <button class="btn btn-secondary" onclick="document.getElementById('role-selection').classList.add('hidden'); document.getElementById('driver-online-ui').classList.remove('hidden'); setTimeout(showRadarFallback, 3000);">أنا كابتن (توصيل)</button>
+    <!-- زرار لاختيار واجهة الراكب أو الكابتن -->
+    <div class="role-selector">
+        <button class="role-btn active" id="btnPassengerRole" onclick="switchRole('passenger')">👤 واجهة الراكب</button>
+        <button class="role-btn" id="btnCaptainRole" onclick="switchRole('captain')">🚗 واجهة الكابتن</button>
     </div>
 
-    <!-- 2. واجهة الراكب لطلب المشوار -->
-    <div id="passenger-ui" class="bottom-sheet hidden">
-        <h3>أين تريد الذهاب؟</h3>
-        <input type="text" id="pickup-location" placeholder="مكان الركوب الحالي...">
-        <input type="text" id="dropoff-location" placeholder="وجهة الوصول...">
-        <button class="btn" onclick="alert('تم إرسال طلبك لكباتن سكة المحيطين بك!');">طلب رحلة الآن</button>
-        <button class="btn btn-secondary" onclick="resetApp()">تغيير الحساب</button>
-    </div>
+    <!-- ================= واجهة الراكب ================= -->
+    <div id="passengerSection">
+        <div class="card" id="proposeFormCard">
+            <h3 style="margin-top:0; color:#00875a; font-size: 16px;">📍 حجز رحلة جديدة</h3>
+            
+            <label>1. نقطة القيام</label>
+            <select id="startPreset" onchange="handlePresetChange('start')">
+                <option value="">-- اختر موقف أو حدد بالخريطة --</option>
+                <option value="30.150,31.370">موقف العاشر (محطة المترو)</option>
+                <option value="30.060,31.280">موقف ألماظة</option>
+                <option value="30.010,31.210">موقف الجيزة</option>
+                <option value="other">➕ موقع مخصص...</option>
+            </select>
+            <button type="button" class="btn btn-map" onclick="openMap('start')">🗺️ تحديد القيام على الخريطة</button>
+            <input type="text" id="customStart" placeholder="اسم مكان القيام..." style="display:none;" />
+            <input type="text" id="startStationText" readonly style="display:none; background:#f0f0f0;" />
 
-    <!-- 3. واجهة الكابتن - وضع الانتظار -->
-    <div id="driver-online-ui" class="bottom-sheet hidden">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="color:#2e7d32; font-weight:bold; font-size: 15px;">● وضع الاتصال (جاري البحث)</span>
-            <button class="btn btn-secondary" style="width:auto; padding:6px 12px; margin:0; font-size:13px;" onclick="resetApp()">أوف لاين</button>
+            <label>العلامة المميزة للقيام</label>
+            <input type="text" id="startLandmark" placeholder="مثال: أمام محطة البنزين">
+
+            <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+
+            <label>2. نقطة الوصول</label>
+            <select id="endPreset" onchange="handlePresetChange('end')">
+                <option value="">-- اختر موقف أو حدد بالخريطة --</option>
+                <option value="30.410,31.570">موقف بلبيس الجديد</option>
+                <option value="30.580,31.500">موقف الزقازيق الأحرار</option>
+                <option value="30.300,31.740">موقف العاشر من رمضان</option>
+                <option value="other">➕ موقع مخصص...</option>
+            </select>
+            <button type="button" class="btn btn-map" onclick="openMap('end')">🗺️ تحديد الوصول على الخريطة</button>
+            <input type="text" id="customEnd" placeholder="اسم مكان الوصول..." style="display:none;" />
+            <input type="text" id="endStationText" readonly style="display:none; background:#f0f0f0;" />
+
+            <label>العلامة المميزة للوصول</label>
+            <input type="text" id="endLandmark" placeholder="مثال: بجوار الميدان">
+
+            <label>💰 سعر الرحلة التقديري</label>
+            <input type="text" id="autoPrice" readonly style="background:#e8f5e9; font-weight:bold; color:#2e7d32;" placeholder="يحسب أوتوماتيكياً">
+
+            <label>رقم المحمول</label>
+            <input type="tel" id="phoneNum" placeholder="01xxxxxxxxx" maxlength="11" />
+
+            <button type="button" class="btn btn-secondary" onclick="submitTrip()">تأكيد وإرسال الطلب ✅</button>
+            <div id="formMsg" class="msg"></div>
         </div>
-        <p style="text-align:center; margin:25px 0; color:#666; font-size:15px;">في انتظار استقبال مشاوير قريبة منك...</p>
-    </div>
 
-    <!-- 4. واجهة رادار الرحلة -->
-    <div id="driver-radar-ui" class="bottom-sheet hidden">
-        <h3 style="color:#000;">طلب رحلة جديد مكتشف!</h3>
-        <div class="trip-card">
-            <div class="price">٧٢.٤٨ ج.م</div>
-            <div class="info-row"><span>من:</span> <strong>شارع العروبة، مصر الجديدة</strong></div>
-            <div class="info-row"><span>إلى:</span> <strong>عبد الحكيم الرفاعي، مدينة نصر</strong></div>
-        </div>
-        <button class="btn" onclick="document.getElementById('driver-radar-ui').classList.add('hidden'); document.getElementById('driver-heading-ui').classList.remove('hidden');">تطابق (قبول المشوار)</button>
-        <button class="btn btn-secondary" onclick="resetApp()">تخطي</button>
-    </div>
-
-    <!-- 5. واجهة الكابتن - التوجه للركب -->
-    <div id="driver-heading-ui" class="bottom-sheet hidden">
-        <h3>جاري التوجه إلى الراكب</h3>
-        <p style="color:#555; margin:8px 0;">الراكب: <strong>Taeheon</strong></p>
-        <button class="btn" id="arrive-btn" onclick="startWaitingTimer()">لقد وصلت لنقطة الالتقاء</button>
-        <div id="waiting-timer" class="hidden">
-            <div class="timer" id="timer-count">02:00</div>
-            <button class="btn" onclick="document.getElementById('driver-heading-ui').classList.add('hidden'); document.getElementById('driver-active-ui').classList.remove('hidden');">بدء الرحلة (الراكب ركب)</button>
+        <div class="card" id="successResultCard" style="display:none; text-align:center;">
+            <h3 style="color:#2e7d32;">✅ تم تسجيل طلبك بنجاح</h3>
+            <p>السعر المقدر: <strong id="confirmedPriceVal" style="color:#00875a; font-size:18px;"></strong></p>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">طلب رحلة جديدة</button>
         </div>
     </div>
 
-    <!-- 6. واجهة الكابتن - إنهاء الرحلة -->
-    <div id="driver-active-ui" class="bottom-sheet hidden">
-        <h3>جاري إنزال الراكب في وجهته</h3>
-        <div class="info-row"><span>المسافة المتبقية:</span> <strong>٧.١ كم</strong></div>
-        <button class="btn btn-danger" onclick="alert('تم إنهاء المشوار بنجاح! مطلوب تحصيل: ٧٢.٤٨ ج.م من الراكب.'); resetApp();">إنهاء الرحلة وتحصيل الأجرة</button>
+    <!-- ================= واجهة الكابتن ================= -->
+    <div id="captainSection" style="display:none;">
+        <div class="card">
+            <h3 style="margin-top:0; color:#d97706; font-size: 16px;">🚗 الرحلات المتاحة للقبول</h3>
+            <div id="tripsList">جاري جلب الرحلات... ⏳</div>
+        </div>
+        <div id="activeDriverBox" style="display:none;"></div>
+    </div>
+
+    <!-- نافذة الخريطة المنبثقة -->
+    <div class="modal-map" id="mapModal">
+        <div class="modal-content">
+            <h4 id="mapTitle" style="margin:0; color:#0056b3;">📍 اختر الموقع</h4>
+            <div id="map"></div>
+            <button type="button" class="btn" onclick="confirmMapLocation()">تأكيد الموقع ✅</button>
+        </div>
     </div>
 
     <script>
-        let map;
-        let countdownInterval;
+        const SUPABASE_URL = "https://pmpzilqpcomoodaksbhw.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // تهيئة وتشغيل الخريطة الحية الحقيقية فوراً في شوارع القاهرة
-        window.onload = function() {
-            try {
-                map = L.map('map', { zoomControl: false }).setView([30.0444, 31.2357], 14); 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19
-                }).addTo(map);
-                
-                // إضافة علامة افتراضية لموقع المستخدم
-                L.marker([30.0444, 31.2357]).addTo(map).bindPopup('موقعك الحالي').openPopup();
-            } catch(e) {
-                console.error("خطأ في تحميل الخريطة: ", e);
+        let leafletMap, currentMarker;
+        let activeTargetType = '';
+        let startCoords = { lat: 30.150, lng: 31.370 };
+        let endCoords = { lat: 30.410, lng: 31.570 };
+        let calculatedPrice = 0;
+
+        function switchRole(role) {
+            if (role === 'passenger') {
+                document.getElementById('passengerSection').style.display = 'block';
+                document.getElementById('captainSection').style.display = 'none';
+                document.getElementById('btnPassengerRole').className = 'role-btn active';
+                document.getElementById('btnCaptainRole').className = 'role-btn';
+            } else {
+                document.getElementById('passengerSection').style.display = 'none';
+                document.getElementById('captainSection').style.display = 'block';
+                document.getElementById('btnCaptainRole').className = 'role-btn active';
+                document.getElementById('btnPassengerRole').className = 'role-btn';
+                loadCaptainTrips();
             }
-        };
-
-        function showRadarFallback() {
-            document.getElementById('driver-online-ui').classList.add('hidden');
-            document.getElementById('driver-radar-ui').classList.remove('hidden');
         }
 
-        function startWaitingTimer() {
-            document.getElementById('arrive-btn').classList.add('hidden');
-            document.getElementById('waiting-timer').classList.remove('hidden');
-            let time = 120;
-            countdownInterval = setInterval(() => {
-                let minutes = Math.floor(time / 60);
-                let seconds = time % 60;
-                document.getElementById('timer-count').innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                if(time <= 0) clearInterval(countdownInterval);
-                time--;
-            }, 1000);
+        // دوال الراكب والخريطة
+        function handlePresetChange(type) {
+            const select = document.getElementById(type + 'Preset');
+            const customInput = document.getElementById('custom' + (type === 'start' ? 'Start' : 'End'));
+            
+            if (select.value === 'other') {
+                customInput.style.display = 'block';
+            } else if (select.value !== '') {
+                customInput.style.display = 'none';
+                const parts = select.value.split(',');
+                if (type === 'start') startCoords = { lat: parseFloat(parts[0]), lng: parseFloat(parts[1]) };
+                else endCoords = { lat: parseFloat(parts[0]), lng: parseFloat(parts[1]) };
+                calculatePrice();
+            }
         }
 
-        function resetApp() {
-            clearInterval(countdownInterval);
-            document.querySelectorAll('.bottom-sheet').forEach(sheet => sheet.classList.add('hidden'));
-            document.getElementById('role-selection').classList.remove('hidden');
-            document.getElementById('arrive-btn').classList.remove('hidden');
-            document.getElementById('waiting-timer').classList.add('hidden');
+        function openMap(targetType) {
+            activeTargetType = targetType;
+            document.getElementById('mapTitle').innerText = (targetType === 'start') ? '📍 تحديد نقطة القيام' : '📍 تحديد نقطة الوصول';
+            document.getElementById('mapModal').style.display = 'flex';
+            
+            if (!leafletMap) {
+                leafletMap = L.map('map').setView([30.0444, 31.2357], 11);
+                // استخدام سيرفر CartoDB المجاني والمستقر لتجنب حظر 403 نهائياً
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 19
+                }).addTo(leafletMap);
+
+                leafletMap.on('click', function(e) {
+                    if (currentMarker) leafletMap.removeLayer(currentMarker);
+                    currentMarker = L.marker(e.latlng).addTo(leafletMap);
+                    window.tempLat = e.latlng.lat;
+                    window.tempLng = e.latlng.lng;
+                });
+            }
+            setTimeout(() => { leafletMap.invalidateSize(); }, 200);
+        }
+
+        function confirmMapLocation() {
+            if (window.tempLat && window.tempLng) {
+                const text = "موقع مخصص (" + window.tempLat.toFixed(3) + ", " + window.tempLng.toFixed(3) + ")";
+                if (activeTargetType === 'start') {
+                    startCoords = { lat: window.tempLat, lng: window.tempLng };
+                    const el = document.getElementById('startStationText');
+                    el.value = text; el.style.display = 'block';
+                } else {
+                    endCoords = { lat: window.tempLat, lng: window.tempLng };
+                    const el = document.getElementById('endStationText');
+                    el.value = text; el.style.display = 'block';
+                }
+                document.getElementById('mapModal').style.display = 'none';
+                calculatePrice();
+            } else {
+                alert('اضغط على الخريطة أولاً لتحديد المكان');
+            }
+        }
+
+        function calculatePrice() {
+            const R = 6371;
+            const dLat = (endCoords.lat - startCoords.lat) * Math.PI / 180;
+            const dLon = (endCoords.lng - startCoords.lng) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(startCoords.lat * Math.PI / 180) * Math.cos(endCoords.lat * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const km = R * c;
+            calculatedPrice = Math.max(15, Math.ceil((10 + (km * 3)) / 5) * 5);
+            document.getElementById('autoPrice').value = calculatedPrice + " ج.م";
+        }
+
+        function showMsg(txt, isErr) {
+            const el = document.getElementById('formMsg');
+            el.innerText = txt;
+            el.className = 'msg ' + (isErr ? 'msg-error' : 'msg-success');
+            el.style.display = 'block';
+        }
+
+        async function submitTrip() {
+            const phone = document.getElementById('phoneNum').value.trim();
+            if (!/^01[0125][0-9]{8}$/.test(phone)) {
+                showMsg('⚠️ رقم الهاتف غير صحيح', true);
+                return;
+            }
+
+            const startSel = document.getElementById('startPreset');
+            const startPlace = startSel.value === 'other' ? document.getElementById('customStart').value.trim() : (startSel.value ? startSel.options[startSel.selectedIndex].text : document.getElementById('startStationText').value.trim());
+            
+            const endSel = document.getElementById('endPreset');
+            const endPlace = endSel.value === 'other' ? document.getElementById('customEnd').value.trim() : (endSel.value ? endSel.options[endSel.selectedIndex].text : document.getElementById('endStationText').value.trim());
+
+            if (!startPlace || !endPlace) {
+                showMsg('⚠️ برجاء اختيار نقطتي القيام والوصول', true);
+                return;
+            }
+
+            const payload = {
+                start_station: startPlace + " (علامة: " + document.getElementById('startLandmark').value + ")",
+                end_station: endPlace + " (علامة: " + document.getElementById('endLandmark').value + ")",
+                trip_price: calculatedPrice + " ج.م",
+                user_mobile: phone
+            };
+
+            const { error } = await supabaseClient.from('trips_data').insert([payload]);
+
+            if (!error) {
+                document.getElementById('proposeFormCard').style.display = 'none';
+                document.getElementById('confirmedPriceVal').innerText = calculatedPrice + " ج.م";
+                document.getElementById('successResultCard').style.display = 'block';
+            } else {
+                showMsg('⚠️ خطأ في الحفظ بالداتا بيز', true);
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('proposeFormCard').style.display = 'block';
+            document.getElementById('successResultCard').style.display = 'none';
+            document.getElementById('formMsg').style.display = 'none';
+        }
+
+        // دوال الكابتن
+        async function loadCaptainTrips() {
+            const container = document.getElementById('tripsList');
+            const { data, error } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false });
+
+            if (error || !data || data.length === 0) {
+                container.innerHTML = '<div style="color:#666;">لا توجد رحلات متاحة حالياً.</div>';
+                return;
+            }
+
+            let html = '';
+            data.forEach(t => {
+                html += `
+                    <div style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:8px; border:1px solid #ddd;">
+                        <div>📍 <strong>من:</strong> ${t.start_station}</div>
+                        <div>🎯 <strong>إلى:</strong> ${t.end_station}</div>
+                        <div>💰 <strong>السعر:</strong> ${t.trip_price}</div>
+                        <div>📱 <strong>الراكب:</strong> ${t.user_mobile}</div>
+                        <button class="btn btn-driver" style="margin-top:6px;" onclick="acceptTrip(${t.id})">قبول الرحلة وتتبع GPS 🚗</button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function acceptTrip(tripId) {
+            document.getElementById('tripsList').style.display = 'none';
+            const activeBox = document.getElementById('activeDriverBox');
+            activeBox.style.display = 'block';
+            activeBox.innerHTML = `
+                <div class="card" style="background:#e8f5e9; border:1px solid #81c784;">
+                    <h3 style="color:#2e7d32; margin-top:0;">🚗 تم قبول الرحلة #${tripId}</h3>
+                    <div id="gpsStatus" style="font-weight:bold; color:#1b5e20;">📡 جاري تشغيل الـ GPS وإرسال الموقع...</div>
+                </div>
+            `;
+
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(async (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+
+                    await supabaseClient.from('driver_locations').upsert([{
+                        driver_id: tripId,
+                        latitude: lat,
+                        longitude: lng
+                    }]);
+
+                    document.getElementById('gpsStatus').innerText = `📡 تم إرسال موقعك المباشر: (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+                }, null, { enableHighAccuracy: true });
+            }
         }
     </script>
 </body>
