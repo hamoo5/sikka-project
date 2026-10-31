@@ -18,13 +18,14 @@
         
         .container { padding: 12px; }
         .card { background: #1e1e1e; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
-        .btn { background: #fff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 10px; }
+        .btn { background: #fff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 10px; text-decoration: none; display: block; }
         .btn-green { background: #00875a; color: #fff; }
+        .btn-blue { background: #0288d1; color: #fff; }
         
         input, select { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 12px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 14px; }
         label { font-size: 13px; color: #bbb; }
         
-        .map-box { width: 100%; height: 300px; border-radius: 8px; margin-bottom: 10px; }
+        .map-box { width: 100%; height: 280px; border-radius: 8px; margin-bottom: 10px; }
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #333; color: #ff9800; }
         .pin-box { font-size: 26px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; }
     </style>
@@ -46,10 +47,11 @@
             <div id="passengerSelectMap" class="map-box"></div>
             <button class="btn" type="button" onclick="getCurrentLocation()">📍 تثبيت موقعي الحالي</button>
             
-            <label style="margin-top:10px; display:block;">موقف الوصول</label>
+            <label style="margin-top:10px; display:block;">موقف الوصول (الوجهة)</label>
             <select id="pEnd">
                 <option value="موقف بلبيس الجديد">موقف بلبيس الجديد</option>
                 <option value="موقف الزقازيق الأحرار">موقف الزقازيق الأحرار</option>
+                <option value="موقف العاشر من رمضان">موقف العاشر من رمضان</option>
             </select>
             <label>رقم الهاتف</label>
             <input type="tel" id="pPhone" placeholder="01xxxxxxxxx" maxlength="11" />
@@ -159,7 +161,6 @@
                 let result = await res.json();
 
                 if (!res.ok || !result.length) {
-                    // إرسال مبسط لو فيه حقول ناقصة
                     const basicPayload = {
                         start_station: `موقع الراكب`,
                         end_station: document.getElementById('pEnd').value,
@@ -208,7 +209,8 @@
                         document.getElementById('tripStateBadge').innerText = "🟢 وصل الكابتن إليك!";
                         document.getElementById('tripDetailsText').innerHTML = `⏱️ <b>أعط الكابتن كود الـ PIN لبدء الرحلة!</b>`;
                     } else if (data.status === 'started') {
-                        document.getElementById('tripStateBadge').innerText = "🚀 الرحلة جارية الآن للوجهة";
+                        document.getElementById('tripStateBadge').innerText = "🚀 الرحلة جارية الآن نحو الوجهة";
+                        document.getElementById('tripDetailsText').innerHTML = `🎯 الوجهة: <b>${data.end_station}</b><br>رحلة موفقة!`;
                     }
                 }
             }, 3000);
@@ -238,10 +240,10 @@
                     html += `
                         <div style="background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; text-align:right;">
                             <div>📍 القيام: ${t.start_station}</div>
-                            <div>🎯 الوصول: ${t.end_station}</div>
+                            <div>🎯 الوجهة: ${t.end_station}</div>
                             <div>💰 السعر: ${t.trip_price}</div>
                             <div>📱 الراكب: ${t.user_mobile}</div>
-                            <button class="btn btn-green" onclick="acceptTrip(${t.id})">قبول المشوار والتوجه للراكب 🚗</button>
+                            <button class="btn btn-green" onclick="acceptTrip(${t.id}, '${t.end_station}')">قبول المشوار والتوجه للراكب 🚗</button>
                         </div>
                     `;
                 }
@@ -254,7 +256,7 @@
             }
         }
 
-        async function acceptTrip(tripId) {
+        async function acceptTrip(tripId, endStation) {
             captainInTrip = true;
             if (fetchInterval) clearInterval(fetchInterval);
 
@@ -265,8 +267,8 @@
                 <div class="card">
                     <h3>🚗 في طريقك للراكب</h3>
                     <div id="captainMap" class="map-box"></div>
-                    <a id="navBtn" class="btn" style="background:#0288d1; color:#fff; text-decoration:none; display:block; text-align:center; margin-top:10px;" target="_blank">🗺️ فتح الاتجاهات على خرائط جوجل</a>
-                    <button class="btn btn-green" onclick="arriveToPassenger(${tripId})" style="margin-top:10px;">وصلت لمكان الراكب 📍</button>
+                    <a id="navBtn" class="btn btn-blue" target="_blank">🗺️ فتح الاتجاهات لمكان الراكب</a>
+                    <button class="btn btn-green" onclick="arriveToPassenger(${tripId}, '${endStation}')" style="margin-top:10px;">وصلت لمكان الراكب 📍</button>
                 </div>
             `;
 
@@ -290,7 +292,7 @@
             }, 300);
         }
 
-        async function arriveToPassenger(tripId) {
+        async function arriveToPassenger(tripId, endStation) {
             const enteredPin = prompt("أدخل كود الـ PIN المكون من 4 أرقام الذي مع الراكب لبدء الرحلة:");
             if (!enteredPin) return;
 
@@ -298,10 +300,15 @@
             
             if (!data || !data.trip_pin || data.trip_pin === enteredPin) {
                 await supabaseClient.from('trips_data').update({ status: 'started' }).eq('id', tripId);
-                document.getElementById('captainContent').innerHTML = `
+                
+                // تحديث شاشة الكابتن لعرض الوجهة النهائية بوضوح وزر الخريطة ليها
+                const encodedDest = encodeURIComponent(endStation);
+                const content = document.getElementById('captainContent');
+                content.innerHTML = `
                     <div class="card" style="background:#004d40; text-align:center;">
                         <h3 style="color:#a5d6a7;">🚀 الرحلة جارية الآن</h3>
-                        <p>تم التحقق بنجاح. اتجه الآن إلى الوجهة النهائية!</p>
+                        <p style="font-size:16px; margin:10px 0;">🎯 الوجهة النهائية: <b>${endStation}</b></p>
+                        <a class="btn btn-blue" href="https://www.google.com/maps/search/?api=1&query=${encodedDest}" target="_blank">🗺️ فتح خريطة الوجهة النهائية على جوجل</a>
                     </div>
                 `;
             } else {
