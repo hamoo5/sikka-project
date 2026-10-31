@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>كومبو - واجهة الراكب</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
+        body { background: #121212; color: #fff; margin: 0; padding: 0; direction: rtl; }
+        .top-bar { background: #000; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .container { padding: 12px; }
+        .card { background: #1e1e1e; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
+        .btn { background: #fff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 10px; }
+        .btn-green { background: #00875a; color: #fff; }
+        input { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 4px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 14px; }
+        label { font-size: 13px; color: #bbb; }
+        .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; z-index: 1; }
+        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #333; color: #ff9800; }
+        .pin-box { font-size: 28px; font-weight: bold; letter-spacing: 8px; color: #00e676; background: #111; padding: 12px; border-radius: 8px; text-align: center; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <span style="font-weight: bold; font-size: 16px;">🚗 كومبو - تطبيق الراكب</span>
+        <a href="captain.html" style="color: #00e676; text-decoration: none; font-size: 13px; font-weight: bold;">الانتقال لوصفحة الكابتن ➔</a>
+    </div>
+
+    <div class="container">
+        <div class="card" id="passengerFormCard">
+            <h3>📍 حدد موقع الانطلاق والوجهة</h3>
+            
+            <label>مكان الاستلام (من):</label>
+            <input type="text" id="pStartInput" placeholder="اكتب اسم الشارع أو المنطقة..." />
+
+            <label>الوجهة (إلى):</label>
+            <input type="text" id="pEndInput" placeholder="اكتب الوجهة النهائية..." />
+
+            <div id="passengerMap" class="map-container"></div>
+
+            <div style="background:#2a2a2a; padding:10px; border-radius:8px; font-size:13px; margin-top:8px;">
+                📏 المسافة: <b id="txtDistance" style="color:#00e676;">5.0 كم</b> | ⏱️ الوقت: <b id="txtDuration" style="color:#ff9800;">15 دقيقة</b>
+            </div>
+
+            <label style="margin-top:8px; display:block;">رقم الهاتف:</label>
+            <input type="tel" id="pPhone" placeholder="01xxxxxxxxx" maxlength="11" />
+
+            <button class="btn btn-green" onclick="requestTripFinal()">اطلب الرحلة الآن 🚀</button>
+        </div>
+
+        <div class="card" id="passengerStatusCard" style="display:none; text-align:center;">
+            <span class="status-badge" id="tripStateBadge">⏳ جاري البحث عن كابتن قريب...</span>
+            <p id="tripDetailsText" style="margin-top: 15px; font-size: 15px;"></p>
+            <div id="passengerPinContainer" style="display:none;">
+                <label>كود الـ PIN الخاص بك (أعطه للكابتن عند الركوب):</label>
+                <div class="pin-box" id="tripPinCode">----</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://pmpzilqpcomoodaksbhw.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let passMap = null, startLat = 30.0561, startLng = 31.3285, endLat = 29.9602, endLng = 31.2569;
+        let activeTripId = null, generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
+
+        window.onload = function() {
+            passMap = L.map('passengerMap').setView([startLat, startLng], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(passMap);
+            L.marker([startLat, startLng]).addTo(passMap).bindPopup("🟢 نقطة الاستلام");
+            L.marker([endLat, endLng]).addTo(passMap).bindPopup("🔴 الوجهة");
+        };
+
+        async function requestTripFinal() {
+            const phone = document.getElementById('pPhone').value.trim();
+            const startName = document.getElementById('pStartInput').value || "مصر الجديدة";
+            const endName = document.getElementById('pEndInput').value || "المعادي";
+            if (!phone) { alert('الرجاء إدخال رقم الهاتف'); return; }
+
+            const payload = {
+                start_station: startName,
+                end_station: endName,
+                trip_price: "75 ج.م",
+                user_mobile: phone,
+                status: 'pending',
+                trip_pin: generatedPin
+            };
+
+            let res = await fetch(`${SUPABASE_URL}/rest/v1/trips_data`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'return=representation' },
+                body: JSON.stringify(payload)
+            });
+            let result = await res.json();
+
+            if (res.ok && result.length > 0) {
+                activeTripId = result[0].id;
+                document.getElementById('passengerFormCard').style.display = 'none';
+                document.getElementById('passengerStatusCard').style.display = 'block';
+                document.getElementById('passengerPinContainer').style.display = 'block';
+                document.getElementById('tripPinCode').innerText = generatedPin;
+                listenToTripStatus();
+            } else {
+                alert('خطأ في إرسال الطلب');
+            }
+        }
+
+        function listenToTripStatus() {
+            setInterval(async () => {
+                if (!activeTripId) return;
+                const { data } = await supabaseClient.from('trips_data').select('*').eq('id', activeTripId).single();
+                if (data) {
+                    if (data.status === 'accepted') {
+                        document.getElementById('tripStateBadge').innerText = "🚗 الكابتن قبل رحلتك وهو في الطريق إليك!";
+                        document.getElementById('tripDetailsText').innerHTML = `السعر: ${data.trip_price}`;
+                    } else if (data.status === 'started') {
+                        document.getElementById('tripStateBadge').innerText = "🚀 الرحلة جارية الآن نحو الوجهة";
+                    }
+                }
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
