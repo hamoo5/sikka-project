@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>كومبو - واجهة الكابتن</title>
+    <title>كومبو - تطبيق الكابتن</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -18,7 +18,7 @@
         .btn { background: #fff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 10px; }
         .btn-green { background: #00875a; color: #fff; }
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #333; color: #ff9800; }
-        .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; z-index: 1; }
+        .map-container { width: 100%; height: 280px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; z-index: 1; }
     </style>
 </head>
 <body>
@@ -30,8 +30,8 @@
 
     <div class="container" id="captainContent">
         <div class="card" style="text-align:center;">
-            <span class="status-badge">🟢 متصل - جاري رصد طلبات الركاب</span>
-            <div id="availableTrips" style="margin-top: 15px;">جاري جلب الطلبات... 📡</div>
+            <span class="status-badge">🟢 متصل - جاري البحث عن طلبات الركاب...</span>
+            <div id="availableTrips" style="margin-top: 15px;">جاري رصد الطلبات على الشوارع... 📡</div>
         </div>
     </div>
 
@@ -47,7 +47,12 @@
             const { data, error } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false });
 
             if (error || !data || data.length === 0) {
-                container.innerHTML = `<div class="card" style="text-align:center;">📭 لا توجد رحلات متاحة حالياً</div>`;
+                container.innerHTML = `
+                    <div class="card" style="text-align:center;">
+                        <span class="status-badge">🟢 متصل - في انتظار طلبات جديدة</span>
+                        <p style="color:#aaa; margin-top:15px;">📭 لا توجد رحلات متاحة في الوقت الحالي</p>
+                    </div>
+                `;
                 return;
             }
 
@@ -56,10 +61,10 @@
                 html += `
                     <div style="background:#2a2a2a; padding:14px; border-radius:10px; margin-bottom:12px; border-right:4px solid #00e676; text-align:right;">
                         <div>📍 مكان الراكب (الشارع): <b style="color:#00e676;">${t.start_station}</b></div>
-                        <div>🎯 الوجهة: <b>${t.end_station}</b></div>
-                        <div>💰 السعر: <b>${t.trip_price}</b></div>
-                        <div>📱 هاتف الراكب: ${t.user_mobile}</div>
-                        <button class="btn btn-green" onclick="acceptTrip('${t.start_station}', '${t.end_station}')">قبول الرحلة والتوجه للراكب ✅</button>
+                        <div>🎯 الوجهة النهائية: <b>${t.end_station}</b></div>
+                        <div>💰 السعر المطلوب: <b style="color:#00e676;">${t.trip_price}</b></div>
+                        <div>📱 هاتف الراكب: <a href="tel:${t.user_mobile}" style="color:#0288d1; text-decoration:none;">${t.user_mobile}</a></div>
+                        <button class="btn btn-green" onclick="acceptTrip(${t.id}, '${t.start_station}', '${t.end_station}')">قبول الرحلة والتوجه للراكب ✅</button>
                     </div>
                 `;
             });
@@ -67,22 +72,28 @@
             container.innerHTML = html;
         }
 
-        function acceptTrip(start, end) {
+        async function acceptTrip(tripId, start, end) {
             clearInterval(fetchInterval);
+            
+            // تحديث حالة الرحلة في قاعدة البيانات إذا أردت لاحقاً
             const container = document.getElementById('captainContent');
             container.innerHTML = `
                 <div class="card">
-                    <h3 style="color:#00e676; margin-top:0;">🚀 تم قبول الرحلة! توجه للراكب</h3>
+                    <h3 style="color:#00e676; margin-top:0;">🚀 جاري التوجه لموقع الراكب</h3>
                     <p>📍 مكان الاستلام: <b>${start}</b></p>
                     <p>🎯 الوجهة: <b>${end}</b></p>
+                    
+                    <!-- خريطة الشوارع للكابتن -->
                     <div id="captainMap" class="map-container"></div>
+                    
+                    <button class="btn" style="background:#d32f2f; color:#fff;" onclick="window.location.reload()">إنهاء أو إلغاء الرحلة</button>
                 </div>
             `;
 
-            // فتح الخريطة المعتمدة للكابتن
-            const map = L.map('captainMap').setView([30.0561, 31.3285], 13);
+            // تشغيل نفس الخريطة الدقيقة للشوارع للكابتن
+            const map = L.map('captainMap').setView([30.0561, 31.3285], 14);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-            L.marker([30.0561, 31.3285]).addTo(map).bindPopup(`🟢 موقع الراكب: ${start}`).openPopup();
+            L.marker([30.0561, 31.3285]).addTo(map).bindPopup(`🟢 موقع الراكب في: ${start}`).openPopup();
         }
     </script>
 </body>
