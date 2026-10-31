@@ -108,21 +108,34 @@
                 start_station: document.getElementById('pStart').value,
                 end_station: document.getElementById('pEnd').value,
                 trip_price: "85 ج.م",
-                user_mobile: phone,
-                status: 'pending'
+                user_mobile: phone
             };
 
-            const { data, error } = await supabaseClient.from('trips_data').insert([payload]).select();
-            if (!error && data && data.length > 0) {
-                activeTripId = data[0].id;
-                document.getElementById('passengerFormCard').style.display = 'none';
-                const statusCard = document.getElementById('passengerStatusCard');
-                statusCard.style.display = 'block';
-                document.getElementById('tripStateBadge').innerText = "⏳ جارِ انتظار قبول الكابتن...";
-                listenToTripStatus();
-            } else {
-                alert('خطأ في إرسال الطلب، تأكد من الاتصال');
-                console.error(error);
+            try {
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/trips_data`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await res.json();
+                if (res.ok) {
+                    if (result && result.length > 0) activeTripId = result[0].id;
+                    document.getElementById('passengerFormCard').style.display = 'none';
+                    const statusCard = document.getElementById('passengerStatusCard');
+                    statusCard.style.display = 'block';
+                    document.getElementById('tripStateBadge').innerText = "⏳ جارِ انتظار قبول الكابتن...";
+                    listenToTripStatus();
+                } else {
+                    alert('خطأ في إرسال الطلب، تأكد من الاتصال');
+                }
+            } catch (err) {
+                alert('تعذر الاتصال بالسيرفر');
             }
         }
 
@@ -145,7 +158,6 @@
         function initCaptainMap() {
             if (!map) {
                 map = L.map('map').setView([30.0444, 31.2357], 13);
-                // استخدام خريطة مجانية بالكامل ومستقرة بدون مفاتيح API
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
             }
             setTimeout(() => map.invalidateSize(), 300);
@@ -153,7 +165,7 @@
 
         async function fetchAvailableTrips() {
             const container = document.getElementById('availableTrips');
-            const { data } = await supabaseClient.from('trips_data').select('*').eq('status', 'pending').order('id', { ascending: false });
+            const { data } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false });
 
             if (!data || data.length === 0) {
                 container.innerHTML = "📭 لا توجد مشاوير قريبة حالياً";
@@ -163,16 +175,19 @@
 
             let html = '';
             data.forEach(t => {
-                html += `
-                    <div style="background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; text-align:right;">
-                        <div>📍 من: ${t.start_station}</div>
-                        <div>🎯 إلى: ${t.end_station}</div>
-                        <div>💰 السعر: ${t.trip_price}</div>
-                        <button class="btn btn-green" onclick="acceptTrip(${t.id})">قبول المشوار 🚗</button>
-                    </div>
-                `;
+                if (!t.status || t.status === 'pending') {
+                    html += `
+                        <div style="background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; text-align:right;">
+                            <div>📍 من: ${t.start_station}</div>
+                            <div>🎯 إلى: ${t.end_station}</div>
+                            <div>💰 السعر: ${t.trip_price}</div>
+                            <button class="btn btn-green" onclick="acceptTrip(${t.id})">قبول المشوار 🚗</button>
+                        </div>
+                    `;
+                }
             });
-            container.innerHTML = html;
+            container.innerHTML = html || "📭 لا توجد مشاوير جديدة حالياً";
+            setTimeout(fetchAvailableTrips, 4000);
         }
 
         async function acceptTrip(tripId) {
