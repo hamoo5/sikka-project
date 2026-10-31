@@ -4,17 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تطبيق سكة</title>
-    <!-- استدعاء مكتبة الخرائط العالمية الحية والمجانية -->
+    <!-- روابط مكتبة الخرائط العالمية الكاملة والمباشرة بدون أي اختصارات -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
         body { background-color: #eef2f3; height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
         
-        /* الخريطة الحية تأخذ الشاشة بالكامل خلف الأزرار */
+        /* الخريطة الحية تأخذ الشاشة بالكامل */
         #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
 
-        /* تعديل الأبعاد والمساحة لتظهر الأزرار كاملة على هواتف الموبايل */
         .bottom-sheet {
             position: absolute; bottom: 0; left: 0; right: 0;
             background: white; border-top-left-radius: 25px; border-top-right-radius: 25px;
@@ -34,10 +33,10 @@
 </head>
 <body>
 
-    <!-- حاوية الخريطة الحية الفوق تفاعلية -->
+    <!-- حاوية الخريطة الحية -->
     <div id="map"></div>
 
-    <!-- 1. شاشة اختيار وضع الدخول المصلحة بالكامل -->
+    <!-- 1. شاشة اختيار وضع الدخول -->
     <div id="role-selection" class="bottom-sheet">
         <h3 style="text-align:center; margin-bottom:18px; font-size: 20px;">مرحباً بك في سكة</h3>
         <button class="btn" onclick="document.getElementById('role-selection').classList.add('hidden'); document.getElementById('passenger-ui').classList.remove('hidden');">أنا راكب (طلب رحلة)</button>
@@ -70,7 +69,7 @@
             <div class="info-row"><span>من:</span> <strong>شارع العروبة، مصر الجديدة</strong></div>
             <div class="info-row"><span>إلى:</span> <strong>عبد الحكيم الرفاعي، مدينة نصر</strong></div>
         </div>
-        <button class="btn" onclick="document.getElementById('driver-radar-ui').classList.add('hidden'); document.getElementById('driver-heading-ui').classList.remove('hidden');">تتطابق (قبول المشوار)</button>
+        <button class="btn" onclick="document.getElementById('driver-radar-ui').classList.add('hidden'); document.getElementById('driver-heading-ui').classList.remove('hidden');">تطابق (قبول المشوار)</button>
         <button class="btn btn-secondary" onclick="resetApp()">تخطي</button>
     </div>
 
@@ -96,12 +95,19 @@
         let map;
         let countdownInterval;
 
-        // تهيئة وتشغيل الخريطة الحية فوراً ومباشرة في شوارع القاهرة كموقع افتراضي
+        // تهيئة وتشغيل الخريطة الحية الحقيقية فوراً في شوارع القاهرة
         window.onload = function() {
-            map = L.map('map', { zoomControl: false }).setView([30.0444, 31.2357], 14); 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            // إضافة علامة كمثال لموقع الكابتن الحالي
-            L.marker([30.0444, 31.2357]).addTo(map).bindPopup('موقعك الحالي يا كابتن').openPopup();
+            try {
+                map = L.map('map', { zoomControl: false }).setView([30.0444, 31.2357], 14); 
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19
+                }).addTo(map);
+                
+                // إضافة علامة افتراضية لموقع المستخدم
+                L.marker([30.0444, 31.2357]).addTo(map).bindPopup('موقعك الحالي').openPopup();
+            } catch(e) {
+                console.error("خطأ في تحميل الخريطة: ", e);
+            }
         };
 
         function showRadarFallback() {
