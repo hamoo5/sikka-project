@@ -17,6 +17,7 @@
         .card { background: #1e1e1e; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
         .btn { background: #fff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 10px; }
         .btn-green { background: #00875a; color: #fff; }
+        .btn-blue { background: #0288d1; color: #fff; margin-bottom: 8px; padding: 10px; font-size: 13px; }
         input { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 4px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 14px; }
         label { font-size: 13px; color: #bbb; }
         .map-container { width: 100%; height: 280px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; z-index: 1; }
@@ -37,15 +38,17 @@
         <div class="card" id="passengerFormCard">
             <h3 style="margin-top:0;">📍 حدد موقع الانطلاق والوجهة بدقة</h3>
             
+            <button class="btn btn-blue" onclick="getMyLocation()">📍 استخدام موقعي الحالي على الخريطة</button>
+
             <label>مكان الاستلام (من):</label>
-            <input type="text" id="pStartInput" placeholder="اكتب اسم الشارع أو المنطقة..." oninput="searchAddress(this.value, 'start')" />
+            <input type="text" id="pStartInput" placeholder="اكتب اسم الشارع أو استخدم موقعك..." oninput="searchAddress(this.value, 'start')" />
             <div id="startResults" class="search-results"></div>
 
             <label>الوجهة (إلى):</label>
             <input type="text" id="pEndInput" placeholder="اكتب الوجهة النهائية..." oninput="searchAddress(this.value, 'end')" />
             <div id="endResults" class="search-results"></div>
 
-            <!-- الخريطة الأساسية المعتمدة -->
+            <!-- خريطة الشوارع -->
             <div id="passengerMap" class="map-container"></div>
 
             <div style="background:#2a2a2a; padding:10px; border-radius:8px; font-size:13px; margin-top:8px;">
@@ -77,11 +80,9 @@
 
         window.onload = function() {
             passMap = L.map('passengerMap').setView([startLat, startLng], 13);
-            
-            // تثبيت خريطة OpenStreetMap التي تقرأ الشوارع بوضوح
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(passMap);
             
-            startMarker = L.marker([startLat, startLng], {draggable: true}).addTo(passMap).bindPopup("🟢 مكان الراكب");
+            startMarker = L.marker([startLat, startLng], {draggable: true}).addTo(passMap).bindPopup("🟢 موقعك الحالي");
             endMarker = L.marker([endLat, endLng], {draggable: true}).addTo(passMap).bindPopup("🔴 الوجهة");
 
             startMarker.on('dragend', async () => {
@@ -100,17 +101,39 @@
                 fetchRouteOSRM();
             });
 
-            document.getElementById('pStartInput').value = "طريق النصر";
-            document.getElementById('pEndInput').value = "شارع صلاح الدين";
-            fetchRouteOSRM();
+            // محاولة جلب موقع المستخدم أوتوماتيك أول ما الصفحة تفتح
+            getMyLocation();
         };
+
+        // دالة جلب الموقع الحالي عبر الـ GPS
+        function getMyLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    startLat = position.coords.latitude;
+                    startLng = position.coords.longitude;
+                    
+                    startMarker.setLatLng([startLat, startLng]);
+                    passMap.setView([startLat, startLng], 15);
+
+                    const addr = await reverseGeocode(startLat, startLng);
+                    if (addr) {
+                        document.getElementById('pStartInput').value = addr;
+                    }
+                    fetchRouteOSRM();
+                }, (error) => {
+                    console.log("GPS Error: ", error);
+                }, { enableHighAccuracy: true });
+            } else {
+                alert("المتصفح لا يدعم تحديد الموقع الجغرافي");
+            }
+        }
 
         async function reverseGeocode(lat, lon) {
             try {
                 const res = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
                 const data = await (await fetch(res)).json();
                 if (data && data.address) {
-                    return data.address.road || data.address.suburb || data.address.city || "شارع محدد";
+                    return data.address.road || data.address.suburb || data.address.city || "موقعي الحالي";
                 }
             } catch (e) {}
             return null;
@@ -177,15 +200,14 @@
 
         async function requestTripFinal() {
             const phone = document.getElementById('pPhone').value.trim();
-            const startName = document.getElementById('pStartInput').value.trim() || "طريق النصر";
-            const endName = document.getElementById('pEndInput').value.trim() || "شارع صلاح الدين";
+            const startName = document.getElementById('pStartInput').value.trim() || "موقعي الحالي";
+            const endName = document.getElementById('pEndInput').value.trim() || "الوجهة الأخيرة";
             
             if (!phone || phone.length < 11) { 
                 alert('الرجاء إدخال رقم هاتف صحيح مكون من 11 رقماً'); 
                 return; 
             }
 
-            // يتم حفظ اسم الشارع ورقم التليفون والسعر في قاعدة البيانات
             const { data, error } = await supabaseClient
                 .from('trips_data')
                 .insert([
@@ -203,7 +225,7 @@
             } else if (data && data.length > 0) {
                 document.getElementById('passengerFormCard').style.display = 'none';
                 document.getElementById('passengerStatusCard').style.display = 'block';
-                document.getElementById('tripDetailsText').innerText = `تم إرسال الطلب بنجاح! السعر: ${finalPrice} ج.م | مكان الاستلام: ${startName}`;
+                document.getElementById('tripDetailsText').innerText = `تم إرسال الطلب بنجاح! السعر: ${finalPrice} ج.م | الاستلام من: ${startName}`;
             }
         }
     </script>
