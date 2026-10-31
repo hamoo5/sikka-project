@@ -82,11 +82,13 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let currentRole = 'passenger';
-        let passSelectMap, capMap;
-        let pickupMarker, captainMarker, passengerPickMarker;
+        let passSelectMap;
+        let pickupMarker, captainMarker;
         let activeTripId = null;
         let selectedLat = 30.0444, selectedLng = 31.2357;
         let generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
+        let captainInTrip = false;
+        let fetchInterval = null;
 
         function switchRole(role) {
             currentRole = role;
@@ -113,7 +115,7 @@
                 document.getElementById('captainView').style.display = 'block';
                 document.querySelectorAll('.role-tab')[1].classList.add('active');
                 document.querySelectorAll('.role-tab')[0].classList.remove('active');
-                fetchAvailableTrips();
+                if (!captainInTrip) startFetchingTrips();
             }
         }
 
@@ -126,7 +128,7 @@
                     if (pickupMarker) passSelectMap.removeLayer(pickupMarker);
                     pickupMarker = L.marker([selectedLat, selectedLng]).addTo(passSelectMap).bindPopup("موقعك الحالي").openPopup();
                     alert('تم تثبيت موقعك بنجاح ✅');
-                }, () => { alert('تعذر تحديد الموقع، اختره من الخريطة'); }, { enableHighAccuracy: true });
+                }, () => { alert('تعذر تحديد الموقع'); }, { enableHighAccuracy: true });
             }
         }
 
@@ -144,12 +146,27 @@
             };
 
             try {
-                const { data, error } = await supabaseClient.from('trips_data').insert([payload]).select();
-                if (!error && data && data.length > 0) {
-                    activeTripId = data[0].id;
-                } else {
-                    // طريقة بديلة لتخطي قيود الأعمدة
-                    const res = await fetch(`${SUPABASE_URL}/rest/v1/trips_data`, {
+                let res = await fetch(`${SUPABASE_URL}/rest/v1/trips_data`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                let result = await res.json();
+
+                if (!res.ok || !result.length) {
+                    // إرسال مبسط لو فيه حقول ناقصة
+                    const basicPayload = {
+                        start_station: `موقع الراكب`,
+                        end_station: document.getElementById('pEnd').value,
+                        trip_price: "85 ج.م",
+                        user_mobile: phone
+                    };
+                    res = await fetch(`${SUPABASE_URL}/rest/v1/trips_data`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -157,46 +174,23 @@
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
                             'Prefer': 'return=representation'
                         },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(basicPayload)
                     });
-                    const result = await res.json();
-                    if (res.ok && result.length > 0) {
-                        activeTripId = result[0].id;
-                    } else {
-                        // إرسال أساسي بدون أعمدة إضافية لو الجدول قديم
-                        const basicPayload = {
-                            start_station: `موقع الراكب`,
-                            end_station: document.getElementById('pEnd').value,
-                            trip_price: "85 ج.م",
-                            user_mobile: phone
-                        };
-                        const res2 = await fetch(`${SUPABASE_URL}/rest/v1/trips_data`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'apikey': SUPABASE_KEY,
-                                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                                'Prefer': 'return=representation'
-                            },
-                            body: JSON.stringify(basicPayload)
-                        });
-                        const res2Data = await res2.json();
-                        if (res2.ok && res2Data.length > 0) {
-                            activeTripId = res2Data[0].id;
-                        } else {
-                            alert('خطأ في إرسال الطلب');
-                            return;
-                        }
-                    }
+                    result = await res.json();
                 }
 
-                document.getElementById('passengerFormCard').style.display = 'none';
-                const statusCard = document.getElementById('passengerStatusCard');
-                statusCard.style.display = 'block';
-                document.getElementById('tripStateBadge').innerText = "⏳ جارِ انتظار قبول الكابتن...";
-                document.getElementById('passengerPinContainer').style.display = 'block';
-                document.getElementById('tripPinCode').innerText = generatedPin;
-                listenToTripStatus();
+                if (res.ok && result.length > 0) {
+                    activeTripId = result[0].id;
+                    document.getElementById('passengerFormCard').style.display = 'none';
+                    const statusCard = document.getElementById('passengerStatusCard');
+                    statusCard.style.display = 'block';
+                    document.getElementById('tripStateBadge').innerText = "⏳ جارِ انتظار قبول الكابتن...";
+                    document.getElementById('passengerPinContainer').style.display = 'block';
+                    document.getElementById('tripPinCode').innerText = generatedPin;
+                    listenToTripStatus();
+                } else {
+                    alert('خطأ في إرسال الطلب');
+                }
             } catch (err) {
                 alert('تعذر الاتصال بالسيرفر');
             }
@@ -220,19 +214,27 @@
             }, 3000);
         }
 
+        function startFetchingTrips() {
+            if (fetchInterval) clearInterval(fetchInterval);
+            fetchAvailableTrips();
+            fetchInterval = setInterval(fetchAvailableTrips, 4000);
+        }
+
         async function fetchAvailableTrips() {
+            if (captainInTrip) return;
             const container = document.getElementById('captainContent');
             const { data } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false });
 
             if (!data || data.length === 0) {
                 container.innerHTML = `<div class="card" style="text-align:center;">📭 لا توجد مشاوير متاحة حالياً</div>`;
-                setTimeout(fetchAvailableTrips, 4000);
                 return;
             }
 
             let html = `<div class="card"><h3 style="margin-top:0; color:#ff9800;">🚗 الرحلات المتاحة للقبول</h3>`;
+            let found = false;
             data.forEach(t => {
                 if (!t.status || t.status === 'pending') {
+                    found = true;
                     html += `
                         <div style="background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; text-align:right;">
                             <div>📍 القيام: ${t.start_station}</div>
@@ -245,11 +247,17 @@
                 }
             });
             html += `</div>`;
-            container.innerHTML = html;
-            setTimeout(fetchAvailableTrips, 4000);
+            if (!found) {
+                container.innerHTML = `<div class="card" style="text-align:center;">📭 لا توجد مشاوير جديدة حالياً</div>`;
+            } else {
+                container.innerHTML = html;
+            }
         }
 
         async function acceptTrip(tripId) {
+            captainInTrip = true;
+            if (fetchInterval) clearInterval(fetchInterval);
+
             await supabaseClient.from('trips_data').update({ status: 'accepted' }).eq('id', tripId);
             
             const content = document.getElementById('captainContent');
@@ -288,7 +296,6 @@
 
             const { data } = await supabaseClient.from('trips_data').select('trip_pin').eq('id', tripId).single();
             
-            // لو عمود الـ PIN مش موجود أو متطابق، هيسمح بالبدء فوراً لتسهيل التجربة
             if (!data || !data.trip_pin || data.trip_pin === enteredPin) {
                 await supabaseClient.from('trips_data').update({ status: 'started' }).eq('id', tripId);
                 document.getElementById('captainContent').innerHTML = `
