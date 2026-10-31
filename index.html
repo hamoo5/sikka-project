@@ -24,9 +24,9 @@
         input, select { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 12px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 14px; }
         label { font-size: 13px; color: #bbb; }
         
-        .map-box { width: 100%; height: 280px; border-radius: 8px; margin-bottom: 10px; }
+        .map-box { width: 100%; height: 320px; border-radius: 8px; margin-bottom: 10px; }
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #333; color: #ff9800; }
-        .pin-box { font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; }
+        .pin-box { font-size: 26px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -42,13 +42,11 @@
     <!-- ================= واجهة الراكب ================= -->
     <div id="passengerView" class="container">
         <div class="card" id="passengerFormCard">
-            <h3>📍 اطلب رحلتك الآن</h3>
-            <label>موقف القيام</label>
-            <select id="pStart">
-                <option value="موقف العاشر (محطة المترو)">موقف العاشر (محطة المترو)</option>
-                <option value="موقف ألماظة">موقف ألماظة</option>
-            </select>
-            <label>موقف الوصول</label>
+            <h3>📍 حدد موقعك على الخريطة واطلب رحلتك</h3>
+            <div id="passengerSelectMap" class="map-box"></div>
+            <button class="btn" type="button" onclick="getCurrentLocation()">📍 تثبيت موقعي الحالي</button>
+            
+            <label style="margin-top:10px; display:block;">موقف الوصول</label>
             <select id="pEnd">
                 <option value="موقف بلبيس الجديد">موقف بلبيس الجديد</option>
                 <option value="موقف الزقازيق الأحرار">موقف الزقازيق الأحرار</option>
@@ -60,10 +58,10 @@
 
         <div class="card" id="passengerStatusCard" style="display:none; text-align:center;">
             <span class="status-badge" id="tripStateBadge">جاري البحث عن كابتن...</span>
-            <div id="passengerMap" class="map-box" style="display:none; margin-top:10px;"></div>
+            <div id="passengerTrackMap" class="map-box" style="display:none; margin-top:10px;"></div>
             <p id="tripDetailsText" style="margin-top: 15px; font-size: 15px;"></p>
             <div id="passengerPinContainer" style="display:none;">
-                <label>كود التحقق (أعطه للكابتن):</label>
+                <label>كود التحقق (PIN) أعطه للكابتن عند ركوب السيارة:</label>
                 <div class="pin-box" id="tripPinCode">----</div>
             </div>
         </div>
@@ -86,7 +84,10 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let currentRole = 'passenger';
-        let capMap, passMap, captainMarker, passengerMarker, activeTripId = null;
+        let capMap, passSelectMap, passTrackMap;
+        let captainMarker, passengerMarker, pickupMarker;
+        let activeTripId = null;
+        let selectedLat = 30.0444, selectedLng = 31.2357;
         let generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
 
         function switchRole(role) {
@@ -96,6 +97,19 @@
                 document.getElementById('captainView').style.display = 'none';
                 document.querySelectorAll('.role-tab')[0].classList.add('active');
                 document.querySelectorAll('.role-tab')[1].classList.remove('active');
+                setTimeout(() => {
+                    if (!passSelectMap) {
+                        passSelectMap = L.map('passengerSelectMap').setView([30.0444, 31.2357], 13);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(passSelectMap);
+                        passSelectMap.on('click', function(e) {
+                            selectedLat = e.latlng.lat;
+                            selectedLng = e.latlng.lng;
+                            if (pickupMarker) passSelectMap.removeLayer(pickupMarker);
+                            pickupMarker = L.marker([selectedLat, selectedLng]).addTo(passSelectMap).bindPopup("موقع قيام الراكب").openPopup();
+                        });
+                    }
+                    passSelectMap.invalidateSize();
+                }, 200);
             } else {
                 document.getElementById('passengerView').style.display = 'none';
                 document.getElementById('captainView').style.display = 'block';
@@ -106,12 +120,25 @@
             }
         }
 
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    selectedLat = pos.coords.latitude;
+                    selectedLng = pos.coords.longitude;
+                    passSelectMap.setView([selectedLat, selectedLng], 15);
+                    if (pickupMarker) passSelectMap.removeLayer(pickupMarker);
+                    pickupMarker = L.marker([selectedLat, selectedLng]).addTo(passSelectMap).bindPopup("موقعك الحالي").openPopup();
+                    alert('تم تحديد موقعك بنجاح ✅');
+                }, () => { alert('تعذّر تحديد الموقع، اضغط على الخريطة يدوياً'); }, { enableHighAccuracy: true });
+            }
+        }
+
         async function requestTrip() {
             const phone = document.getElementById('pPhone').value.trim();
             if (!phone) { alert('ادخل رقم الهاتف'); return; }
 
             const payload = {
-                start_station: document.getElementById('pStart').value,
+                start_station: `موقع الراكب (${selectedLat.toFixed(3)}, ${selectedLng.toFixed(3)})`,
                 end_station: document.getElementById('pEnd').value,
                 trip_price: "85 ج.م",
                 user_mobile: phone,
@@ -120,9 +147,20 @@
             };
 
             try {
-                const { data, error } = await supabaseClient.from('trips_data').insert([payload]).select();
-                if (!error && data && data.length > 0) {
-                    activeTripId = data[0].id;
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/trips_data`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await res.json();
+                if (res.ok && result.length > 0) {
+                    activeTripId = result[0].id;
                     document.getElementById('passengerFormCard').style.display = 'none';
                     const statusCard = document.getElementById('passengerStatusCard');
                     statusCard.style.display = 'block';
@@ -131,29 +169,7 @@
                     document.getElementById('tripPinCode').innerText = generatedPin;
                     listenToTripStatus();
                 } else {
-                    // طريقة بديلة للإرسال لو جدول الداتا بيز فيه قيود
-                    const res = await fetch(`${SUPABASE_URL}/rest/v1/trips_data`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'apikey': SUPABASE_KEY,
-                            'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'Prefer': 'return=representation'
-                        },
-                        body: JSON.stringify(payload)
-                    });
-                    const result = await res.json();
-                    if (res.ok && result.length > 0) {
-                        activeTripId = result[0].id;
-                        document.getElementById('passengerFormCard').style.display = 'none';
-                        document.getElementById('passengerStatusCard').style.display = 'block';
-                        document.getElementById('tripStateBadge').innerText = "⏳ جارِ انتظار قبول الكابتن...";
-                        document.getElementById('passengerPinContainer').style.display = 'block';
-                        document.getElementById('tripPinCode').innerText = generatedPin;
-                        listenToTripStatus();
-                    } else {
-                        alert('خطأ في إرسال الطلب، تأكد من حقول الجدول');
-                    }
+                    alert('خطأ في إرسال الطلب، تأكد من الاتصال');
                 }
             } catch (err) {
                 alert('تعذر الاتصال بالسيرفر');
@@ -167,35 +183,38 @@
                 if (data) {
                     if (data.status === 'accepted') {
                         document.getElementById('tripStateBadge').innerText = "🚗 الكابتن في الطريق إليك";
-                        document.getElementById('tripDetailsText').innerHTML = `السعر: ${data.trip_price}<br>📍 الكابتن يتحرك في الطريق الصحيح`;
-                        document.getElementById('passengerMap').style.display = 'block';
-                        initPassengerMap();
+                        document.getElementById('tripDetailsText').innerHTML = `السعر: ${data.trip_price}<br>📍 تابع تحرك الكابتن على الخريطة`;
+                        document.getElementById('passengerTrackMap').style.display = 'block';
+                        initPassengerTrackMap();
                         trackDriverLocationForPassenger(activeTripId);
                     } else if (data.status === 'arrived') {
-                        document.getElementById('tripStateBadge').innerText = "🟢 بدأ عداد الرحلة الآن";
-                        document.getElementById('tripDetailsText').innerHTML = `⏱️ <b>الرحلة جارية مع الكابتن... رحلة موفقة!</b>`;
+                        document.getElementById('tripStateBadge').innerText = "🟢 وصل الكابتن إليك!";
+                        document.getElementById('tripDetailsText').innerHTML = `⏱️ <b>أعط الكابتن كود الـ PIN لبدء الرحلة والتجهيز للوصول لوجهتك!</b>`;
+                    } else if (data.status === 'started') {
+                        document.getElementById('tripStateBadge').innerText = "🚀 الرحلة جارية الآن";
+                        document.getElementById('tripDetailsText').innerHTML = `🚗 <b>في طريقك إلى الوجهة المحددة برعاية كومبو.</b>`;
                     }
                 }
             }, 3000);
         }
 
-        function initPassengerMap() {
-            if (!passMap) {
-                passMap = L.map('passengerMap').setView([30.0444, 31.2357], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(passMap);
+        function initPassengerTrackMap() {
+            if (!passTrackMap) {
+                passTrackMap = L.map('passengerTrackMap').setView([selectedLat, selectedLng], 14);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(passTrackMap);
+                L.marker([selectedLat, selectedLng]).addTo(passTrackMap).bindPopup("مكان ركوبك").openPopup();
             }
-            setTimeout(() => passMap.invalidateSize(), 300);
+            setTimeout(() => passTrackMap.invalidateSize(), 200);
         }
 
         function trackDriverLocationForPassenger(tripId) {
             setInterval(async () => {
                 const { data } = await supabaseClient.from('driver_locations').select('*').eq('driver_id', tripId).single();
-                if (data && passMap) {
+                if (data && passTrackMap) {
                     const lat = data.latitude;
                     const lng = data.longitude;
-                    if (passengerMarker) passMap.removeLayer(passengerMarker);
-                    passengerMarker = L.marker([lat, lng]).addTo(passMap).bindPopup("مكان الكابتن الحالي").openPopup();
-                    passMap.setView([lat, lng], 15);
+                    if (passengerMarker) passTrackMap.removeLayer(passengerMarker);
+                    passengerMarker = L.marker([lat, lng]).addTo(passTrackMap).bindPopup("🚗 موقع الكابتن الآن").openPopup();
                 }
             }, 3000);
         }
@@ -223,11 +242,11 @@
                 if (!t.status || t.status === 'pending') {
                     html += `
                         <div style="background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; text-align:right;">
-                            <div>📍 من: ${t.start_station}</div>
-                            <div>🎯 إلى: ${t.end_station}</div>
+                            <div>📍 القيام: ${t.start_station}</div>
+                            <div>🎯 الوصول: ${t.end_station}</div>
                             <div>💰 السعر: ${t.trip_price}</div>
                             <div>📱 الراكب: ${t.user_mobile}</div>
-                            <button class="btn btn-green" onclick="acceptTrip(${t.id})">قبول المشوار 🚗</button>
+                            <button class="btn btn-green" onclick="acceptTrip(${t.id})">قبول المشوار والتوجه للراكب 🚗</button>
                         </div>
                     `;
                 }
@@ -243,8 +262,8 @@
             content.innerHTML = `
                 <div class="trip-popup">
                     <h3>🚗 في طريقك للراكب</h3>
-                    <p>تابع مسار الخريطة للوصول للنقطة المحددة</p>
-                    <button class="btn btn-green" onclick="arriveToPassenger(${tripId})">وصلت لمكان الراكب (بدء العداد) ⏱️</button>
+                    <p>اتجه إلى موقع الراكب المحدد على الخريطة</p>
+                    <button class="btn btn-green" onclick="arriveToPassengerPrompt(${tripId})">وصلت لمكان الراكب 📍</button>
                 </div>
             `;
 
@@ -261,14 +280,22 @@
             }
         }
 
-        async function arriveToPassenger(tripId) {
-            await supabaseClient.from('trips_data').update({ status: 'arrived' }).eq('id', tripId);
-            document.getElementById('captainContent').innerHTML = `
-                <div class="trip-popup" style="background:#004d40;">
-                    <h3 style="color:#a5d6a7;">⏱️ عداد الرحلة يعمل الآن</h3>
-                    <p>السيارة تتحرك في الرحلة الأساسية مع الراكب</p>
-                </div>
-            `;
+        async function arriveToPassengerPrompt(tripId) {
+            const enteredPin = prompt("أدخل كود الـ PIN المكون من 4 أرقام الذي مع الراكب لبدء الرحلة:");
+            
+            const { data } = await supabaseClient.from('trips_data').select('trip_pin').eq('id', tripId).single();
+            
+            if (data && data.trip_pin === enteredPin) {
+                await supabaseClient.from('trips_data').update({ status: 'started' }).eq('id', tripId);
+                document.getElementById('captainContent').innerHTML = `
+                    <div class="trip-popup" style="background:#004d40;">
+                        <h3 style="color:#a5d6a7;">🚀 الرحلة بدأت الآن</h3>
+                        <p>تم التحقق من الـ PIN بنجاح. اتجه الآن إلى الوجهة النهائية للراكب!</p>
+                    </div>
+                `;
+            } else {
+                alert('⚠️ الكود غير صحيح، تأكد من الراكب وحاول مرة أخرى');
+            }
         }
     </script>
 </body>
