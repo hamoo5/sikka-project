@@ -52,14 +52,14 @@
     <!-- ================= واجهة الراكب ================= -->
     <div id="passengerView" class="container">
         <div class="card" id="passengerFormCard">
-            <h3>📍 حدد نقطة الانطلاق والوجهة</h3>
+            <h3>📍 حدد مكان الانطلاق والوجهة</h3>
             
             <label>مكان الاستلام (من):</label>
-            <input type="text" id="pStartInput" placeholder="اسم المنطقة أو الشارع (مثال: مصر الجديدة)" oninput="searchAddress(this.value, 'start')" />
+            <input type="text" id="pStartInput" placeholder="اسحب الدبوس على الخريطة أو اكتب هنا..." oninput="searchAddress(this.value, 'start')" />
             <div id="startResults" class="search-results"></div>
 
             <label>الوجهة (إلى):</label>
-            <input type="text" id="pEndInput" placeholder="اسم الوجهة (مثال: المعادي)" oninput="searchAddress(this.value, 'end')" />
+            <input type="text" id="pEndInput" placeholder="اسحب الدبوس على الخريطة أو اكتب هنا..." oninput="searchAddress(this.value, 'end')" />
             <div id="endResults" class="search-results"></div>
 
             <div id="passengerMap" class="map-container"></div>
@@ -124,11 +124,11 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let passMap = null, trackMap = null;
-        let startLat = 30.0561, startLng = 31.3285; // مصر الجديدة
-        let endLat = 29.9602, endLng = 31.2569;   // المعادي
+        let startLat = 30.0561, startLng = 31.3285;
+        let endLat = 29.9602, endLng = 31.2569;
         let startMarker, endMarker, routeLayer;
-        let calculatedDistKm = 17.1, calculatedMin = 38;
-        let calculatedCarPrice = 145, calculatedBikePrice = 110, finalPrice = 145;
+        let calculatedDistKm = 5.0, calculatedMin = 15;
+        let calculatedCarPrice = 60, calculatedBikePrice = 45, finalPrice = 60;
         let activeTripId = null;
         let generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
         let selectedVehicleType = 'UberX';
@@ -151,26 +151,45 @@
 
         function initPassengerMap() {
             if (!passMap) {
-                passMap = L.map('passengerMap').setView([startLat, startLng], 11);
+                passMap = L.map('passengerMap').setView([startLat, startLng], 12);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(passMap);
                 
                 startMarker = L.marker([startLat, startLng], {draggable: true}).addTo(passMap).bindPopup("🟢 نقطة الاستلام");
                 endMarker = L.marker([endLat, endLng], {draggable: true}).addTo(passMap).bindPopup("🔴 الوجهة");
 
-                startMarker.on('dragend', (e) => {
+                // تحديث العناوين تلقائياً عند سحب الدبوس
+                startMarker.on('dragend', async (e) => {
                     const p = startMarker.getLatLng();
                     startLat = p.lat; startLng = p.lng;
+                    const address = await reverseGeocode(startLat, startLng);
+                    document.getElementById('pStartInput').value = address;
                     fetchRouteOSRM();
                 });
 
-                endMarker.on('dragend', (e) => {
+                endMarker.on('dragend', async (e) => {
                     const p = endMarker.getLatLng();
                     endLat = p.lat; endLng = p.lng;
+                    const address = await reverseGeocode(endLat, endLng);
+                    document.getElementById('pEndInput').value = address;
                     fetchRouteOSRM();
                 });
             }
             passMap.invalidateSize();
             fetchRouteOSRM();
+        }
+
+        // جلب اسم الشارع من الإحداثيات عند تحريك الدبوس
+        async function reverseGeocode(lat, lon) {
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`);
+                const data = await res.json();
+                if (data && data.display_name) {
+                    return data.display_name.split(',')[0] + ', ' + (data.address.suburb || data.address.city || '');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+            return `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
         }
 
         let searchTimeout;
@@ -215,7 +234,6 @@
             }, 300);
         }
 
-        // رسم الطريق الحقيقي فوق الشوارع وحساب المسافة بدقة
         async function fetchRouteOSRM() {
             if (!startLat || !endLat) return;
             try {
@@ -244,11 +262,10 @@
                     finalPrice = selectedVehicleType === 'UberX' ? calculatedCarPrice : calculatedBikePrice;
                 }
             } catch (e) {
-                // خطة احتياطية لو OSRM مش متاح
-                calculatedDistKm = 17.1;
-                calculatedMin = 38;
-                document.getElementById('txtDistance').innerText = `17.1 كم`;
-                document.getElementById('txtDuration').innerText = `38 دقيقة`;
+                calculatedDistKm = 5.0;
+                calculatedMin = 15;
+                document.getElementById('txtDistance').innerText = `5.0 كم`;
+                document.getElementById('txtDuration').innerText = `15 دقيقة`;
             }
         }
 
@@ -283,10 +300,9 @@
             const startName = document.getElementById('pStartInput').value || "موقع الاستلام";
             const endName = document.getElementById('pEndInput').value || "الوجهة الأخيرة";
 
-            // إرسال كائن بسيط يتوافق مع جدول Supabase بدون حقول زائدة
             const payload = {
-                start_station: `${startName}`,
-                end_station: `${endName}`,
+                start_station: startName,
+                end_station: endName,
                 trip_price: `${finalPrice} ج.م`,
                 user_mobile: phone,
                 status: 'pending',
@@ -322,7 +338,7 @@
 
                     listenToTripStatus();
                 } else {
-                    alert('خطأ في إرسال الطلب، تأكد من الاتصال');
+                    alert('خطأ في إرسال الطلب للسيرفر، تأكد من الاتصال');
                 }
             } catch (err) {
                 alert('تعذر الاتصال بالسيرفر');
@@ -411,6 +427,8 @@
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(destMap);
                     L.marker([endLat, endLng]).addTo(destMap).bindPopup("🔴 الوجهة النهائية").openPopup();
                 }, 300);
+            } else {
+                alert('كود الـ PIN غير صحيح');
             }
         }
     </script>
