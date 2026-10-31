@@ -4,16 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تطبيق سكة</title>
+    <!-- استدعاء مكتبة الخرائط العالمية الحية والمجانية -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <script src="https://unpkg.com"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
         body { background-color: #eef2f3; height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        .map-bg {
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(45deg, #e0e0e0 25%, #f0f0f0 25%, #f0f0f0 50%, #e0e0e0 50%, #e0e0e0 75%, #f0f0f0 75%, #f0f0f0 100%);
-            background-size: 40px 40px; z-index: 1; opacity: 0.6;
+        
+        /* الخريطة الحية تأخذ الشاشة بالكامل خلف الأزرار */
+        #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
+
+        /* تعديل الأبعاد والمساحة لتظهر الأزرار كاملة على هواتف الموبايل */
+        .bottom-sheet {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: white; border-top-left-radius: 25px; border-top-right-radius: 25px;
+            padding: 25px; box-shadow: 0 -8px 24px rgba(0,0,0,0.2); z-index: 10;
+            max-height: 60%; overflow-y: auto; padding-bottom: 40px;
         }
-        .pin { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; z-index: 2; text-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .bottom-sheet { position: absolute; bottom: 0; left: 0; right: 0; background: white; border-top-left-radius: 25px; border-top-right-radius: 25px; padding: 25px; box-shadow: 0 -8px 24px rgba(0,0,0,0.15); z-index: 10; max-height: 50%; overflow-y: auto; }
         .hidden { display: none !important; }
         .btn { width: 100%; background: #000; color: white; border: none; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 12px; }
         .btn-secondary { background: #f0f0f0; color: #333; }
@@ -26,12 +33,18 @@
     </style>
 </head>
 <body>
-    <div class="map-bg"></div><div class="pin">📍</div>
+
+    <!-- حاوية الخريطة الحية الفوق تفاعلية -->
+    <div id="map"></div>
+
+    <!-- 1. شاشة اختيار وضع الدخول المصلحة بالكامل -->
     <div id="role-selection" class="bottom-sheet">
         <h3 style="text-align:center; margin-bottom:18px; font-size: 20px;">مرحباً بك في سكة</h3>
         <button class="btn" onclick="document.getElementById('role-selection').classList.add('hidden'); document.getElementById('passenger-ui').classList.remove('hidden');">أنا راكب (طلب رحلة)</button>
         <button class="btn btn-secondary" onclick="document.getElementById('role-selection').classList.add('hidden'); document.getElementById('driver-online-ui').classList.remove('hidden'); setTimeout(showRadarFallback, 3000);">أنا كابتن (توصيل)</button>
     </div>
+
+    <!-- 2. واجهة الراكب لطلب المشوار -->
     <div id="passenger-ui" class="bottom-sheet hidden">
         <h3>أين تريد الذهاب؟</h3>
         <input type="text" id="pickup-location" placeholder="مكان الركوب الحالي...">
@@ -39,6 +52,8 @@
         <button class="btn" onclick="alert('تم إرسال طلبك لكباتن سكة المحيطين بك!');">طلب رحلة الآن</button>
         <button class="btn btn-secondary" onclick="resetApp()">تغيير الحساب</button>
     </div>
+
+    <!-- 3. واجهة الكابتن - وضع الانتظار -->
     <div id="driver-online-ui" class="bottom-sheet hidden">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="color:#2e7d32; font-weight:bold; font-size: 15px;">● وضع الاتصال (جاري البحث)</span>
@@ -46,35 +61,74 @@
         </div>
         <p style="text-align:center; margin:25px 0; color:#666; font-size:15px;">في انتظار استقبال مشاوير قريبة منك...</p>
     </div>
+
+    <!-- 4. واجهة رادار الرحلة -->
     <div id="driver-radar-ui" class="bottom-sheet hidden">
-        <h3>طلب رحلة جديد مكتشف!</h3>
+        <h3 style="color:#000;">طلب رحلة جديد مكتشف!</h3>
         <div class="trip-card">
             <div class="price">٧٢.٤٨ ج.م</div>
             <div class="info-row"><span>من:</span> <strong>شارع العروبة، مصر الجديدة</strong></div>
             <div class="info-row"><span>إلى:</span> <strong>عبد الحكيم الرفاعي، مدينة نصر</strong></div>
         </div>
-        <button class="btn" onclick="document.getElementById('driver-radar-ui').classList.add('hidden'); document.getElementById('driver-heading-ui').classList.remove('hidden');">تطابق (قبول المشوار)</button>
+        <button class="btn" onclick="document.getElementById('driver-radar-ui').classList.add('hidden'); document.getElementById('driver-heading-ui').classList.remove('hidden');">تتطابق (قبول المشوار)</button>
         <button class="btn btn-secondary" onclick="resetApp()">تخطي</button>
     </div>
+
+    <!-- 5. واجهة الكابتن - التوجه للركب -->
     <div id="driver-heading-ui" class="bottom-sheet hidden">
         <h3>جاري التوجه إلى الراكب</h3>
         <p style="color:#555; margin:8px 0;">الراكب: <strong>Taeheon</strong></p>
-        <button class="btn" id="arrive-btn" onclick="startWaitingTimer()">لقد وصلت لنقطة الالتساق</button>
+        <button class="btn" id="arrive-btn" onclick="startWaitingTimer()">لقد وصلت لنقطة الالتقاء</button>
         <div id="waiting-timer" class="hidden">
             <div class="timer" id="timer-count">02:00</div>
             <button class="btn" onclick="document.getElementById('driver-heading-ui').classList.add('hidden'); document.getElementById('driver-active-ui').classList.remove('hidden');">بدء الرحلة (الراكب ركب)</button>
         </div>
     </div>
+
+    <!-- 6. واجهة الكابتن - إنهاء الرحلة -->
     <div id="driver-active-ui" class="bottom-sheet hidden">
         <h3>جاري إنزال الراكب في وجهته</h3>
         <div class="info-row"><span>المسافة المتبقية:</span> <strong>٧.١ كم</strong></div>
         <button class="btn btn-danger" onclick="alert('تم إنهاء المشوار بنجاح! مطلوب تحصيل: ٧٢.٤٨ ج.م من الراكب.'); resetApp();">إنهاء الرحلة وتحصيل الأجرة</button>
     </div>
+
     <script>
+        let map;
         let countdownInterval;
-        function showRadarFallback() { document.getElementById('driver-online-ui').classList.add('hidden'); document.getElementById('driver-radar-ui').classList.remove('hidden'); }
-        function startWaitingTimer() { document.getElementById('arrive-btn').classList.add('hidden'); document.getElementById('waiting-timer').classList.remove('hidden'); let time = 120; countdownInterval = setInterval(() => { let minutes = Math.floor(time / 60); let seconds = time % 60; document.getElementById('timer-count').innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`; if(time <= 0) clearInterval(countdownInterval); time--; }, 1000); }
-        function resetApp() { clearInterval(countdownInterval); document.querySelectorAll('.bottom-sheet').forEach(sheet => sheet.classList.add('hidden')); document.getElementById('role-selection').classList.remove('hidden'); document.getElementById('arrive-btn').classList.remove('hidden'); document.getElementById('waiting-timer').classList.add('hidden'); }
+
+        // تهيئة وتشغيل الخريطة الحية فوراً ومباشرة في شوارع القاهرة كموقع افتراضي
+        window.onload = function() {
+            map = L.map('map', { zoomControl: false }).setView([30.0444, 31.2357], 14); 
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            // إضافة علامة كمثال لموقع الكابتن الحالي
+            L.marker([30.0444, 31.2357]).addTo(map).bindPopup('موقعك الحالي يا كابتن').openPopup();
+        };
+
+        function showRadarFallback() {
+            document.getElementById('driver-online-ui').classList.add('hidden');
+            document.getElementById('driver-radar-ui').classList.remove('hidden');
+        }
+
+        function startWaitingTimer() {
+            document.getElementById('arrive-btn').classList.add('hidden');
+            document.getElementById('waiting-timer').classList.remove('hidden');
+            let time = 120;
+            countdownInterval = setInterval(() => {
+                let minutes = Math.floor(time / 60);
+                let seconds = time % 60;
+                document.getElementById('timer-count').innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                if(time <= 0) clearInterval(countdownInterval);
+                time--;
+            }, 1000);
+        }
+
+        function resetApp() {
+            clearInterval(countdownInterval);
+            document.querySelectorAll('.bottom-sheet').forEach(sheet => sheet.classList.add('hidden'));
+            document.getElementById('role-selection').classList.remove('hidden');
+            document.getElementById('arrive-btn').classList.remove('hidden');
+            document.getElementById('waiting-timer').classList.add('hidden');
+        }
     </script>
 </body>
 </html>
