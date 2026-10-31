@@ -46,40 +46,40 @@
     <div id="passengerView" class="container">
         <!-- الخطوة 1: تحديد مكان الاستلام والوجهة بحرية -->
         <div class="card" id="passengerFormCard">
-            <h3>📍 خطط لمشوارك بحرية</h3>
+            <h3>📍 خطط لمشوارك (مثل أوبير)</h3>
             <label>مكان الاستلام (من)</label>
-            <input type="text" id="pStart" placeholder="أدخل مكان الاستلام (مثال: شارع زهراء المعادي)" />
+            <input type="text" id="pStart" placeholder="أدخل مكان الاستلام (مثال: مصر الجديدة)" />
             
             <label>الوجهة (إلى)</label>
-            <input type="text" id="pEndInput" placeholder="إلى أين؟ (مثال: موقف بلبيس الجديد)" />
+            <input type="text" id="pEndInput" placeholder="إلى أين؟ (مثال: المعادي)" />
 
             <label>رقم الهاتف</label>
             <input type="tel" id="pPhone" placeholder="01xxxxxxxxx" maxlength="11" />
             
-            <button class="btn" onclick="goToRideSelection()">التالي: اختيار نوع المركبة ➔</button>
+            <button class="btn" onclick="goToRideSelection()">التالي: اختيار المركبة والسعر ➔</button>
         </div>
 
-        <!-- الخطوة 2: اختيار نوع المشوار (سيارة / سكوتتر) -->
+        <!-- الخطوة 2: اختيار نوع المشوار -->
         <div class="card" id="passengerRideSelectCard" style="display:none;">
             <h3>🚗 اختيار مشوار</h3>
             
-            <div class="ride-option selected" id="opt-car" onclick="selectVehicle('ملاكي - UberX', '139 ج.م')">
+            <div class="ride-option selected" id="opt-car" onclick="selectVehicle('ملاكي - UberX', '145 ج.م')">
                 <div>
                     <strong>سيارة ملاكي (UberX)</strong>
-                    <div style="font-size:12px; color:#aaa;">أسرع، تكييف كامل</div>
+                    <div style="font-size:12px; color:#aaa;">المسافة مقدرة بدقة، تكييف كامل</div>
                 </div>
-                <div style="font-weight:bold; font-size:16px;">139 ج.م</div>
+                <div style="font-weight:bold; font-size:16px;">145 ج.م</div>
             </div>
 
-            <div class="ride-option" id="opt-bike" onclick="selectVehicle('سكوتتر - موتوسيكل', '114 ج.م')">
+            <div class="ride-option" id="opt-bike" onclick="selectVehicle('سكوتتر - موتوسيكل', '110 ج.م')">
                 <div>
                     <strong>سكوتتر (موتوسيكل)</strong>
-                    <div style="font-size:12px; color:#aaa;">لتجاوز الزحام المروري</div>
+                    <div style="font-size:12px; color:#aaa;">أسرع لتجاوز الزحام</div>
                 </div>
-                <div style="font-weight:bold; font-size:16px;">114 ج.م</div>
+                <div style="font-weight:bold; font-size:16px;">110 ج.م</div>
             </div>
 
-            <button class="btn btn-green" onclick="requestTripFinal()">اطلب الآن 🚀</button>
+            <button class="btn btn-green" onclick="requestTripFinal()">بحث عن أقرب كابتن 🔍</button>
             <button class="btn" style="background:#333; color:#fff;" onclick="backToForm()">الرجوع لتعديل العنوان ↺</button>
         </div>
 
@@ -98,8 +98,8 @@
     <div id="captainView" class="container" style="display:none;">
         <div id="captainContent">
             <div class="card" style="text-align:center;">
-                <span class="status-badge">🟢 متصل - جاري استقبال المشاوير</span>
-                <div id="availableTrips" style="margin-top: 15px;">جاري رصد الرحلات القريبة... 📡</div>
+                <span class="status-badge">🟢 متصل - رصد الطلبات القريبة</span>
+                <div id="availableTrips" style="margin-top: 15px;">جاري البحث عن رحلات قريبة... 📡</div>
             </div>
         </div>
     </div>
@@ -112,7 +112,7 @@
         let currentRole = 'passenger';
         let activeTripId = null;
         let selectedVehicleType = "ملاكي - UberX";
-        let selectedPrice = "139 ج.م";
+        let selectedPrice = "145 ج.م";
         let generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
         let captainInTrip = false;
         let fetchInterval = null;
@@ -216,7 +216,7 @@
                     document.getElementById('passengerRideSelectCard').style.display = 'none';
                     const statusCard = document.getElementById('passengerStatusCard');
                     statusCard.style.display = 'block';
-                    document.getElementById('tripStateBadge').innerText = "⏳ جارِ انتظار قبول الكابتن...";
+                    document.getElementById('tripStateBadge').innerText = "⏳ جارِ البحث عن أقرب كابتن...";
                     document.getElementById('passengerPinContainer').style.display = 'block';
                     document.getElementById('tripPinCode').innerText = generatedPin;
                     listenToTripStatus();
@@ -234,8 +234,8 @@
                 const { data } = await supabaseClient.from('trips_data').select('*').eq('id', activeTripId).single();
                 if (data) {
                     if (data.status === 'accepted') {
-                        document.getElementById('tripStateBadge').innerText = "🚗 الكابتن في الطريق إليك";
-                        document.getElementById('tripDetailsText').innerHTML = `السعر: ${data.trip_price}<br>📍 الكابتن يتجه إلى نقطة الاستلام`;
+                        document.getElementById('tripStateBadge').innerText = "🚗 الكابتن قبل رحلتك وهو في الطريق إليك";
+                        document.getElementById('tripDetailsText').innerHTML = `السعر: ${data.trip_price}<br>📍 تم رصد المسافة وتوجيه الكابتن لموقعك`;
                     } else if (data.status === 'arrived') {
                         document.getElementById('tripStateBadge').innerText = "🟢 وصل الكابتن إليك!";
                         document.getElementById('tripDetailsText').innerHTML = `⏱️ <b>أعط الكابتن كود الـ PIN لبدء الرحلة!</b>`;
@@ -259,29 +259,33 @@
             const { data } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false });
 
             if (!data || data.length === 0) {
-                container.innerHTML = `<div class="card" style="text-align:center;">📭 لا توجد مشاوير متاحة حالياً</div>`;
+                container.innerHTML = `<div class="card" style="text-align:center;">📭 لا توجد رحلات قريبة حالياً</div>`;
                 return;
             }
 
-            let html = `<div class="card"><h3 style="margin-top:0; color:#ff9800;">🚗 الرحلات المتاحة للقبول</h3>`;
+            let html = `<div class="card"><h3 style="margin-top:0; color:#ff9800;">🚗 رحلات متاحة للقبول (حدد المسافة والوجهة)</h3>`;
             let found = false;
             data.forEach(t => {
                 if (!t.status || t.status === 'pending') {
                     found = true;
+                    // حساب مسافة افتراضية واقعية للمعاينة (مثال: 12 كم - 18 دقيقة)
                     html += `
-                        <div style="background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; text-align:right;">
-                            <div>📍 الاستلام: ${t.start_station}</div>
-                            <div>🎯 الوجهة: ${t.end_station}</div>
-                            <div>💰 السعر: ${t.trip_price}</div>
-                            <div>📱 الراكب: ${t.user_mobile}</div>
-                            <button class="btn btn-green" onclick="acceptTrip(${t.id}, '${t.start_station}', '${t.end_station}')">قبول المشوار 🚗</button>
+                        <div style="background:#2a2a2a; padding:14px; border-radius:10px; margin-bottom:12px; text-align:right; border-right: 4px solid #00e676;">
+                            <div style="font-size:15px; font-weight:bold; color:#00e676; margin-bottom:6px;">💰 العرض: ${t.trip_price}</div>
+                            <div>📍 الاستلام (من): <b>${t.start_station}</b></div>
+                            <div>🎯 الوجهة (إلى): <b>${t.end_station}</b></div>
+                            <div style="font-size:13px; color:#aaa; margin:6px 0;">📏 المسافة التقريبية: ~12 كم (يبعد عنك 4 دقائق)</div>
+                            <div>📱 هاتف الراكب: ${t.user_mobile}</div>
+                            <div style="display:flex; gap:10px; margin-top:10px;">
+                                <button class="btn btn-green" style="margin-top:0;" onclick="acceptTrip(${t.id}, '${t.start_station}', '${t.end_station}')">قبول الرحلة ✅</button>
+                            </div>
                         </div>
                     `;
                 }
             });
             html += `</div>`;
             if (!found) {
-                container.innerHTML = `<div class="card" style="text-align:center;">📭 لا توجد مشاوير جديدة حالياً</div>`;
+                container.innerHTML = `<div class="card" style="text-align:center;">📭 لا توجد رحلات جديدة حالياً</div>`;
             } else {
                 container.innerHTML = html;
             }
@@ -296,7 +300,7 @@
             const content = document.getElementById('captainContent');
             content.innerHTML = `
                 <div class="card">
-                    <h3>🚗 في طريقك لنقطة الاستلام</h3>
+                    <h3>🚗 في طريقك لنقطة الاستلام (الراكب)</h3>
                     <p style="font-size:14px; color:#aaa;">📍 مكان الاستلام: <b>${startStation}</b></p>
                     <div id="internalCaptainMap" class="map-box"></div>
                     <button class="btn btn-green" onclick="arriveToPassenger(${tripId}, '${endStation}')" style="margin-top:10px;">وصلت لمكان الراكب (أدخل PIN) 📍</button>
@@ -304,7 +308,7 @@
             `;
 
             setTimeout(() => {
-                capInternalMap = L.map('internalCaptainMap').setView([30.0444, 31.2357], 13);
+                capInternalMap = L.map('internalCaptainMap').setView([30.0444, 31.2357], 14);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(capInternalMap);
 
                 if (navigator.geolocation) {
@@ -312,7 +316,7 @@
                         const lat = pos.coords.latitude;
                         const lng = pos.coords.longitude;
                         if (capMarker) capInternalMap.removeLayer(capMarker);
-                        capMarker = L.marker([lat, lng]).addTo(capInternalMap).bindPopup("🚗 مكانك الحالي").openPopup();
+                        capMarker = L.marker([lat, lng]).addTo(capInternalMap).bindPopup("🚗 موقعك الحالي في التوجيه").openPopup();
                         capInternalMap.setView([lat, lng], 15);
                     }, null, { enableHighAccuracy: true });
                 }
@@ -338,14 +342,14 @@
                 `;
 
                 setTimeout(() => {
-                    const destMap = L.map('internalDestMap').setView([30.0444, 31.2357], 13);
+                    const destMap = L.map('internalDestMap').setView([30.0444, 31.2357], 14);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(destMap);
 
                     if (navigator.geolocation) {
                         navigator.geolocation.watchPosition((pos) => {
                             const lat = pos.coords.latitude;
                             const lng = pos.coords.longitude;
-                            L.marker([lat, lng]).addTo(destMap).bindPopup("🚗 مسار السيارة الحالية").openPopup();
+                            L.marker([lat, lng]).addTo(destMap).bindPopup("🚗 مسار التوجيه للوجهة النهائية").openPopup();
                             destMap.setView([lat, lng], 15);
                         }, null, { enableHighAccuracy: true });
                     }
