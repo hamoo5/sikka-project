@@ -20,14 +20,14 @@
         .card { background: #1e1e1e; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
         .btn { background: #fff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 10px; text-decoration: none; display: block; }
         .btn-green { background: #00875a; color: #fff; }
-        .btn-blue { background: #0288d1; color: #fff; }
         
-        input, select { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 12px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 14px; }
+        input { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 12px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 14px; }
         label { font-size: 13px; color: #bbb; }
         
         .ride-option { background: #2a2a2a; border: 2px solid #444; border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         .ride-option.selected { border-color: #00e676; background: #1a332c; }
         
+        .map-box { width: 100%; height: 320px; border-radius: 8px; margin-bottom: 10px; }
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #333; color: #ff9800; }
         .pin-box { font-size: 26px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; }
     </style>
@@ -44,19 +44,14 @@
 
     <!-- ================= واجهة الراكب ================= -->
     <div id="passengerView" class="container">
-        <!-- الخطوة 1: خطط مشوارك (من وإلى) -->
+        <!-- الخطوة 1: تحديد مكان الاستلام والوجهة بحرية -->
         <div class="card" id="passengerFormCard">
-            <h3>📍 خطط لمشوارك (اختر المواقف)</h3>
+            <h3>📍 خطط لمشوارك بحرية</h3>
             <label>مكان الاستلام (من)</label>
-            <input type="text" id="pStart" value="فؤاد بيومي، الحي السابع" placeholder="ادخل مكان الاستلام" />
+            <input type="text" id="pStart" placeholder="أدخل مكان الاستلام (مثال: شارع زهراء المعادي)" />
             
-            <label>الوجهة (إلى - اختر الموقف)</label>
-            <select id="pEndSelect">
-                <option value="موقف بلبيس الجديد">موقف بلبيس الجديد (الساحة)</option>
-                <option value="موقف العاشر من رمضان">موقف العاشر من رمضان (محطة النقل)</option>
-                <option value="موقف السلام، الإسماعيلية، المرج">موقف السلام، الإسماعيلية، المرج</option>
-                <option value="Garden 8 - التجمع الخامس">Garden 8 - التجمع الخامس</option>
-            </select>
+            <label>الوجهة (إلى)</label>
+            <input type="text" id="pEndInput" placeholder="إلى أين؟ (مثال: موقف بلبيس الجديد)" />
 
             <label>رقم الهاتف</label>
             <input type="tel" id="pPhone" placeholder="01xxxxxxxxx" maxlength="11" />
@@ -71,7 +66,7 @@
             <div class="ride-option selected" id="opt-car" onclick="selectVehicle('ملاكي - UberX', '139 ج.م')">
                 <div>
                     <strong>سيارة ملاكي (UberX)</strong>
-                    <div style="font-size:12px; color:#aaa;">أسرع، تكيف كامل</div>
+                    <div style="font-size:12px; color:#aaa;">أسرع، تكييف كامل</div>
                 </div>
                 <div style="font-weight:bold; font-size:16px;">139 ج.م</div>
             </div>
@@ -121,6 +116,7 @@
         let generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
         let captainInTrip = false;
         let fetchInterval = null;
+        let capInternalMap = null, capMarker = null;
 
         function switchRole(role) {
             currentRole = role;
@@ -139,8 +135,14 @@
         }
 
         function goToRideSelection() {
+            const startLoc = document.getElementById('pStart').value.trim();
+            const endLoc = document.getElementById('pEndInput').value.trim();
             const phone = document.getElementById('pPhone').value.trim();
-            if (!phone) { alert('ادخل رقم الهاتف'); return; }
+            
+            if (!startLoc || !endLoc || !phone) { 
+                alert('الرجاء إدخال مكان الاستلام والوجهة ورقم الهاتف'); 
+                return; 
+            }
             document.getElementById('passengerFormCard').style.display = 'none';
             document.getElementById('passengerRideSelectCard').style.display = 'block';
         }
@@ -164,8 +166,8 @@
 
         async function requestTripFinal() {
             const phone = document.getElementById('pPhone').value.trim();
-            const startLoc = document.getElementById('pStart').value;
-            const endLoc = document.getElementById('pEndSelect').value;
+            const startLoc = document.getElementById('pStart').value.trim();
+            const endLoc = document.getElementById('pEndInput').value.trim();
 
             const payload = {
                 start_station: `${startLoc} [${selectedVehicleType}]`,
@@ -233,7 +235,7 @@
                 if (data) {
                     if (data.status === 'accepted') {
                         document.getElementById('tripStateBadge').innerText = "🚗 الكابتن في الطريق إليك";
-                        document.getElementById('tripDetailsText').innerHTML = `السعر: ${data.trip_price}<br>📍 الكابتن يقترب من موقعك`;
+                        document.getElementById('tripDetailsText').innerHTML = `السعر: ${data.trip_price}<br>📍 الكابتن يتجه إلى نقطة الاستلام`;
                     } else if (data.status === 'arrived') {
                         document.getElementById('tripStateBadge').innerText = "🟢 وصل الكابتن إليك!";
                         document.getElementById('tripDetailsText').innerHTML = `⏱️ <b>أعط الكابتن كود الـ PIN لبدء الرحلة!</b>`;
@@ -272,7 +274,7 @@
                             <div>🎯 الوجهة: ${t.end_station}</div>
                             <div>💰 السعر: ${t.trip_price}</div>
                             <div>📱 الراكب: ${t.user_mobile}</div>
-                            <button class="btn btn-green" onclick="acceptTrip(${t.id}, '${t.end_station}')">قبول المشوار والتوجه للراكب 🚗</button>
+                            <button class="btn btn-green" onclick="acceptTrip(${t.id}, '${t.start_station}', '${t.end_station}')">قبول المشوار 🚗</button>
                         </div>
                     `;
                 }
@@ -285,7 +287,7 @@
             }
         }
 
-        async function acceptTrip(tripId, endStation) {
+        async function acceptTrip(tripId, startStation, endStation) {
             captainInTrip = true;
             if (fetchInterval) clearInterval(fetchInterval);
 
@@ -294,11 +296,27 @@
             const content = document.getElementById('captainContent');
             content.innerHTML = `
                 <div class="card">
-                    <h3>🚗 في طريقك للراكب</h3>
-                    <a id="navBtn" class="btn btn-blue" target="_blank" href="https://www.google.com/maps/search/?api=1&query=Cairo">🗺️ فتح الاتجاهات لمكان الراكب</a>
+                    <h3>🚗 في طريقك لنقطة الاستلام</h3>
+                    <p style="font-size:14px; color:#aaa;">📍 مكان الاستلام: <b>${startStation}</b></p>
+                    <div id="internalCaptainMap" class="map-box"></div>
                     <button class="btn btn-green" onclick="arriveToPassenger(${tripId}, '${endStation}')" style="margin-top:10px;">وصلت لمكان الراكب (أدخل PIN) 📍</button>
                 </div>
             `;
+
+            setTimeout(() => {
+                capInternalMap = L.map('internalCaptainMap').setView([30.0444, 31.2357], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(capInternalMap);
+
+                if (navigator.geolocation) {
+                    navigator.geolocation.watchPosition((pos) => {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        if (capMarker) capInternalMap.removeLayer(capMarker);
+                        capMarker = L.marker([lat, lng]).addTo(capInternalMap).bindPopup("🚗 مكانك الحالي").openPopup();
+                        capInternalMap.setView([lat, lng], 15);
+                    }, null, { enableHighAccuracy: true });
+                }
+            }, 300);
         }
 
         async function arriveToPassenger(tripId, endStation) {
@@ -310,15 +328,28 @@
             if (!data || !data.trip_pin || data.trip_pin === enteredPin) {
                 await supabaseClient.from('trips_data').update({ status: 'started' }).eq('id', tripId);
                 
-                const encodedDest = encodeURIComponent(endStation);
                 const content = document.getElementById('captainContent');
                 content.innerHTML = `
-                    <div class="card" style="background:#004d40; text-align:center;">
-                        <h3 style="color:#a5d6a7;">🚀 الرحلة جارية الآن نحو الوجهة</h3>
-                        <p style="font-size:16px; margin:10px 0;">🎯 الوجهة النهائية: <b>${endStation}</b></p>
-                        <a class="btn btn-blue" href="https://www.google.com/maps/search/?api=1&query=${encodedDest}" target="_blank">🗺️ فتح خريطة الوجهة النهائية على جوجل</a>
+                    <div class="card" style="background:#004d40;">
+                        <h3 style="color:#a5d6a7; text-align:center;">🚀 الرحلة جارية الآن نحو الوجهة</h3>
+                        <p style="font-size:16px; margin:10px 0; text-align:center;">🎯 الوجهة النهائية: <b>${endStation}</b></p>
+                        <div id="internalDestMap" class="map-box"></div>
                     </div>
                 `;
+
+                setTimeout(() => {
+                    const destMap = L.map('internalDestMap').setView([30.0444, 31.2357], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(destMap);
+
+                    if (navigator.geolocation) {
+                        navigator.geolocation.watchPosition((pos) => {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            L.marker([lat, lng]).addTo(destMap).bindPopup("🚗 مسار السيارة الحالية").openPopup();
+                            destMap.setView([lat, lng], 15);
+                        }, null, { enableHighAccuracy: true });
+                    }
+                }, 300);
             } else {
                 alert('⚠️ كود الـ PIN غير صحيح، تأكد من الراكب');
             }
