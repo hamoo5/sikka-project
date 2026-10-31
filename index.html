@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق سكة</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+        body { background-color: #eef2f3; height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        .map-bg {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(45deg, #e0e0e0 25%, #f0f0f0 25%, #f0f0f0 50%, #e0e0e0 50%, #e0e0e0 75%, #f0f0f0 75%, #f0f0f0 100%);
+            background-size: 40px 40px; z-index: 1; opacity: 0.6;
+        }
+        .pin { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; z-index: 2; text-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .bottom-sheet { position: absolute; bottom: 0; left: 0; right: 0; background: white; border-top-left-radius: 25px; border-top-right-radius: 25px; padding: 25px; box-shadow: 0 -8px 24px rgba(0,0,0,0.15); z-index: 10; max-height: 50%; overflow-y: auto; }
+        .hidden { display: none !important; }
+        .btn { width: 100%; background: #000; color: white; border: none; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 12px; }
+        .btn-secondary { background: #f0f0f0; color: #333; }
+        .btn-danger { background: #e53935; color: white; }
+        .trip-card { border: 1px solid #eaeaea; padding: 16px; border-radius: 14px; background: #fafafa; margin-bottom: 12px; }
+        .price { font-size: 26px; font-weight: bold; color: #000; text-align: center; margin: 12px 0; }
+        .info-row { display: flex; justify-content: space-between; margin: 10px 0; font-size: 14px; color: #555; }
+        .timer { font-size: 20px; color: #d32f2f; text-align: center; font-weight: bold; margin: 10px 0; }
+        input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ccc; border-radius: 10px; font-size: 15px; }
+    </style>
+</head>
+<body>
+    <div class="map-bg"></div><div class="pin">📍</div>
+    <div id="role-selection" class="bottom-sheet">
+        <h3 style="text-align:center; margin-bottom:18px; font-size: 20px;">مرحباً بك في سكة</h3>
+        <button class="btn" onclick="document.getElementById('role-selection').classList.add('hidden'); document.getElementById('passenger-ui').classList.remove('hidden');">أنا راكب (طلب رحلة)</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('role-selection').classList.add('hidden'); document.getElementById('driver-online-ui').classList.remove('hidden'); setTimeout(showRadarFallback, 3000);">أنا كابتن (توصيل)</button>
+    </div>
+    <div id="passenger-ui" class="bottom-sheet hidden">
+        <h3>أين تريد الذهاب؟</h3>
+        <input type="text" id="pickup-location" placeholder="مكان الركوب الحالي...">
+        <input type="text" id="dropoff-location" placeholder="وجهة الوصول...">
+        <button class="btn" onclick="alert('تم إرسال طلبك لكباتن سكة المحيطين بك!');">طلب رحلة الآن</button>
+        <button class="btn btn-secondary" onclick="resetApp()">تغيير الحساب</button>
+    </div>
+    <div id="driver-online-ui" class="bottom-sheet hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#2e7d32; font-weight:bold; font-size: 15px;">● وضع الاتصال (جاري البحث)</span>
+            <button class="btn btn-secondary" style="width:auto; padding:6px 12px; margin:0; font-size:13px;" onclick="resetApp()">أوف لاين</button>
+        </div>
+        <p style="text-align:center; margin:25px 0; color:#666; font-size:15px;">في انتظار استقبال مشاوير قريبة منك...</p>
+    </div>
+    <div id="driver-radar-ui" class="bottom-sheet hidden">
+        <h3>طلب رحلة جديد مكتشف!</h3>
+        <div class="trip-card">
+            <div class="price">٧٢.٤٨ ج.م</div>
+            <div class="info-row"><span>من:</span> <strong>شارع العروبة، مصر الجديدة</strong></div>
+            <div class="info-row"><span>إلى:</span> <strong>عبد الحكيم الرفاعي، مدينة نصر</strong></div>
+        </div>
+        <button class="btn" onclick="document.getElementById('driver-radar-ui').classList.add('hidden'); document.getElementById('driver-heading-ui').classList.remove('hidden');">تطابق (قبول المشوار)</button>
+        <button class="btn btn-secondary" onclick="resetApp()">تخطي</button>
+    </div>
+    <div id="driver-heading-ui" class="bottom-sheet hidden">
+        <h3>جاري التوجه إلى الراكب</h3>
+        <p style="color:#555; margin:8px 0;">الراكب: <strong>Taeheon</strong></p>
+        <button class="btn" id="arrive-btn" onclick="startWaitingTimer()">لقد وصلت لنقطة الالتساق</button>
+        <div id="waiting-timer" class="hidden">
+            <div class="timer" id="timer-count">02:00</div>
+            <button class="btn" onclick="document.getElementById('driver-heading-ui').classList.add('hidden'); document.getElementById('driver-active-ui').classList.remove('hidden');">بدء الرحلة (الراكب ركب)</button>
+        </div>
+    </div>
+    <div id="driver-active-ui" class="bottom-sheet hidden">
+        <h3>جاري إنزال الراكب في وجهته</h3>
+        <div class="info-row"><span>المسافة المتبقية:</span> <strong>٧.١ كم</strong></div>
+        <button class="btn btn-danger" onclick="alert('تم إنهاء المشوار بنجاح! مطلوب تحصيل: ٧٢.٤٨ ج.م من الراكب.'); resetApp();">إنهاء الرحلة وتحصيل الأجرة</button>
+    </div>
+    <script>
+        let countdownInterval;
+        function showRadarFallback() { document.getElementById('driver-online-ui').classList.add('hidden'); document.getElementById('driver-radar-ui').classList.remove('hidden'); }
+        function startWaitingTimer() { document.getElementById('arrive-btn').classList.add('hidden'); document.getElementById('waiting-timer').classList.remove('hidden'); let time = 120; countdownInterval = setInterval(() => { let minutes = Math.floor(time / 60); let seconds = time % 60; document.getElementById('timer-count').innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`; if(time <= 0) clearInterval(countdownInterval); time--; }, 1000); }
+        function resetApp() { clearInterval(countdownInterval); document.querySelectorAll('.bottom-sheet').forEach(sheet => sheet.classList.add('hidden')); document.getElementById('role-selection').classList.remove('hidden'); document.getElementById('arrive-btn').classList.remove('hidden'); document.getElementById('waiting-timer').classList.add('hidden'); }
+    </script>
+</body>
+</html>
