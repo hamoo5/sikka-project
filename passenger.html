@@ -38,6 +38,9 @@
         <div class="card" id="passengerFormCard">
             <h3>📍 حدد موقع الانطلاق والوجهة بدقة</h3>
             
+            <!-- الخريطة بقت فوق خالص زي ما طلبت -->
+            <div id="passengerMap" class="map-container"></div>
+
             <label>مكان الاستلام (من):</label>
             <input type="text" id="pStartInput" placeholder="اكتب اسم الشارع أو المنطقة..." oninput="searchAddress(this.value, 'start')" />
             <div id="startResults" class="search-results"></div>
@@ -45,8 +48,6 @@
             <label>الوجهة (إلى):</label>
             <input type="text" id="pEndInput" placeholder="اكتب الوجهة النهائية..." oninput="searchAddress(this.value, 'end')" />
             <div id="endResults" class="search-results"></div>
-
-            <div id="passengerMap" class="map-container"></div>
 
             <div style="background:#2a2a2a; padding:10px; border-radius:8px; font-size:13px; margin-top:8px;">
                 📏 المسافة: <b id="txtDistance" style="color:#00e676;">0 كم</b> | ⏱️ الوقت: <b id="txtDuration" style="color:#ff9800;">0 دقيقة</b> | 💰 السعر: <b id="txtPrice" style="color:#00e676;">0 ج.م</b>
@@ -59,12 +60,8 @@
         </div>
 
         <div class="card" id="passengerStatusCard" style="display:none; text-align:center;">
-            <span class="status-badge" id="tripStateBadge">⏳ جاري البحث عن كابتن...</span>
-            <p id="tripDetailsText" style="margin-top: 15px; font-size: 15px;"></p>
-            <div id="passengerPinContainer" style="display:none;">
-                <label>كود الـ PIN الخاص بك:</label>
-                <div class="pin-box" id="tripPinCode">----</div>
-            </div>
+            <span class="status-badge" id="tripStateBadge">⏳ تم إرسال الطلب بنجاح!</span>
+            <p id="tripDetailsText" style="margin-top: 15px; font-size: 15px;">انتظر ظهور الطلب في صفحة الكابتن</p>
         </div>
     </div>
 
@@ -78,7 +75,7 @@
         let endLat = 29.9602, endLng = 31.2569;
         let startMarker, endMarker, routeLayer;
         let calculatedDistKm = 5.0, calculatedMin = 15, finalPrice = 75;
-        let activeTripId = null, generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
+        let activeTripId = null;
 
         window.onload = function() {
             passMap = L.map('passengerMap').setView([startLat, startLng], 12);
@@ -172,7 +169,7 @@
                 return; 
             }
 
-            // استخدام Supabase Client مباشرة لإدخال البيانات بشكل آمن ومضمون
+            // إرسال الأعمدة المتوافقة 100% مع جدولك الحالي في Supabase بدون حقول ناقصة
             const { data, error } = await supabaseClient
                 .from('trips_data')
                 .insert([
@@ -180,40 +177,22 @@
                         start_station: startName,
                         end_station: endName,
                         trip_price: `${finalPrice} ج.م`,
-                        user_mobile: phone,
-                        status: 'pending',
-                        trip_pin: generatedPin
+                        user_mobile: phone
                     }
                 ])
                 .select();
 
             if (error) {
                 console.error("Supabase Error:", error);
-                alert('خطأ في إرسال الطلب لقاعدة البيانات: ' + error.message);
+                alert('خطأ في إرسال الطلب: ' + error.message);
             } else if (data && data.length > 0) {
                 activeTripId = data[0].id;
                 document.getElementById('passengerFormCard').style.display = 'none';
                 document.getElementById('passengerStatusCard').style.display = 'block';
-                document.getElementById('passengerPinContainer').style.display = 'block';
-                document.getElementById('tripPinCode').innerText = generatedPin;
-                listenToTripStatus();
+                document.getElementById('tripDetailsText').innerText = `تم إرسال الطلب بنجاح! السعر: ${finalPrice} ج.م`;
             } else {
-                alert('تم الإرسال ولكن لم يتم استرجاع بيانات الرحلة.');
+                alert('تم الإرسال ولكن حدث خطأ غير متوقع.');
             }
-        }
-
-        function listenToTripStatus() {
-            setInterval(async () => {
-                if (!activeTripId) return;
-                const { data } = await supabaseClient.from('trips_data').select('*').eq('id', activeTripId).single();
-                if (data) {
-                    if (data.status === 'accepted') {
-                        document.getElementById('tripStateBadge').innerText = "🚗 الكابتن قبل الرحلة وهو في الطريق إليك!";
-                    } else if (data.status === 'started') {
-                        document.getElementById('tripStateBadge').innerText = "🚀 الرحلة جارية الآن نحو الوجهة";
-                    }
-                }
-            }, 3000);
         }
     </script>
 </body>
