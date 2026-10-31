@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>كومبو - واجهة الراكب الاحترافية</title>
+    <title>كومبو - واجهة الراكب</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -62,7 +62,7 @@
             <span class="status-badge" id="tripStateBadge">⏳ جاري البحث عن كابتن...</span>
             <p id="tripDetailsText" style="margin-top: 15px; font-size: 15px;"></p>
             <div id="passengerPinContainer" style="display:none;">
-                <label>كود الـ PIN الخاص بك (أعطه للكابتن عند الركوب):</label>
+                <label>كود الـ PIN الخاص بك:</label>
                 <div class="pin-box" id="tripPinCode">----</div>
             </div>
         </div>
@@ -90,17 +90,22 @@
             startMarker.on('dragend', async (e) => {
                 const p = startMarker.getLatLng();
                 startLat = p.lat; startLng = p.lng;
-                document.getElementById('pStartInput').value = await reverseGeocode(startLat, startLng);
+                const addr = await reverseGeocode(startLat, startLng);
+                if(addr) document.getElementById('pStartInput').value = addr;
                 fetchRouteOSRM();
             });
 
             endMarker.on('dragend', async (e) => {
                 const p = endMarker.getLatLng();
                 endLat = p.lat; endLng = p.lng;
-                document.getElementById('pEndInput').value = await reverseGeocode(endLat, endLng);
+                const addr = await reverseGeocode(endLat, endLng);
+                if(addr) document.getElementById('pEndInput').value = addr;
                 fetchRouteOSRM();
             });
 
+            // تعيين قيم افتراضية واضحة للبداية
+            document.getElementById('pStartInput').value = "مصر الجديدة";
+            document.getElementById('pEndInput').value = "المعادي";
             fetchRouteOSRM();
         };
 
@@ -108,11 +113,11 @@
             try {
                 const res = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
                 const data = await (await fetch(res)).json();
-                if (data && data.display_name) {
-                    return data.display_name.split(',')[0];
+                if (data && data.address) {
+                    return data.address.road || data.address.suburb || data.address.city || "منطقة محددة";
                 }
             } catch (e) {}
-            return `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+            return null;
         }
 
         let searchTimeout;
@@ -175,11 +180,10 @@
 
         async function requestTripFinal() {
             const phone = document.getElementById('pPhone').value.trim();
-            const startName = document.getElementById('pStartInput').value || "موقع الاستلام";
-            const endName = document.getElementById('pEndInput').value || "الوجهة الأخيرة";
-            if (!phone) { alert('الرجاء إدخال رقم الهاتف'); return; }
+            const startName = document.getElementById('pStartInput').value || "مصر الجديدة";
+            const endName = document.getElementById('pEndInput').value || "المعادي";
+            if (!phone || phone.length < 11) { alert('الرجاء إدخال رقم هاتف صحيح مكون من 11 رقماً'); return; }
 
-            // إرسال البيانات الموحدة بالشكل السليم لجدول Supabase
             const payload = {
                 start_station: startName,
                 end_station: endName,
@@ -209,7 +213,7 @@
                 document.getElementById('tripPinCode').innerText = generatedPin;
                 listenToTripStatus();
             } else {
-                alert('خطأ في إرسال الطلب، تأكد من اتصال الإنترنت');
+                alert('خطأ في إرسال الطلب، تأكد من الاتصال');
             }
         }
 
