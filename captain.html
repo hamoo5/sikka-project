@@ -18,19 +18,19 @@
         .btn { background: #fff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 10px; }
         .btn-green { background: #00875a; color: #fff; }
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #333; color: #ff9800; }
-        .map-container { width: 100まります; height: 260px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; z-index: 1; }
+        .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; z-index: 1; }
     </style>
 </head>
 <body>
 
     <div class="top-bar">
         <span style="font-weight: bold; font-size: 16px;">🚗 كومبو - تطبيق الكابتن</span>
-        <a href="passenger.html" style="color: #00e676; text-decoration: none; font-size: 13px; font-weight: bold;">الانتقال لوصفحة الراكب ➔</a>
+        <a href="passenger.html" style="color: #00e676; text-decoration: none; font-size: 13px; font-weight: bold;">صفحة الراكب ➔</a>
     </div>
 
     <div class="container" id="captainContent">
         <div class="card" style="text-align:center;">
-            <span class="status-badge">🟢 متصل - جاري رصد الطلبات القريبة</span>
+            <span class="status-badge">🟢 متصل - جاري رصد طلبات الركاب</span>
             <div id="availableTrips" style="margin-top: 15px;">جاري جلب الطلبات... 📡</div>
         </div>
     </div>
@@ -44,55 +44,45 @@
 
         async function fetchAvailableTrips() {
             const container = document.getElementById('captainContent');
-            const { data } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false });
+            const { data, error } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false });
 
-            if (!data || data.length === 0) {
+            if (error || !data || data.length === 0) {
                 container.innerHTML = `<div class="card" style="text-align:center;">📭 لا توجد رحلات متاحة حالياً</div>`;
                 return;
             }
 
             let html = `<div class="card"><h3 style="margin-top:0; color:#ff9800;">🚗 الطلبات الواردة من الركاب</h3>`;
-            let found = false;
             data.forEach(t => {
-                if (!t.status || t.status === 'pending') {
-                    found = true;
-                    html += `
-                        <div style="background:#2a2a2a; padding:14px; border-radius:10px; margin-bottom:12px; border-right:4px solid #00e676; text-align:right;">
-                            <div>📍 الاستلام: <b>${t.start_station}</b></div>
-                            <div>🎯 الوجهة: <b>${t.end_station}</b></div>
-                            <div>💰 السعر: <b>${t.trip_price}</b></div>
-                            <div>📱 هاتف الراكب: ${t.user_mobile}</div>
-                            <button class="btn btn-green" onclick="acceptTrip(${t.id}, '${t.trip_pin}')">قبول الرحلة والتوجه للراكب ✅</button>
-                        </div>
-                    `;
-                }
-            });
-            html += `</div>`;
-            if (!found) {
-                container.innerHTML = `<div class="card" style="text-align:center;">📭 لا توجد رحلات جديدة في الانتظار</div>`;
-            } else {
-                container.innerHTML = html;
-            }
-        }
-
-        async function acceptTrip(tripId, correctPin) {
-            clearInterval(fetchInterval);
-            const enteredPin = prompt("أدخل كود الـ PIN المكون من 4 أرقام من الراكب للتأكيد:");
-            if (!enteredPin) { fetchInterval = setInterval(fetchAvailableTrips, 3000); return; }
-
-            if (enteredPin === correctPin) {
-                await supabaseClient.from('trips_data').update({ status: 'started' }).eq('id', tripId);
-                const content = document.getElementById('captainContent');
-                content.innerHTML = `
-                    <div class="card" style="background:#004d40; text-align:center;">
-                        <h3 style="color:#a5d6a7;">🚀 تم التحقق بنجاح! الرحلة جارية الآن</h3>
-                        <p style="font-size:15px;">توجه نحو الوجهة النهائية للراكب</p>
+                html += `
+                    <div style="background:#2a2a2a; padding:14px; border-radius:10px; margin-bottom:12px; border-right:4px solid #00e676; text-align:right;">
+                        <div>📍 مكان الراكب (الشارع): <b style="color:#00e676;">${t.start_station}</b></div>
+                        <div>🎯 الوجهة: <b>${t.end_station}</b></div>
+                        <div>💰 السعر: <b>${t.trip_price}</b></div>
+                        <div>📱 هاتف الراكب: ${t.user_mobile}</div>
+                        <button class="btn btn-green" onclick="acceptTrip('${t.start_station}', '${t.end_station}')">قبول الرحلة والتوجه للراكب ✅</button>
                     </div>
                 `;
-            } else {
-                alert('⚠️ كود الـ PIN غير صحيح!');
-                fetchInterval = setInterval(fetchAvailableTrips, 3000);
-            }
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function acceptTrip(start, end) {
+            clearInterval(fetchInterval);
+            const container = document.getElementById('captainContent');
+            container.innerHTML = `
+                <div class="card">
+                    <h3 style="color:#00e676; margin-top:0;">🚀 تم قبول الرحلة! توجه للراكب</h3>
+                    <p>📍 مكان الاستلام: <b>${start}</b></p>
+                    <p>🎯 الوجهة: <b>${end}</b></p>
+                    <div id="captainMap" class="map-container"></div>
+                </div>
+            `;
+
+            // فتح الخريطة المعتمدة للكابتن
+            const map = L.map('captainMap').setView([30.0561, 31.3285], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+            L.marker([30.0561, 31.3285]).addTo(map).bindPopup(`🟢 موقع الراكب: ${start}`).openPopup();
         }
     </script>
 </body>
