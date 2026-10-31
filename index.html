@@ -3,82 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>منظومة كومبو المتكاملة - Uber Style</title>
-    
-    <!-- مكتبات الخرائط وقاعدة البيانات -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <title>كومبو - تسجيل الدخول</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <style>
         * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
-        body { background: #121212; color: #fff; margin: 0; padding: 0; direction: rtl; }
-        .top-bar { background: #000; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
-        .role-switcher { display: flex; gap: 5px; background: #222; padding: 4px; border-radius: 8px; }
-        .role-tab { background: transparent; border: none; color: #aaa; padding: 8px 16px; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 13px; }
-        .role-tab.active { background: #fff; color: #000; }
-        .container { padding: 12px; }
-        .card { background: #1e1e1e; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
-        .btn { background: #fff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 10px; }
-        .btn-green { background: #00875a; color: #fff; }
-        input { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 4px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 14px; }
-        label { font-size: 13px; color: #bbb; }
-        .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; z-index: 1; }
-        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #333; color: #ff9800; }
-        .pin-box { font-size: 26px; font-weight: bold; letter-spacing: 8px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; }
+        body { background: #121212; color: #fff; margin: 0; padding: 0; direction: rtl; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .login-card { background: #1e1e1e; padding: 24px; border-radius: 16px; width: 90%; max-width: 400px; border: 1px solid #333; text-align: center; }
+        .role-selector { display: flex; gap: 10px; margin-bottom: 20px; }
+        .role-btn { flex: 1; padding: 12px; background: #2a2a2a; border: 2px solid #444; color: #aaa; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .role-btn.active { border-color: #00e676; background: #1a332c; color: #fff; }
+        input { width: 100%; padding: 14px; margin-bottom: 15px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 15px; text-align: center; }
+        label { font-size: 13px; color: #bbb; display: block; margin-bottom: 8px; text-align: right; }
+        .btn { background: #00875a; color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; }
     </style>
 </head>
 <body>
 
-    <div class="top-bar">
-        <span style="font-weight: bold; font-size: 16px;">🚗 كومبو - نظام أوبر المتكامل</span>
-        <div class="role-switcher">
-            <button class="role-tab active" onclick="switchRole('passenger')">الراكب</button>
-            <button class="role-tab" onclick="switchRole('captain')">الكابتن</button>
-        </div>
-    </div>
-
-    <!-- واجهة الراكب -->
-    <div id="passengerView" class="container">
-        <div class="card" id="passengerFormCard">
-            <h3>📍 حدد مكان الاستلام والوجهة</h3>
-            <label>مكان الاستلام (من):</label>
-            <input type="text" id="pStartInput" placeholder="اكتب اسم الشارع أو المنطقة..." />
-            
-            <label>الوجهة (إلى):</label>
-            <input type="text" id="pEndInput" placeholder="اكتب الوجهة النهائية..." />
-
-            <div id="passengerMap" class="map-container"></div>
-
-            <div style="background:#2a2a2a; padding:10px; border-radius:8px; font-size:13px; margin-top:8px;">
-                📏 المسافة: <b id="txtDistance" style="color:#00e676;">5.0 كم</b> | ⏱️ الوقت: <b id="txtDuration" style="color:#ff9800;">15 دقيقة</b>
-            </div>
-
-            <label style="margin-top:8px; display:block;">رقم الهاتف:</label>
-            <input type="tel" id="pPhone" placeholder="01xxxxxxxxx" maxlength="11" />
-
-            <button class="btn btn-green" onclick="requestTripFinal()">اطلب الرحلة الآن 🚀</button>
+    <div class="login-card">
+        <h2>🚗 تطبيق كومبو</h2>
+        <p style="color: #aaa; font-size: 13px; margin-bottom: 20px;">اختر نوع الحساب لتسجيل الدخول</p>
+        
+        <div class="role-selector">
+            <button class="role-btn active" id="btnPassenger" onclick="setRole('passenger')">راكب</button>
+            <button class="role-btn" id="btnCaptain" onclick="setRole('captain')">كابتن</button>
         </div>
 
-        <div class="card" id="passengerStatusCard" style="display:none; text-align:center;">
-            <span class="status-badge" id="tripStateBadge">جاري البحث عن كابتن...</span>
-            <div id="passengerTrackMap" class="map-container"></div>
-            <p id="tripDetailsText" style="margin-top: 10px; font-size: 14px;"></p>
-            <div id="passengerPinContainer" style="display:none;">
-                <label>كود الـ PIN الخاص بك:</label>
-                <div class="pin-box" id="tripPinCode">----</div>
-            </div>
-        </div>
-    </div>
+        <label>رقم الهاتف المحمول:</label>
+        <input type="tel" id="userPhone" placeholder="01xxxxxxxxx" maxlength="11" />
 
-    <!-- واجهة الكابتن -->
-    <div id="captainView" class="container" style="display:none;">
-        <div id="captainContent">
-            <div class="card" style="text-align:center;">
-                <span class="status-badge">🟢 متصل - رصد الطلبات</span>
-                <div id="availableTrips" style="margin-top: 15px;">جاري البحث عن رحلات قريبة... 📡</div>
-            </div>
-        </div>
+        <button class="btn" onclick="handleLogin()">دخول المنظومة ➔</button>
     </div>
 
     <script>
@@ -86,93 +39,35 @@
         const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let passMap = null, startLat = 30.0561, startLng = 31.3285, endLat = 29.9602, endLng = 31.2569;
-        let startMarker, endMarker, activeTripId = null, generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
+        let selectedRole = 'passenger';
 
-        function switchRole(role) {
+        function setRole(role) {
+            selectedRole = role;
             if (role === 'passenger') {
-                document.getElementById('passengerView').style.display = 'block';
-                document.getElementById('captainView').style.display = 'none';
-                document.querySelectorAll('.role-tab')[0].classList.add('active');
-                document.querySelectorAll('.role-tab')[1].classList.remove('active');
-                setTimeout(() => { initMap(); }, 200);
+                document.getElementById('btnPassenger').classList.add('active');
+                document.getElementById('btnCaptain').classList.remove('active');
             } else {
-                document.getElementById('passengerView').style.display = 'none';
-                document.getElementById('captainView').style.display = 'block';
-                document.querySelectorAll('.role-tab')[1].classList.add('active');
-                document.querySelectorAll('.role-tab')[0].classList.remove('active');
-                fetchAvailableTrips();
+                document.getElementById('btnCaptain').classList.add('active');
+                document.getElementById('btnPassenger').classList.remove('active');
             }
         }
 
-        function initMap() {
-            if (!passMap) {
-                passMap = L.map('passengerMap').setView([startLat, startLng], 12);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(passMap);
-                startMarker = L.marker([startLat, startLng], {draggable: true}).addTo(passMap).bindPopup("🟢 نقطة الاستلام");
-                endMarker = L.marker([endLat, endLng], {draggable: true}).addTo(passMap).bindPopup("🔴 الوجهة");
+        async function handleLogin() {
+            const phone = document.getElementById('userPhone').value.trim();
+            if (!phone || phone.length < 11) {
+                alert('الرجاء إدخال رقم هاتف صحيح مكون من 11 رقماً');
+                return;
             }
-            passMap.invalidateSize();
-        }
 
-        async function requestTripFinal() {
-            const phone = document.getElementById('pPhone').value.trim();
-            const startName = document.getElementById('pStartInput').value || "مصر الجديدة";
-            const endName = document.getElementById('pEndInput').value || "المعادي";
-            if (!phone) { alert('ادخل رقم الهاتف'); return; }
-
-            const payload = {
-                start_station: startName,
-                end_station: endName,
-                trip_price: "75 ج.م",
-                user_mobile: phone,
-                status: 'pending',
-                trip_pin: generatedPin
-            };
-
-            let res = await fetch(`${SUPABASE_URL}/rest/v1/trips_data`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'return=representation' },
-                body: JSON.stringify(payload)
-            });
-            let result = await res.json();
-
-            if (res.ok && result.length > 0) {
-                activeTripId = result[0].id;
-                document.getElementById('passengerFormCard').style.display = 'none';
-                document.getElementById('passengerStatusCard').style.display = 'block';
-                document.getElementById('passengerPinContainer').style.display = 'block';
-                document.getElementById('tripPinCode').innerText = generatedPin;
+            if (selectedRole === 'passenger') {
+                // حفظ رقم الراكب محلياً والانتقال لصفحة الراكب
+                localStorage.setItem('passenger_phone', phone);
+                window.location.href = 'passenger.html';
             } else {
-                alert('خطأ في إرسال الطلب');
+                // التحقق من جدول الكباتن أو حفظه والانتقال لصفحة الكابتن
+                localStorage.setItem('captain_phone', phone);
+                window.location.href = 'captain.html';
             }
-        }
-
-        async function fetchAvailableTrips() {
-            const container = document.getElementById('captainContent');
-            const { data } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false });
-            if (!data || data.length === 0) { container.innerHTML = `<div class="card" style="text-align:center;">📭 لا توجد رحلات</div>`; return; }
-
-            let html = `<div class="card"><h3 style="margin-top:0; color:#ff9800;">🚗 الطلبات المتاحة للكابتن</h3>`;
-            data.forEach(t => {
-                if (!t.status || t.status === 'pending') {
-                    html += `
-                        <div style="background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px;">
-                            <div>📍 من: <b>${t.start_station}</b></div>
-                            <div>🎯 إلى: <b>${t.end_station}</b></div>
-                            <div>💰 السعر: <b>${t.trip_price}</b></div>
-                            <button class="btn btn-green" onclick="acceptTrip(${t.id})">قبول المشوار ✅</button>
-                        </div>
-                    `;
-                }
-            });
-            html += `</div>`;
-            container.innerHTML = html;
-        }
-
-        async function acceptTrip(tripId) {
-            await supabaseClient.from('trips_data').update({ status: 'accepted' }).eq('id', tripId);
-            alert('تم قبول الرحلة بنجاح! توجه لنقطة الاستلام.');
         }
     </script>
 </body>
