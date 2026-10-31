@@ -38,16 +38,15 @@
         <div class="card" id="passengerFormCard">
             <h3>📍 حدد موقع الانطلاق والوجهة بدقة</h3>
             
-            <!-- الخريطة بقت فوق خالص زي ما طلبت -->
-            <div id="passengerMap" class="map-container"></div>
-
             <label>مكان الاستلام (من):</label>
-            <input type="text" id="pStartInput" placeholder="اكتب اسم الشارع أو المنطقة..." oninput="searchAddress(this.value, 'start')" />
+            <input type="text" id="pStartInput" placeholder="اسحب الدبوس أو اكتب اسم الشارع..." oninput="searchAddress(this.value, 'start')" />
             <div id="startResults" class="search-results"></div>
 
             <label>الوجهة (إلى):</label>
-            <input type="text" id="pEndInput" placeholder="اكتب الوجهة النهائية..." oninput="searchAddress(this.value, 'end')" />
+            <input type="text" id="pEndInput" placeholder="اسحب الدبوس أو اكتب الوجهة..." oninput="searchAddress(this.value, 'end')" />
             <div id="endResults" class="search-results"></div>
+
+            <div id="passengerMap" class="map-container"></div>
 
             <div style="background:#2a2a2a; padding:10px; border-radius:8px; font-size:13px; margin-top:8px;">
                 📏 المسافة: <b id="txtDistance" style="color:#00e676;">0 كم</b> | ⏱️ الوقت: <b id="txtDuration" style="color:#ff9800;">0 دقيقة</b> | 💰 السعر: <b id="txtPrice" style="color:#00e676;">0 ج.م</b>
@@ -60,8 +59,12 @@
         </div>
 
         <div class="card" id="passengerStatusCard" style="display:none; text-align:center;">
-            <span class="status-badge" id="tripStateBadge">⏳ تم إرسال الطلب بنجاح!</span>
-            <p id="tripDetailsText" style="margin-top: 15px; font-size: 15px;">انتظر ظهور الطلب في صفحة الكابتن</p>
+            <span class="status-badge" id="tripStateBadge">⏳ جاري البحث عن كابتن...</span>
+            <p id="tripDetailsText" style="margin-top: 15px; font-size: 15px;"></p>
+            <div id="passengerPinContainer" style="display:none;">
+                <label>كود الـ PIN الخاص بك:</label>
+                <div class="pin-box" id="tripPinCode">----</div>
+            </div>
         </div>
     </div>
 
@@ -75,7 +78,7 @@
         let endLat = 29.9602, endLng = 31.2569;
         let startMarker, endMarker, routeLayer;
         let calculatedDistKm = 5.0, calculatedMin = 15, finalPrice = 75;
-        let activeTripId = null;
+        let activeTripId = null, generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
 
         window.onload = function() {
             passMap = L.map('passengerMap').setView([startLat, startLng], 12);
@@ -87,19 +90,35 @@
             startMarker.on('dragend', async (e) => {
                 const p = startMarker.getLatLng();
                 startLat = p.lat; startLng = p.lng;
+                const addr = await reverseGeocode(startLat, startLng);
+                if(addr) document.getElementById('pStartInput').value = addr;
                 fetchRouteOSRM();
             });
 
             endMarker.on('dragend', async (e) => {
                 const p = endMarker.getLatLng();
                 endLat = p.lat; endLng = p.lng;
+                const addr = await reverseGeocode(endLat, endLng);
+                if(addr) document.getElementById('pEndInput').value = addr;
                 fetchRouteOSRM();
             });
 
+            // تعيين قيم افتراضية واضحة للبداية
             document.getElementById('pStartInput').value = "مصر الجديدة";
             document.getElementById('pEndInput').value = "المعادي";
             fetchRouteOSRM();
         };
+
+        async function reverseGeocode(lat, lon) {
+            try {
+                const res = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
+                const data = await (await fetch(res)).json();
+                if (data && data.address) {
+                    return data.address.road || data.address.suburb || data.address.city || "منطقة محددة";
+                }
+            } catch (e) {}
+            return null;
+        }
 
         let searchTimeout;
         function searchAddress(query, type) {
@@ -161,38 +180,55 @@
 
         async function requestTripFinal() {
             const phone = document.getElementById('pPhone').value.trim();
-            const startName = document.getElementById('pStartInput').value.trim() || "مصر الجديدة";
-            const endName = document.getElementById('pEndInput').value.trim() || "المعادي";
-            
-            if (!phone || phone.length < 11) { 
-                alert('الرجاء إدخال رقم هاتف صحيح مكون من 11 رقماً'); 
-                return; 
-            }
+            const startName = document.getElementById('pStartInput').value || "مصر الجديدة";
+            const endName = document.getElementById('pEndInput').value || "المعادي";
+            if (!phone || phone.length < 11) { alert('الرجاء إدخال رقم هاتف صحيح مكون من 11 رقماً'); return; }
 
-            // إرسال الأعمدة المتوافقة 100% مع جدولك الحالي في Supabase بدون حقول ناقصة
-            const { data, error } = await supabaseClient
-                .from('trips_data')
-                .insert([
-                    {
-                        start_station: startName,
-                        end_station: endName,
-                        trip_price: `${finalPrice} ج.م`,
-                        user_mobile: phone
-                    }
-                ])
-                .select();
+            const payload = {
+                start_station: startName,
+                end_station: endName,
+                trip_price: `${finalPrice} ج.م`,
+                user_mobile: phone,
+                status: 'pending',
+                trip_pin: generatedPin
+            };
 
-            if (error) {
-                console.error("Supabase Error:", error);
-                alert('خطأ في إرسال الطلب: ' + error.message);
-            } else if (data && data.length > 0) {
-                activeTripId = data[0].id;
+            let res = await fetch(`${SUPABASE_URL}/rest/v1/trips_data`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'apikey': SUPABASE_KEY, 
+                    'Authorization': `Bearer ${SUPABASE_KEY}`, 
+                    'Prefer': 'return=representation' 
+                },
+                body: JSON.stringify(payload)
+            });
+            let result = await res.json();
+
+            if (res.ok && result.length > 0) {
+                activeTripId = result[0].id;
                 document.getElementById('passengerFormCard').style.display = 'none';
                 document.getElementById('passengerStatusCard').style.display = 'block';
-                document.getElementById('tripDetailsText').innerText = `تم إرسال الطلب بنجاح! السعر: ${finalPrice} ج.م`;
+                document.getElementById('passengerPinContainer').style.display = 'block';
+                document.getElementById('tripPinCode').innerText = generatedPin;
+                listenToTripStatus();
             } else {
-                alert('تم الإرسال ولكن حدث خطأ غير متوقع.');
+                alert('خطأ في إرسال الطلب، تأكد من الاتصال');
             }
+        }
+
+        function listenToTripStatus() {
+            setInterval(async () => {
+                if (!activeTripId) return;
+                const { data } = await supabaseClient.from('trips_data').select('*').eq('id', activeTripId).single();
+                if (data) {
+                    if (data.status === 'accepted') {
+                        document.getElementById('tripStateBadge').innerText = "🚗 الكابتن قبل الرحلة وهو في الطريق إليك!";
+                    } else if (data.status === 'started') {
+                        document.getElementById('tripStateBadge').innerText = "🚀 الرحلة جارية الآن نحو الوجهة";
+                    }
+                }
+            }, 3000);
         }
     </script>
 </body>
