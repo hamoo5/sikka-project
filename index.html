@@ -20,7 +20,6 @@
         .card { background: #1e1e1e; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
         .btn { background: #fff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 10px; }
         .btn-green { background: #00875a; color: #fff; }
-        .btn-dark { background: #333; color: #fff; }
         
         input, select { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 12px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 14px; }
         label { font-size: 13px; color: #bbb; }
@@ -46,13 +45,13 @@
             <h3>📍 اطلب رحلتك الآن</h3>
             <label>موقف القيام</label>
             <select id="pStart">
-                <option value="30.150,31.370">موقف العاشر (محطة المترو)</option>
-                <option value="30.060,31.280">موقف ألماظة</option>
+                <option value="موقف العاشر (محطة المترو)">موقف العاشر (محطة المترو)</option>
+                <option value="موقف ألماظة">موقف ألماظة</option>
             </select>
             <label>موقف الوصول</label>
             <select id="pEnd">
-                <option value="30.410,31.570">موقف بلبيس الجديد</option>
-                <option value="30.580,31.500">موقف الزقازيق الأحرار</option>
+                <option value="موقف بلبيس الجديد">موقف بلبيس الجديد</option>
+                <option value="موقف الزقازيق الأحرار">موقف الزقازيق الأحرار</option>
             </select>
             <label>رقم الهاتف</label>
             <input type="tel" id="pPhone" placeholder="01xxxxxxxxx" maxlength="11" />
@@ -101,21 +100,20 @@
             }
         }
 
-        // --- وظائف الراكب ---
         async function requestTrip() {
             const phone = document.getElementById('pPhone').value.trim();
             if (!phone) { alert('ادخل رقم الهاتف'); return; }
 
             const payload = {
-                start_station: document.getElementById('pStart').selectedOptions[0].text,
-                end_station: document.getElementById('pEnd').selectedOptions[0].text,
+                start_station: document.getElementById('pStart').value,
+                end_station: document.getElementById('pEnd').value,
                 trip_price: "85 ج.م",
                 user_mobile: phone,
                 status: 'pending'
             };
 
             const { data, error } = await supabaseClient.from('trips_data').insert([payload]).select();
-            if (!error && data) {
+            if (!error && data && data.length > 0) {
                 activeTripId = data[0].id;
                 document.getElementById('passengerFormCard').style.display = 'none';
                 const statusCard = document.getElementById('passengerStatusCard');
@@ -123,7 +121,8 @@
                 document.getElementById('tripStateBadge').innerText = "⏳ جارِ انتظار قبول الكابتن...";
                 listenToTripStatus();
             } else {
-                alert('خطأ في إرسال الطلب');
+                alert('خطأ في إرسال الطلب، تأكد من الاتصال');
+                console.error(error);
             }
         }
 
@@ -143,12 +142,11 @@
             }, 3000);
         }
 
-        // --- وظائف الكابتن والخريطة ---
         function initCaptainMap() {
             if (!map) {
                 map = L.map('map').setView([30.0444, 31.2357], 13);
-                // خريطة مستقرة تماماً وبدون مشاكل 403
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+                // استخدام خريطة مجانية بالكامل ومستقرة بدون مفاتيح API
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
             }
             setTimeout(() => map.invalidateSize(), 300);
         }
@@ -189,7 +187,6 @@
                 </div>
             `;
 
-            // تفعيل نظام الـ GPS وإرسال الموقع للراكب
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition(async (pos) => {
                     const lat = pos.coords.latitude;
