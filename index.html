@@ -28,7 +28,6 @@
         .ride-option { background: #2a2a2a; border: 2px solid #444; border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         .ride-option.selected { border-color: #00e676; background: #1a332c; }
         
-        .map-box { width: 100%; height: 280px; border-radius: 8px; margin-bottom: 10px; }
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #333; color: #ff9800; }
         .pin-box { font-size: 26px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; }
     </style>
@@ -47,12 +46,17 @@
     <div id="passengerView" class="container">
         <!-- الخطوة 1: خطط مشوارك (من وإلى) -->
         <div class="card" id="passengerFormCard">
-            <h3>📍 خطط لمشوارك</h3>
+            <h3>📍 خطط لمشوارك (اختر المواقف)</h3>
             <label>مكان الاستلام (من)</label>
             <input type="text" id="pStart" value="فؤاد بيومي، الحي السابع" placeholder="ادخل مكان الاستلام" />
             
-            <label>الوجهة (إلى)</label>
-            <input type="text" id="pEndInput" value="موقف بلبيس الجديد" placeholder="الى أين؟" />
+            <label>الوجهة (إلى - اختر الموقف)</label>
+            <select id="pEndSelect">
+                <option value="موقف بلبيس الجديد">موقف بلبيس الجديد (الساحة)</option>
+                <option value="موقف العاشر من رمضان">موقف العاشر من رمضان (محطة النقل)</option>
+                <option value="موقف السلام، الإسماعيلية، المرج">موقف السلام، الإسماعيلية، المرج</option>
+                <option value="Garden 8 - التجمع الخامس">Garden 8 - التجمع الخامس</option>
+            </select>
 
             <label>رقم الهاتف</label>
             <input type="tel" id="pPhone" placeholder="01xxxxxxxxx" maxlength="11" />
@@ -60,7 +64,7 @@
             <button class="btn" onclick="goToRideSelection()">التالي: اختيار نوع المركبة ➔</button>
         </div>
 
-        <!-- الخطوة 2: اختيار نوع المشوار (سيارة / سكوتتر) مثل أوبير -->
+        <!-- الخطوة 2: اختيار نوع المشوار (سيارة / سكوتتر) -->
         <div class="card" id="passengerRideSelectCard" style="display:none;">
             <h3>🚗 اختيار مشوار</h3>
             
@@ -161,7 +165,7 @@
         async function requestTripFinal() {
             const phone = document.getElementById('pPhone').value.trim();
             const startLoc = document.getElementById('pStart').value;
-            const endLoc = document.getElementById('pEndInput').value;
+            const endLoc = document.getElementById('pEndSelect').value;
 
             const payload = {
                 start_station: `${startLoc} [${selectedVehicleType}]`,
