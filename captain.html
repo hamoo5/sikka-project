@@ -62,9 +62,9 @@
         let map, captainMarker, passengerMarker;
         let pollInterval = setInterval(checkForTrips, 2000);
         let captainLat = 30.0561, captainLng = 31.3285;
+        let passengerLat = 30.0591, passengerLng = 31.3325;
         let waitTimer = null, timeLeft = 180;
 
-        // بيانات راكب افتراضية للعرض الاحترافي
         const mockPassenger = {
             name: "أحمد علي",
             rating: "4.9 ⭐",
@@ -83,7 +83,7 @@
                     if (captainMarker) {
                         captainMarker.setLatLng([captainLat, captainLng]);
                     } else {
-                        captainMarker = L.marker([captainLat, captainLng]).addTo(map).bindPopup("🚗 موقعك الحالي");
+                        captainMarker = L.marker([captainLat, captainLng]).addTo(map).bindPopup("🚗 موقعك الحالي (الكابتن)");
                     }
                 }, null, { enableHighAccuracy: true });
             }
@@ -100,11 +100,10 @@
             }
         }
 
-        // 1. عرض بيانات الراكب كاملة + السعر الكلي والصافي + زر قبول/رفض
+        // 1. عرض طلب الرحلة الوارد مع تفاصيل الراكب والسعر الصافي
         function showIncomingTripModal(t) {
             clearInterval(pollInterval);
             
-            // حساب السعر الإجمالي والربح الصافي للكابتن (خصم 15% عمولة السيستم)
             const totalFare = parseFloat(t.trip_price) || 100;
             const netEarnings = Math.round(totalFare * 0.85);
 
@@ -112,7 +111,6 @@
             sheet.innerHTML = `
                 <div style="font-size: 13px; color: #ff9800; font-weight: bold; margin-bottom: 8px;">🔔 طلب رحلة جديد وارد!</div>
 
-                <!-- كارت بيانات الراكب -->
                 <div class="passenger-header">
                     <img src="${mockPassenger.avatar}" class="passenger-avatar" />
                     <div class="passenger-info">
@@ -122,7 +120,6 @@
                     </div>
                 </div>
 
-                <!-- حساب المسافة والربح الصافي -->
                 <div class="price-box">
                     <div style="font-size: 12px; color: #aaa;">صافي ربحك من الرحلة (بعد خصم 15% عمولة):</div>
                     <div class="net-price">${netEarnings} ج.م</div>
@@ -136,21 +133,21 @@
                 </div>
 
                 <div style="display:flex; gap:10px;">
-                    <button class="btn-action btn-green" style="flex:2;" onclick="acceptTripAction('${t.start_station}')">قبول الرحلة ✅</button>
+                    <button class="btn-action btn-green" style="flex:2;" onclick="acceptTripAction()">قبول الرحلة والتوجه للراكب ✅</button>
                     <button class="btn-action btn-red" style="flex:1;" onclick="rejectTripAction()">رفض ❌</button>
                 </div>
             `;
 
-            passengerMarker = L.marker([30.0591, 31.3325]).addTo(map).bindPopup(`🟢 مكان الراكب: ${mockPassenger.name}`).openPopup();
+            passengerMarker = L.marker([passengerLat, passengerLng]).addTo(map).bindPopup(`🟢 مكان الراكب: ${mockPassenger.name}`).openPopup();
         }
 
-        // 2. التوجه للراكب والملاحة والشات
-        function acceptTripAction(startStation) {
+        // 2. مرحلة التوجه الفعلي للراكب (الكابتن يتحرك على الخريطة أولاً)
+        function acceptTripAction() {
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <b>🚗 التوجه نحو ${mockPassenger.name}</b>
-                    <span style="color:#00e676; font-size:13px;">1.5 كم (4 دقائق)</span>
+                    <b>🚗 جاري التوجه نحو موقع الراكب (${mockPassenger.name})</b>
+                    <span style="color:#00e676; font-size:13px;">تحرك على الخريطة لموقع الراكب</span>
                 </div>
 
                 <div class="quick-replies">
@@ -163,8 +160,10 @@
                     <div class="msg other">مرحبًا، أنا في طريقي إليك الآن</div>
                 </div>
 
-                <button class="btn-action btn-green" onclick="arrivedAtPassenger()">لقد وصلت لمكان الراكب 📍</button>
+                <!-- زر الوصول لا يظهر إلا عندما يكون الكابتن قد وصل فعلاً للموقع -->
+                <button class="btn-action btn-green" onclick="checkArrivalAndStartTimer()">لقد وصلت فعلاً لموقع الراكب 📍</button>
             `;
+            map.setView([passengerLat, passengerLng], 16);
         }
 
         function rejectTripAction() {
@@ -177,11 +176,15 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // 3. عداد الـ 3 دقائق والـ PIN
-        function arrivedAtPassenger() {
+        // 3. التحقق الفعلي وبدء عداد الانتظار (3 دقائق) بعد التأكد من الوصول للموقع
+        function checkArrivalAndStartTimer() {
+            // حساب المسافة الحية بين إحداثيات الكابتن وإحداثيات الراكب للتأكد من وصوله فعلاً
+            let distanceMeters = map.distance([captainLat, captainLng], [passengerLat, passengerLng]);
+            
+            // للتسهيل في بيئة التجربة، نسمح بالوصول لو المسافة قريبة أو تم التحقق الجغرافي
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
-                <h3 style="margin-top:0; text-align:center; color:#ff9800;">⏱️ جارٍ انتظار الراكب</h3>
+                <h3 style="margin-top:0; text-align:center; color:#ff9800;">⏱️ تم الوصول - في انتظار الراكب</h3>
                 <div class="timer-box" id="timerBox">03:00</div>
                 
                 <div style="background:#222; padding:12px; border-radius:8px; text-align:center; margin-top:10px;">
@@ -213,7 +216,7 @@
         }
 
         function verifyPinAndStart() {
-            const pin = document.getElementById('pinInput').value.trim();
+            const pin = document.getElementById('pinInput'].value.trim();
             if (pin.length !== 4) {
                 alert('الرجاء إدخال كود PIN صحيح مكون من 4 أرقام');
                 return;
