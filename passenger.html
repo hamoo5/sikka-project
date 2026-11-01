@@ -19,24 +19,19 @@
     .btn-danger { background: #dc3545; }
     #map { height: 350px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
     .hidden { display: none; }
-    .toggle-link { color: #007bff; text-align: center; cursor: pointer; margin-top: 10px; display: block; font-weight: bold; }
     .leaflet-routing-container { display: none !important; }
     #trip-status { background: #e8f4fd; border: 1px solid #b6effb; color: #055160; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px; line-height: 1.6; display: none; }
   </style>
 </head>
 <body>
 
-  <!-- 1. تسجيل الدخول -->
+  <!-- 1. تسجيل الدخول السريع -->
   <div id="auth-section" class="card">
-    <h2 id="auth-title">تسجيل دخول الراكب</h2>
-    <div id="name-field" class="hidden">
-      <input type="text" id="user_name" placeholder="الاسم الكامل">
-    </div>
-    <input type="tel" id="user_phone" placeholder="رقم الموبايل">
-    <input type="password" id="user_password" placeholder="كلمة المرور">
+    <h2 style="text-align: center;">تسجيل دخول الراكب</h2>
+    <input type="text" id="user_name" placeholder="اسمك الكريم (اختياري)">
+    <input type="tel" id="user_phone" placeholder="رقم الموبايل (مثلاً: 0111...)">
     
-    <button id="auth-btn" class="btn-secondary" onclick="handleAuth()">دخول</button>
-    <span class="toggle-link" id="toggle-auth-mode" onclick="toggleAuthMode()">ليس لديك حساب؟ سجل حساب جديد</span>
+    <button id="auth-btn" class="btn-secondary" onclick="handleAuth()">دخول مباشر للخريطة 🚀</button>
   </div>
 
   <!-- 2. الخريطة والطلب -->
@@ -74,7 +69,6 @@
   <script type="module">
     import { supabase } from './supabase.js';
 
-    let isRegistering = false;
     let map, routingControl;
     let pickupCoords = null, dropoffCoords = null;
     let pickupMarker = null, dropoffMarker = null, captainMarker = null;
@@ -92,36 +86,17 @@
       iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
     });
 
-    window.toggleAuthMode = function() {
-      isRegistering = !isRegistering;
-      document.getElementById('auth-title').innerText = isRegistering ? 'إنشاء حساب جديد' : 'تسجيل دخول الراكب';
-      document.getElementById('name-field').classList.toggle('hidden', !isRegistering);
-      document.getElementById('auth-btn').innerText = isRegistering ? 'إنشاء الحساب' : 'دخول';
-      document.getElementById('toggle-auth-mode').innerText = isRegistering ? 'لديك حساب بالفعل؟ سجل دخولك' : 'ليس لديك حساب؟ سجل حساب جديد';
-    };
-
-    window.handleAuth = async function() {
+    window.handleAuth = function() {
       const phone = document.getElementById('user_phone').value;
-      const password = document.getElementById('user_password').value;
-      const name = document.getElementById('user_name').value;
-
-      if (!phone || !password) { alert('أدخل رقم الموبايل وكلمة المرور'); return; }
-
-      if (isRegistering) {
-        if (!name) { alert('ادخل الاسم'); return; }
-        const { error } = await supabase.from('users').insert([{ name, phone, password, role: 'passenger' }]);
-        if (error) { alert('خطأ: ' + error.message); } 
-        else { alert('تم إنشاء الحساب بنجاح!'); toggleAuthMode(); }
-      } else {
-        const { data, error } = await supabase.from('users').select('*').eq('phone', phone).eq('password', password).single();
-        if (error || !data) {
-          alert('رقم الموبايل أو كلمة المرور غير صحيحة');
-        } else {
-          document.getElementById('auth-section').classList.add('hidden');
-          document.getElementById('app-section').classList.remove('hidden');
-          setTimeout(initMap, 200);
-        }
+      if (!phone || phone.length < 10) { 
+        alert('أدخل رقم موبايل صحيح من فضلك'); 
+        return; 
       }
+
+      // الانتقال المباشر للخريطة
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('app-section').classList.remove('hidden');
+      setTimeout(initMap, 200);
     };
 
     function initMap() {
@@ -312,10 +287,9 @@
 
     window.requestRide = async function() {
       const pickup = document.getElementById('pickup_loc').value;
-      const dropoff = document.getElementById('dropoff_loc'].value;
+      const dropoff = document.getElementById('dropoff_loc').value;
       if (!pickup || !dropoff) { alert('أكمل بيانات الرحلة'); return; }
 
-      // إرسال البيانات بـ الأعمدة المتاحة لتفادي أي خطأ في قاعدة البيانات
       const { data, error } = await supabase.from('bookings').insert([{ 
         pickup_location: pickup, 
         status: 'pending',
