@@ -1,100 +1,171 @@
-
-### 2. كود صفحة الكابتن الكاملة والمحدثة (Captain App)
-قم بحفظ هذا الكود في ملف مستقل باسم `captain.html` لتشغيل شاشة السائقين:
-
-```html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محطات - لوحة الكابتن</title>
-    <script src="https://jsdelivr.net"></script>
-    <style>
-        :root { --primary: #1a1a1a; --accent: #ffc107; --bg: #f8f9fa; --card: #ffffff; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: var(--bg); padding: 15px; }
-        .panel { background: var(--card); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; }
-        .form-group input, .form-group select { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 8px; }
-        .btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .btn-green { background: #28a745; }
-        .nav-maps-btn { background: #007bff; display: inline-block; width:100%; text-align:center; padding:10px; color:white; border-radius:8px; text-decoration:none; margin-top:8px; font-weight:bold;}
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>كومبو - واجهة الكابتن</title>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; padding: 12px; background: #f4f4f9; direction: rtl; text-align: right; margin: 0; }
+    .card { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    input, button { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
+    button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
+    button:hover { background: #218838; }
+    .btn-secondary { background: #007bff; }
+    .btn-gps { background: #17a2b8; }
+    .btn-danger { background: #dc3545; }
+    #map { height: 320px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
+    .hidden { display: none; }
+    #trip-alert { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px; line-height: 1.6; }
+  </style>
 </head>
 <body>
 
-    <h2 style="margin-bottom: 15px; color: var(--primary);">🚖 شاشة الكابتن والعمل الحركي</h2>
+  <!-- 1. تسجيل دخول الكابتن -->
+  <div id="auth-section" class="card">
+    <h2 style="text-align: center;">تسجيل دخول الكابتن 🚗</h2>
+    <input type="text" id="captain_name" placeholder="اسم الكابتن">
+    <input type="tel" id="captain_phone" placeholder="رقم الموبايل">
+    
+    <button class="btn-secondary" onclick="handleCaptainAuth()">دخول لوحة الكابتن 🚀</button>
+  </div>
 
-    <!-- أولاً: تسجيل بيانات السائق والمركبة لتراخيص النشاط -->
-    <div class="panel">
-        <h4>📋 تسجيل بيانات التراخيص والمركبة</h4>
-        <div class="form-group"><label>اسم الكابتن بالكامل</label><input type="text" placeholder="الاسم"></div>
-        <div class="form-group"><label>رقم رخصة القيادة</label><input type="text" placeholder="رقم الرخصة"></div>
-        <div class="form-group"><label>رقم لوحة السيارة</label><input type="text" placeholder="مثال: أ ب ج 1 2 3"></div>
-        <div class="form-group">
-            <label>نوع المركبة</label>
-            <select id="v-type">
-                <option value="microbus">ميكروباص خط (14 راكب)</option>
-                <option value="suzuki">سوزوكي قطاع (7 ركاب)</option>
-                <option value="private">ملاكي خاص / مشترك</option>
-            </select>
-        </div>
-        <button class="btn" onclick="alert('تم حفظ وتوثيق بيانات السيارة بانتظار مراجعة الإدارة!')">تحديث وثائق السيارة</button>
+  <!-- 2. لوحة التحكم وخدمة الطلبات -->
+  <div id="app-section" class="card hidden">
+    <h3 style="margin-top:0;" id="captain-title">📡 البحث عن طلبات قريبة...</h3>
+    
+    <button class="btn-gps" onclick="startLocationBroadcast()">📍 تفعيل البث الحي لموقعي (GPS)</button>
+
+    <div id="trip-alert">
+      🔔 <b>في انتظار طلبات الركاب...</b><br>
+      سيظهر لك طلب الرحلة هنا فور قيام الراكب بالطلب.
     </div>
 
-    <!-- ثانياً: شاشة المحفظة والمستحقات المحدثة حياً -->
-    <div class="panel" style="background: #fff9e6; border: 1px solid #ffeeba;">
-        <h4>💰 محفظة الكابتن والأرباح</h4>
-        <p>الرصيد المتاح حالياً: <strong style="color: green; font-size: 18px;">140 جنيه</strong></p>
-        <p style="font-size: 12px; color: #555; margin-top: 4px;">* يتم قفل الحساب تلقائياً إذا قل الرصيد عن 10 جنيهات لخصم عمولة المنصة (10%).</p>
-    </div>
+    <div id="action-area"></div>
 
-    <!-- ثالثاً: اختيار الخط وبدء الرحلة الحية وملاحة جوجل الخارجية -->
-    <div class="panel">
-        <h4>🚀 فتح العداد والخط للركاب</h4>
-        <div class="form-group">
-            <label>اختر خط السير المعتمد لك</label>
-            <select id="c-route">
-                <option value="">خط التجمع الخامس - رمسيس الرئيسي</option>
-            </select>
-        </div>
-        <button class="btn btn-green" onclick="startTrip()">تشغيل العداد وبدء استقبال الحجوزات</button>
-        
-        <!-- زر الملاحة الخارجي لخرائط جوجل لحماية القيادة بالشارع -->
-        <a href="https://google.com" target="_blank" class="nav-maps-btn">🗺️ فتح الملاحة والتوجيه على Google Maps للخط</a>
-    </div>
+    <div id="map"></div>
+  </div>
 
-    <!-- رابعاً: تأكيد الحجوزات بالأكواد الذكية لتفريغ الكراسي -->
-    <div class="panel" id="otp-panel" style="display: none; border: 2px solid #28a745;">
-        <h4 style="color: #28a745;">🔐 التحقق من الركاب (تأكيد الحجز)</h4>
-        <div class="form-group">
-            <label>أدخل كود الـ OTP المأخوذ من الراكب عند صعوده:</label>
-            <input type="number" id="otp-input" placeholder="4 أرقام">
-        </div>
-        <button class="btn" onclick="verifyOtp()">تأكيد ركوب الراكب وتحديث سعة الكراسي</button>
-    </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <script>
-        const SUPABASE_URL = "https://supabase.co";
-        const SUPABASE_KEY = "قم_بوضع_Publishable_Key_الخاص_بك_هنا_من_الصورة";
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  <script type="module">
+    import { supabase } from './supabase.js';
 
-        function startTrip() {
-            document.getElementById('otp-panel').style.display = 'block';
-            alert("عداد الرحلة نشط الآن! سيتم خصم المقاعد تلقائياً وإعادة تفريغها فور إنزال الركاب بالمحطات.");
-        }
+    let map;
+    let captainMarker = null;
+    let currentBookingId = null;
+    let watchId = null;
+    let captainCoords = { lat: 30.0444, lng: 31.2357 };
 
-        async function verifyOtp() {
-            const otp = document.getElementById('otp-input').value;
-            if(!otp) return alert("يرجى كتابة الكود أولاً");
-            
-            // تحديث ديناميكي لجدول الحجوزات
-            const { data, error } = await _supabase.from('bookings').update({ status: 'active' }).eq('otp', parseInt(otp));
-            alert("✅ تم تأكيد الكود بنجاح وتحديث صافي أرباحك بالمحفظة بعد خصم الـ 10% عمولة التطبيق الافتراضية.");
-            document.getElementById('otp-input').value = "";
-        }
-    </script>
+    window.handleCaptainAuth = function() {
+      const phone = document.getElementById('captain_phone').value;
+      if (!phone) { alert('أدخل رقم الموبايل'); return; }
+
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('app-section').classList.remove('hidden');
+      setTimeout(initMap, 200);
+      listenForPendingRides();
+    };
+
+    function initMap() {
+      if (map) return;
+      map = L.map('map').setView([30.0444, 31.2357], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+    }
+
+    // الاستماع للطلبات الجديدة في جدول bookings
+    function listenForPendingRides() {
+      supabase.channel('public:captain-bookings')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, payload => {
+          const newBooking = payload.new;
+          if (newBooking.status === 'pending' && !currentBookingId) {
+            currentBookingId = newBooking.id;
+            document.getElementById('captain-title').innerText = "🚨 مبروك، يوجد طلب رحلة جديد!";
+            document.getElementById('trip-alert').innerHTML = `
+              📦 <b>طلب رحلة جديد قيد الانتظار!</b><br>
+              رقم الطلب: #${newBooking.id}<br>
+              الحالة: جاهز للقبول والتجهيز.
+            `;
+            document.getElementById('action-area').innerHTML = `
+              <button onclick="acceptRide(${newBooking.id})" style="background:#28a745; font-size:16px; padding:14px;">✅ قبول الرحلة والتوجه للراكب</button>
+            `;
+          }
+        })
+        .subscribe();
+    }
+
+    window.acceptRide = async function(bookingId) {
+      currentBookingId = bookingId;
+      
+      // تحديث حالة الطلب إلى accepted في قاعدة البيانات
+      const { error } = await supabase.from('bookings').update({ 
+        status: 'accepted',
+        captain_lat: captainCoords.lat,
+        captain_lng: captainCoords.lng
+      }).eq('id', bookingId);
+
+      if (error) {
+        alert('خطأ في قبول الطلب: ' + error.message);
+      } else {
+        document.getElementById('captain-title').innerText = "🚗 في طريقك للراكب";
+        document.getElementById('trip-alert').innerHTML = `
+          ✅ <b>تم قبول الرحلة بنجاح!</b><br>
+          موقعك الحي يتم بثه للراكب الآن. توجه لنقطة الانطلاق.
+        `;
+        document.getElementById('action-area').innerHTML = `
+          <button class="btn-danger" onclick="finishRide()">🏁 إنهاء الرحلة</button>
+        `;
+        startLocationBroadcast();
+      }
+    };
+
+    // بث موقع الكابتن الحي لحظياً للخريطة وقاعدة البيانات
+    window.startLocationBroadcast = function() {
+      if (navigator.geolocation) {
+        alert('تم تفعيل البث الحي لموقعك بنجاح!');
+        watchId = navigator.geolocation.watchPosition(async position => {
+          captainCoords.lat = position.coords.latitude;
+          captainCoords.lng = position.coords.longitude;
+
+          const latLng = [captainCoords.lat, captainCoords.lng];
+
+          if (captainMarker) {
+            captainMarker.setLatLng(latLng);
+          } else {
+            captainMarker = L.marker(latLng, {
+              icon: L.icon({ 
+                iconUrl: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png', 
+                iconSize: [35, 35], 
+                iconAnchor: [17, 17] 
+              })
+            }).addTo(map);
+          }
+          map.setView(latLng, 16);
+
+          // تحديث إحداثيات الكابتن في قاعدة البيانات لو فيه رحلة نشطة
+          if (currentBookingId) {
+            await supabase.from('bookings').update({
+              captain_lat: captainCoords.lat,
+              captain_lng: captainCoords.lng
+            }).eq('id', currentBookingId);
+          }
+
+        }, () => { alert('تعذر تفعيل الـ GPS'); }, { enableHighAccuracy: true });
+      }
+    };
+
+    window.finishRide = async function() {
+      if (currentBookingId) {
+        await supabase.from('bookings').update({ status: 'completed' }).eq('id', currentBookingId);
+      }
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+      alert('تم إنهاء الرحلة بنجاح! أحسنت.');
+      location.reload();
+    };
+  </script>
 </body>
 </html>
