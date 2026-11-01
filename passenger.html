@@ -14,8 +14,9 @@
         .container { padding: 12px; }
         .card { background: #1e1e1e; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
         .btn { background: #00875a; color: #fff; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; }
-        .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; }
+        .map-container { width: 100%; height: 300px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; }
         .pin-box { font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; border: 1px dashed #00e676; }
+        input { width: 100%; padding: 10px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; margin: 6px 0; }
     </style>
 </head>
 <body>
@@ -25,15 +26,24 @@
     </div>
 
     <div class="container">
+        <!-- كارت إدخال تفاصيل الرحلة والخريطة الأساسية -->
         <div class="card" id="formCard">
-            <h3>📍 طلب رحلة جديدة</h3>
-            <p style="color:#aaa; font-size:13px;">نقطة الاستلام: طريق النصر | الوجهة: شارع صلاح الدين</p>
+            <h3>📍 تحديد مكان الاستلام والوجهة</h3>
+            <label style="font-size:12px; color:#aaa;">مكان الاستلام (النقطة الأولى):</label>
+            <input type="text" id="startInput" value="طريق النصر، مدينة نصر" />
+            
+            <label style="font-size:12px; color:#aaa;">وجهة النزول (النقطة الثانية):</label>
+            <input type="text" id="endInput" value="شارع صلاح الدين" />
+
+            <div id="requestMap" class="map-container"></div>
+            
             <button class="btn" onclick="requestTrip()">طلب الكابتن الأقرب 🚀</button>
         </div>
 
+        <!-- كارت حالة الرحلة بعد الطلب -->
         <div class="card" id="statusCard" style="display:none; text-align:center;">
-            <div id="statusBadge" style="background:#333; color:#ff9800; padding:8px; border-radius:6px; font-weight:bold;">⏳ في انتظار قبول الكابتن...</div>
-            <div id="map" class="map-container" style="display:none;"></div>
+            <div id="statusBadge" style="background:#333; color:#ff9800; padding:10px; border-radius:6px; font-weight:bold;">⏳ في انتظار قبول الكابتن...</div>
+            <div id="liveMap" class="map-container"></div>
             <div id="pinContainer" style="display:none;">
                 <label style="font-size:12px; color:#aaa;">كود الـ PIN الخاص بك (أعطه للكابتن عند ركوب السيارة):</label>
                 <div class="pin-box">4480</div>
@@ -43,14 +53,23 @@
 
     <script>
         const supabaseClient = supabase.createClient("https://pmpzilqpcomoodaksbhw.supabase.co", "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx");
-        let activeTripId = null, map = null;
+        let activeTripId = null, reqMap = null, liveMap = null;
+
+        window.onload = function() {
+            // إظهار الخريطة للراكب ليحدد منها مكانه من البداية
+            reqMap = L.map('requestMap').setView([30.0561, 31.3285], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(reqMap);
+            L.marker([30.0561, 31.3285]).addTo(reqMap).bindPopup("🟢 نقطة الاستلام الحالية").openPopup();
+        };
 
         async function requestTrip() {
-            // استخدام الأعمدة الموجودة فقط في الجدول بدون أي أعمدة إضافية
+            const start = document.getElementById('startInput').value;
+            const end = document.getElementById('endInput').value;
+
             const { data, error } = await supabaseClient.from('trips_data').insert([{
-                start_station: "طريق النصر",
-                end_station: "شارع صلاح الدين",
-                trip_price: "100 ج.م",
+                start_station: start,
+                end_station: end,
+                trip_price: '100_pending',
                 user_mobile: "01112142750"
             }]).select();
 
@@ -63,8 +82,18 @@
                 activeTripId = data[0].id;
                 document.getElementById('formCard').style.display = 'none';
                 document.getElementById('statusCard').style.display = 'block';
-                localStorage.setItem('active_trip_id', activeTripId);
+                
+                // تهيئة الخريطة الحية ومتابعة حالة الكابتن
+                initLiveMap();
                 listenToTripUpdates();
+            }
+        }
+
+        function initLiveMap() {
+            if (!liveMap) {
+                liveMap = L.map('liveMap').setView([30.0561, 31.3285], 14);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(liveMap);
+                L.marker([30.0561, 31.3285]).addTo(liveMap).bindPopup("🟢 موقعك (الاستلام)").openPopup();
             }
         }
 
@@ -75,29 +104,23 @@
                 if (!data) return;
 
                 const badge = document.getElementById('statusBadge');
-                // تتبع الحالات عبر السعر أو التحديثات المحلية المتزامنة
-                if (window.tripStatus === 'accepted') {
+                if (data.trip_price === '100_accepted') {
                     badge.innerText = "🚗 الكابتن قبل الرحلة وهو في الطريق إليك!";
                     badge.style.color = "#00e676";
-                    showMap();
-                } else if (window.tripStatus === 'arrived') {
+                } else if (data.trip_price === '100_arrived') {
                     badge.innerText = "📍 الكابتن وصل موقعك، أعطه كود PIN (4480)";
                     badge.style.color = "#ff9800";
-                } else if (window.tripStatus === 'started') {
+                    document.getElementById('pinContainer').style.display = 'block';
+                } else if (data.trip_price === '100_started') {
                     badge.innerText = "🎯 الرحلة جارية الآن نحو نقطة النزول النهائية!";
                     badge.style.color = "#00e676";
+                    liveMap.setView([30.0602, 31.2569], 14);
+                    L.marker([30.0602, 31.2569]).addTo(liveMap).bindPopup("🎯 وجهة النزول").openPopup();
+                } else if (data.trip_price === '100_completed') {
+                    alert('تم إنهاء الرحلة بنجاح! شكراً لاستخدامك كومبو.');
+                    window.location.reload();
                 }
             }, 2000);
-        }
-
-        function showMap() {
-            document.getElementById('map').style.display = 'block';
-            document.getElementById('pinContainer').style.display = 'block';
-            if (!map) {
-                map = L.map('map').setView([30.0561, 31.3285], 14);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 موقع الاستلام").openPopup();
-            }
         }
     </script>
 </body>
