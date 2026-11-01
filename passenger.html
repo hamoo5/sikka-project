@@ -26,6 +26,11 @@
         .search-item { padding: 10px; border-bottom: 1px solid #333; font-size: 13px; cursor: pointer; }
         .search-item:hover { background: #333; }
         
+        /* كروت الكباتن */
+        .captain-card { background: #2a2a2a; border: 1px solid #444; border-radius: 10px; padding: 12px; margin-bottom: 10px; text-align: right; }
+        .captain-info { display: flex; justify-content: space-between; align-items: center; }
+        .rating { color: #ffca28; font-weight: bold; }
+        
         /* تصميم الشات */
         .chat-box { background: #181818; border: 1px solid #333; border-radius: 10px; padding: 10px; height: 160px; overflow-y: auto; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
         .chat-msg { max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
@@ -41,7 +46,7 @@
     </div>
 
     <div class="container">
-        <!-- شاشة الطلب -->
+        <!-- شاشة الطلب والخريطة -->
         <div class="card" id="passengerFormCard">
             <h3 style="margin-top:0;">📍 حدد موقع الانطلاق والوجهة بدقة</h3>
             <button class="btn btn-blue" onclick="getMyLocation()">📍 استخدام موقعي الحالي على الخريطة</button>
@@ -54,22 +59,28 @@
             <input type="text" id="pEndInput" placeholder="اكتب الوجهة..." oninput="searchAddress(this.value, 'end')" />
             <div id="endResults" class="search-results"></div>
 
-            <!-- خريطة الشوارع الأساسية -->
+            <!-- خريطة الشوارع الثابتة 10/10 -->
             <div id="passengerMap" class="map-container"></div>
 
             <div style="background:#2a2a2a; padding:10px; border-radius:8px; font-size:13px; margin-top:8px;">
                 📏 المسافة: <b id="txtDistance" style="color:#00e676;">0 كم</b> | ⏱️ الوقت: <b id="txtDuration" style="color:#ff9800;">0 دقيقة</b> | 💰 السعر: <b id="txtPrice" style="color:#00e676;">0 ج.م</b>
             </div>
 
-            <label style="margin-top:8px; display:block;">رقم الهاتف:</label>
-            <input type="tel" id="pPhone" placeholder="01xxxxxxxxx" maxlength="11" />
+            <!-- تم حذف خانة رقم الهاتف واعتمدنا الرقم المسجل -->
+            <button class="btn btn-green" onclick="showOnlineCaptains()">البحث عن كابتن أونلاين 🚀</button>
+        </div>
 
-            <button class="btn btn-green" onclick="requestTripFinal()">اطلب الرحلة الآن 🚀</button>
+        <!-- شاشة اختيار الكابتن الأونلاين -->
+        <div class="card" id="captainsListCard" style="display:none;">
+            <h3 style="margin-top:0; color:#00e676;">🚕 الكباتن المتاحة أونلاين بالقرب منك</h3>
+            <p style="color:#aaa; font-size:13px;">اختر الكابتن المناسب لطلب الرحلة:</p>
+            <div id="captainsContainer"></div>
+            <button class="btn" style="background:#444; color:#fff;" onclick="backToMapForm()">🔙 العودة للخريطة</button>
         </div>
 
         <!-- شاشة متابعة الرحلة والشات -->
         <div class="card" id="passengerStatusCard" style="display:none; text-align:center;">
-            <span style="display:inline-block; padding:6px 12px; border-radius:6px; background:#333; color:#ff9800; font-weight:bold;" id="tripStateBadge">⏳ جاري البحث عن كابتن...</span>
+            <span style="display:inline-block; padding:6px 12px; border-radius:6px; background:#333; color:#ff9800; font-weight:bold;" id="tripStateBadge">⏳ جاري انتظار قبول الكابتن...</span>
             
             <div id="passengerPinContainer" style="margin-top:15px;">
                 <label>كود الـ PIN الخاص بك (أعطه للكابتن عند الركوب):</label>
@@ -78,10 +89,10 @@
 
             <hr style="border-color:#333; margin:15px 0;">
 
-            <!-- الشات المباشر -->
+            <!-- المحادثة المباشرة -->
             <h4 style="text-align:right; margin:5px 0;">💬 المحادثة مع الكابتن</h4>
             <div class="chat-box" id="pChatBox">
-                <div class="chat-msg other">تم إنشاء الطلب وفي انتظار قبول الكابتن</div>
+                <div class="chat-msg other">تم إرسال الطلب للكابتن بنجاح</div>
             </div>
             <div style="display:flex; gap:6px; margin-top:8px;">
                 <input type="text" id="pChatInput" placeholder="اكتب رسالتك للكابتن..." style="margin:0;">
@@ -99,6 +110,14 @@
         let startMarker, endMarker, routeLayer;
         let calculatedDistKm = 5.0, calculatedMin = 15, finalPrice = 75;
         let activeTripId = null, generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
+        let passengerPhone = localStorage.getItem('passenger_phone') || "01000000000";
+
+        // قائمة محاكاة لكباتن أونلاين
+        const mockCaptains = [
+            { id: 1, name: "كابتن أحمد محمود", car: "نيسان صني - أسود", rating: "4.9 ⭐", trips: 450 },
+            { id: 2, name: "كابتن محمد مصطفى", car: "هيونداي إلنترا - أبيض", rating: "4.8 ⭐", trips: 310 },
+            { id: 3, name: "كابتن السيد إبراهيم", car: "تويوتا كورولا - فضي", rating: "5.0 ⭐", trips: 620 }
+        ];
 
         window.onload = function() {
             passMap = L.map('passengerMap').setView([startLat, startLng], 13);
@@ -211,23 +230,47 @@
             } catch (e) {}
         }
 
-        async function requestTripFinal() {
-            const phone = document.getElementById('pPhone').value.trim();
-            if (!phone || phone.length < 11) { alert('الرجاء إدخال رقم هاتف صحيح'); return; }
+        function showOnlineCaptains() {
+            document.getElementById('passengerFormCard').style.display = 'none';
+            const listDiv = document.getElementById('captainsContainer');
+            listDiv.innerHTML = '';
 
-            const { data, error } = await supabaseClient.from('trips_data').insert([{
+            mockCaptains.forEach(c => {
+                listDiv.innerHTML += `
+                    <div class="captain-card">
+                        <div class="captain-info">
+                            <div><b>👤 ${c.name}</b></div>
+                            <div class="rating">${c.rating}</div>
+                        </div>
+                        <div style="font-size:13px; color:#bbb; margin-top:4px;">🚗 ${c.car}</div>
+                        <div style="font-size:12px; color:#888; margin-top:2px;">🛣️ أنجز ${c.trips} رحلة</div>
+                        <button class="btn btn-green" onclick="confirmTripWithCaptain('${c.name}')">طلب هذا الكابتن 🚀</button>
+                    </div>
+                `;
+            });
+
+            document.getElementById('captainsListCard').style.display = 'block';
+        }
+
+        function backToMapForm() {
+            document.getElementById('captainsListCard').style.display = 'none';
+            document.getElementById('passengerFormCard').style.display = 'block';
+        }
+
+        async function confirmTripWithCaptain(captainName) {
+            const { data } = await supabaseClient.from('trips_data').insert([{
                 start_station: document.getElementById('pStartInput').value || "موقعي",
                 end_station: document.getElementById('pEndInput').value || "الوجهة",
                 trip_price: `${finalPrice} ج.م`,
-                user_mobile: phone,
+                user_mobile: passengerPhone,
                 trip_pin: generatedPin,
                 status: 'pending',
-                notes: ''
+                notes: `تم توجيه الطلب إلى: ${captainName}`
             }]).select();
 
             if (data && data.length > 0) {
                 activeTripId = data[0].id;
-                document.getElementById('passengerFormCard').style.display = 'none';
+                document.getElementById('captainsListCard').style.display = 'none';
                 document.getElementById('passengerStatusCard').style.display = 'block';
                 document.getElementById('tripPinCode').innerText = generatedPin;
                 listenToTripUpdates();
