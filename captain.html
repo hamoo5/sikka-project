@@ -12,46 +12,33 @@
     <style>
         * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
         body { background: #121212; color: #fff; margin: 0; padding: 0; direction: rtl; overflow: hidden; }
-        
-        /* خريطة ملء الشاشة للخلفية زي التطبيقات الكبرى */
         #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-        
-        /* الشريط العلوي الشفاف */
-        .top-nav { position: absolute; top: 15px; right: 15px; left: 15px; z-index: 10; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.75); padding: 10px 15px; border-radius: 8px; backdrop-filter: blur: 5px; }
-        
-        /* الكارت السفلي العائم (BottomSheet) */
+        .top-nav { position: absolute; top: 15px; right: 15px; left: 15px; z-index: 10; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.8); padding: 10px 15px; border-radius: 8px; }
         .bottom-sheet { position: absolute; bottom: 0; left: 0; width: 100%; background: #181818; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 20px; z-index: 10; box-shadow: 0 -5px 25px rgba(0,0,0,0.8); border-top: 1px solid #333; max-height: 85vh; overflow-y: auto; }
-        
         .btn-uber { background: #fff; color: #000; border: none; padding: 16px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 12px; }
         .btn-green { background: #00875a; color: #fff; }
         .btn-red { background: #d32f2f; color: #fff; }
-        
         .trip-info-row { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #333; font-size: 14px; }
         .price-tag { font-size: 22px; font-weight: bold; color: #00e676; }
-        
-        .chat-container { background: #111; border-radius: 10px; padding: 10px; height: 110px; overflow-y: auto; margin: 10px 0; border: 1px solid #333; display: flex; flex-direction: column; gap: 6px; }
+        .chat-container { background: #111; border-radius: 10px; padding: 10px; height: 100px; overflow-y: auto; margin: 10px 0; border: 1px solid #333; display: flex; flex-direction: column; gap: 6px; }
         .msg { padding: 6px 10px; border-radius: 6px; font-size: 12px; max-width: 80%; }
         .msg.me { background: #0288d1; align-self: flex-end; }
         .msg.other { background: #333; align-self: flex-start; }
-        
         .quick-replies { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 5px; margin-bottom: 10px; }
         .chip { background: #2a2a2a; border: 1px solid #444; color: #fff; padding: 6px 12px; border-radius: 16px; font-size: 11px; white-space: nowrap; cursor: pointer; }
-        
         input { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 18px; text-align: center; letter-spacing: 6px; margin: 8px 0; }
+        .timer-box { font-size: 20px; font-weight: bold; color: #ff9800; background: #2a2a2a; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; }
     </style>
 </head>
 <body>
 
-    <!-- الخريطة الخلفية الحية -->
     <div id="map"></div>
 
-    <!-- شريط علوي -->
     <div class="top-nav">
         <span style="font-weight: bold; font-size: 15px;">🚗 كومبو كابتن</span>
         <a href="passenger.html" style="color: #00e676; text-decoration: none; font-size: 12px; font-weight: bold;">صفحة الراكب ➔</a>
     </div>
 
-    <!-- الكارت السفلي التفاعلي -->
     <div class="bottom-sheet" id="sheetContainer">
         <div style="text-align: center; color: #aaa; font-size: 14px; padding: 20px;">
             <div style="font-size: 18px; color: #00e676; font-weight: bold; margin-bottom: 5px;">🟢 متصل الآن</div>
@@ -64,12 +51,28 @@
         const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let map, currentTrip = null, pollInterval = setInterval(checkForTrips, 2000);
-        let passengerName = "Penda"; // اسم افتراضي مستوحى من التطبيق الاحترافي
+        let map, captainMarker, passengerMarker, watchId;
+        let currentTrip = null, pollInterval = setInterval(checkForTrips, 2000);
+        let captainLat = 30.0561, captainLng = 31.3285;
+        let passengerLat = 30.0591, passengerLng = 31.3325;
+        let waitTimer = null, timeLeft = 180;
 
         window.onload = function() {
-            map = L.map('map', {zoomControl: false}).setView([30.0561, 31.3285], 14);
+            map = L.map('map', {zoomControl: false}).setView([captainLat, captainLng], 15);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+            // تفعيل نظام تتبع موقع الكابتن الحقيقي عبر الـ GPS
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition((pos) => {
+                    captainLat = pos.coords.latitude;
+                    captainLng = pos.coords.longitude;
+                    if (captainMarker) {
+                        captainMarker.setLatLng([captainLat, captainLng]);
+                    } else {
+                        captainMarker = L.marker([captainLat, captainLng]).addTo(map).bindPopup("🚗 موقعك الحالي (الكابتن)");
+                    }
+                }, null, { enableHighAccuracy: true });
+            }
         };
 
         async function checkForTrips() {
@@ -84,10 +87,9 @@
             }
         }
 
-        // 1. شاشة وصول الطلب للكابتن (تشبه الصورة الأولى تماماً)
+        // 1. عرض طلب الرحلة الوارد (شبه أوبر)
         function showIncomingTripModal(t) {
-            clearInterval(pollInterval); // إيقاف البحث مؤقتاً لتثبيت الطلب
-            
+            clearInterval(pollInterval);
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -115,22 +117,21 @@
                     📱 هاتف الراكب: ${t.user_mobile || '01112142750'}
                 </div>
 
-                <button class="btn-uber btn-green" onclick="acceptTripAction()">اقبل ✅</button>
+                <button class="btn-uber btn-green" onclick="acceptTripAction()">اقبل الرحلة ✅</button>
             `;
         }
 
-        // 2. مرحلة قبول الرحلة والتوجه للراكب (تشبه الصور 28 و 30)
+        // 2. مرحلة التوجه للراكب وحركة الملاحة الحية
         function acceptTripAction() {
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <b>التوجه إلى ${passengerName}</b>
-                    <span style="color:#00e676; font-size:13px;">1 دقيقة (0.2 كلم)</span>
+                    <b>التوجه إلى الراكب</b>
+                    <span style="color:#00e676; font-size:13px;" id="distanceTimeText">جاري حساب المسافة...</span>
                 </div>
                 
-                <div style="font-size:13px; color:#ccc; margin-bottom:10px;">انتظر من فضلك، أنا قادم 🚗</div>
+                <div style="font-size:13px; color:#ccc; margin-bottom:10px;">انتظر من فضلك، الكابتن يتحرك في الطريق إليك 🚗</div>
 
-                <!-- الردود السريعة الاحترافية -->
                 <div class="quick-replies">
                     <div class="chip" onclick="sendQuickMsg('حسناً، لقد فهمت')">حسناً، لقد فهمت</div>
                     <div class="chip" onclick="sendQuickMsg('أنا في طريقي إليك')">أنا في طريقي إليك</div>
@@ -138,14 +139,14 @@
                 </div>
 
                 <div class="chat-container" id="chatBox">
-                    <div class="msg other">مرحبًا، انتظر من فضلك أنا قادم</div>
+                    <div class="msg other">مرحبًا، أنا في طريقي إليك الآن</div>
                 </div>
 
-                <button class="btn-uber" style="background:#222; color:#fff; border:1px solid #444; margin-top:5px;" onclick="showPinScreen()">لقد وصلت 📍</button>
+                <button class="btn-uber" style="background:#222; color:#fff; border:1px solid #444; margin-top:5px;" onclick="arrivedAtPassenger()">لقد وصلت 📍</button>
             `;
 
-            // رسم مسار وهمي على خريطة الكابتن
-            L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 مكان الراكب").openPopup();
+            passengerMarker = L.marker([passengerLat, passengerLng]).addTo(map).bindPopup("🟢 مكان الراكب").openPopup();
+            map.setView([captainLat, captainLng], 16);
         }
 
         function sendQuickMsg(text) {
@@ -154,25 +155,49 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // 3. شاشة إدخال رقم الـ PIN (تشبه الصورة 34)
-        function showPinScreen() {
+        // 3. مرحلة الوصول وبدء عداد الانتظار (3 دقائق) والغرامة
+        function arrivedAtPassenger() {
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
-                <h3 style="margin-top:0; text-align:center;">أدخل رقم التعريف الشخصي (PIN)</h3>
-                <p style="text-align:center; color:#aaa; font-size:12px;">مطلوب لتأكيد ركوب ${passengerName} وبدء الرحلة</p>
+                <h3 style="margin-top:0; text-align:center; color:#ff9800;">⏱️ في انتظار الراكب</h3>
+                <div class="timer-box" id="timerBox">03:00</div>
                 
-                <input type="number" id="pinInput" placeholder="****" maxlength="4" />
-                
-                <button class="btn-uber btn-green" onclick="verifyPinAndStart()">بدء الرحلة 🚀</button>
+                <div style="background:#222; padding:12px; border-radius:8px; text-align:center; margin-top:10px;">
+                    <label style="font-size:12px; color:#aaa;">🔑 أدخل رقم الـ PIN المأخوذ من الراكب لبدء الرحلة:</label>
+                    <input type="number" id="pinInput" placeholder="****" maxlength="4" />
+                    <button class="btn-uber btn-green" onclick="verifyPinAndStart()">تأكيد وبدء الرحلة 🚀</button>
+                </div>
+
+                <button class="btn-uber btn-red" id="btnCancelFine" style="display:none; margin-top:10px;" onclick="cancelWithFine()">❌ إلغاء وتطبيق غرامة (20 ج.م)</button>
             `;
+
+            waitTimer = setInterval(() => {
+                timeLeft--;
+                let min = Math.floor(timeLeft / 60);
+                let sec = timeLeft % 60;
+                document.getElementById('timerBox').innerText = `0${min}:${sec < 10 ? '0' : ''}${sec}`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(waitTimer);
+                    document.getElementById('timerBox').innerText = "⚠️ انتهت مهلة الانتظار";
+                    document.getElementById('btnCancelFine').style.display = 'block';
+                }
+            }, 1000);
         }
 
+        function cancelWithFine() {
+            alert('تم إلغاء الرحلة وتطبيق غرامة 20 ج.م (10 للكابتن + 10 للسيستم)');
+            window.location.reload();
+        }
+
+        // 4. التحقق من كود الـ PIN وبدء الرحلة الفعلية
         function verifyPinAndStart() {
-            const pin = document.getElementById('pinInput').value;
-            if(pin.length < 4) {
-                alert('الرجاء إدخال الـ 4 أرقام الخاصة بالراكب');
+            const pin = document.getElementById('pinInput').value.trim();
+            if (pin.length !== 4) {
+                alert('الرجاء إدخال كود PIN صحيح مكون من 4 أرقام');
                 return;
             }
+            if (waitTimer) clearInterval(waitTimer);
             alert('تم التحقق بنجاح! الرحلة جارية الآن نحو الوجهة 🎯');
             window.location.reload();
         }
