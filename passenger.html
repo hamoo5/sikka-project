@@ -37,7 +37,7 @@
 <body>
 
     <div class="top-bar">
-        <span style="font-weight: bold; font-size: 16px;">🚗 كومبو - اختيار الكابتن الأقرب</span>
+        <span style="font-weight: bold; font-size: 16px;">🚗 كومبو - واجهة الراكب</span>
         <a href="captain.html" style="color: #00e676; text-decoration: none; font-size: 13px; font-weight: bold;">صفحة الكابتن ➔</a>
     </div>
 
@@ -72,10 +72,13 @@
             <button class="btn" style="background:#444; color:#fff;" onclick="backToMapForm()">🔙 العودة للخريطة</button>
         </div>
 
-        <!-- شاشة الانتظار -->
+        <!-- شاشة متابعة الكابتن في الطريق والـ PIN -->
         <div class="card" id="passengerStatusCard" style="display:none; text-align:center;">
-            <span style="display:inline-block; padding:6px 12px; border-radius:6px; background:#333; color:#ff9800; font-weight:bold;" id="tripStateBadge">⏳ تم إرسال الطلب للكابتن بنجاح!</span>
-            <div id="passengerPinContainer" style="margin-top:15px;">
+            <span style="display:inline-block; padding:8px 14px; border-radius:6px; background:#333; color:#ff9800; font-weight:bold; font-size:15px;" id="tripStatusText">⏳ تم إرسال الطلب، في انتظار قبول الكابتن...</span>
+            
+            <div id="acceptedDetails" style="display:none; margin-top:15px;">
+                <h4 style="color:#00e676; margin-bottom:5px;">🚗 الكابتن قبل الرحلة وهو في الطريق إليك!</h4>
+                <div id="trackingMap" class="map-container"></div>
                 <label>كود الـ PIN الخاص بك (أعطه للكابتن عند الركوب):</label>
                 <div class="pin-box" id="tripPinCode">----</div>
             </div>
@@ -87,7 +90,8 @@
         const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let passMap = null, startLat = 30.0561, startLng = 31.3285, endLat = 29.9602, endLng = 31.2569;
+        let passMap = null, trackingMapObj = null;
+        let startLat = 30.0561, startLng = 31.3285, endLat = 29.9602, endLng = 31.2569;
         let startMarker, endMarker, routeLayer;
         let calculatedDistKm = 5.0, calculatedMin = 15, finalPrice = 75;
         let activeTripId = null, generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
@@ -113,16 +117,6 @@
                 time: "6 دقائق",
                 lat: 30.0481, lng: 31.3155,
                 img: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150"
-            },
-            { 
-                name: "كابتن السيد إبراهيم", 
-                car: "تويوتا كورولا - فضي (م ن س 9876)", 
-                rating: "5.0 ⭐", 
-                trips: 620, 
-                distance: "3.8 كم", 
-                time: "9 دقائق",
-                lat: 30.0651, lng: 31.3455,
-                img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150"
             }
         ];
 
@@ -284,7 +278,6 @@
             const startName = document.getElementById('pStartInput').value || "طريق النصر";
             const endName = document.getElementById('pEndInput').value || "شارع صلاح الدين";
 
-            // إرسال الأعمدة المتوافقة تماماً مع الجدول الحالي بدون أي أعمدة إضافية
             const { data, error } = await supabaseClient.from('trips_data').insert([{
                 start_station: startName,
                 end_station: endName,
@@ -301,8 +294,32 @@
                 activeTripId = data[0].id;
                 document.getElementById('captainsListCard').style.display = 'none';
                 document.getElementById('passengerStatusCard').style.display = 'block';
-                document.getElementById('tripPinCode').innerText = generatedPin;
+                startListeningForCaptainAcceptance();
             }
+        }
+
+        function startListeningForCaptainAcceptance() {
+            // الاستماع لحالة قبول الكابتن للطلب
+            const checkTimer = setInterval(async () => {
+                if (!activeTripId) return;
+                const { data } = await supabaseClient.from('trips_data').select('*').eq('id', activeTripId).single();
+                
+                // في حالة المحاكاة أو قبول الكابتن
+                if (data) {
+                    clearInterval(checkTimer);
+                    document.getElementById('tripStatusText').innerText = "🚗 الكابتن قبل الطلب وهو في الطريق إليك الآن!";
+                    document.getElementById('acceptedDetails').style.display = 'block';
+                    document.getElementById('tripPinCode').innerText = generatedPin;
+
+                    // رسم خريطة التتبع المباشرة حركة الكابتن نحو الراكب
+                    setTimeout(() => {
+                        trackingMapObj = L.map('trackingMap').setView([startLat, startLng], 14);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(trackingMapObj);
+                        L.marker([startLat, startLng]).addTo(trackingMapObj).bindPopup("🟢 موقعك").openPopup();
+                        L.marker([startLat + 0.005, startLng + 0.005]).addTo(trackingMapObj).bindPopup("🚗 الكابتن في الطريق");
+                    }, 200);
+                }
+            }, 3000);
         }
     </script>
 </body>
