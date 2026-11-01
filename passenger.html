@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>كومبو - واجهة الراكب الاحترافية</title>
+    <title>كومبو - واجهة الراكب</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -21,12 +21,11 @@
         .input-box { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; margin-top: 6px; margin-bottom: 6px; font-size: 14px; outline: none; }
         label { font-size: 12px; color: #aaa; display: block; }
         
-        /* نتائج البحث المنسدلة زي جوجل ماب */
         .suggestions-list { background: #222; border: 1px solid #444; border-radius: 8px; max-height: 150px; overflow-y: auto; margin-bottom: 10px; display: none; }
         .suggestion-item { padding: 10px; font-size: 13px; border-bottom: 1px solid #333; cursor: pointer; }
         .suggestion-item:hover { background: #333; color: #00e676; }
 
-        .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; }
+        .map-container { width: 100%; height: 280px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; background: #222; }
         .hint-text { font-size: 11px; color: #00e676; text-align: center; margin-bottom: 5px; }
         
         .info-box { background: #1e1e1e; padding: 12px; border-radius: 8px; border: 1px dashed #00e676; margin-bottom: 12px; text-align: center; font-size: 13px; color: #00e676; font-weight: bold; }
@@ -41,16 +40,16 @@
     </div>
 
     <div class="card" id="formCard">
-        <button class="btn-blue" onclick="useCurrentLocation()">📍 استخدام موقعي الحالي (جلب اسم الشارع)</button>
+        <button class="btn-blue" onclick="useCurrentLocation()">📍 استخدام موقعي الحالي على الخريطة</button>
         
         <label>مكان الاستلام (من):</label>
-        <input type="text" id="startInput" class="input-box" value="جاري تحديد اسم الشارع..." />
+        <input type="text" id="startInput" class="input-box" value="شارع مصطفي ابو زهره، مدينة نصر" />
         
         <label>الوجهة (إلى - بحث مثل جوجل ماب):</label>
         <input type="text" id="endInput" class="input-box" placeholder="اكتب اسم الشارع أو المنطقة للبحث..." oninput="searchPlaces(this.value, 'endSuggestions')" />
         <div id="endSuggestions" class="suggestions-list"></div>
 
-        <div class="hint-text">💡 اسحب الدبوس الأزرق على الخريطة لتحديث اسم الشارع تلقائياً!</div>
+        <div class="hint-text">💡 اسحب الدبوس الأزرق على الخريطة لتحديد مكانك بدقة!</div>
         <div id="map" class="map-container"></div>
 
         <div class="info-box">
@@ -81,29 +80,27 @@
         let map = null, statusMap = null, activeTripId = null, mainMarker = null;
 
         window.onload = function() {
-            map = L.map('map').setView([30.0561, 31.3285], 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-            
-            mainMarker = L.marker([30.0561, 31.3285], { draggable: true }).addTo(map)
-                .bindPopup("🟢 اسحبني لتحديد موقعك").openPopup();
+            // ضمان تحميل الخريطة فوراً بدون تأخير
+            setTimeout(() => {
+                map = L.map('map').setView([30.0561, 31.3285], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+                
+                mainMarker = L.marker([30.0561, 31.3285], { draggable: true }).addTo(map)
+                    .bindPopup("🟢 موقعك الحالي").openPopup();
 
-            // جلب اسم الشارع تلقائياً عند تحريك الدبوس (Reverse Geocoding)
-            mainMarker.on('dragend', async function(e) {
-                const pos = mainMarker.getLatLng();
-                await getStreetName(pos.lat, pos.lng, 'startInput');
-            });
-
-            // جلب الشارع الافتراضي عند الفتح
-            getStreetName(30.0561, 31.3285, 'startInput');
+                mainMarker.on('dragend', async function(e) {
+                    const pos = mainMarker.getLatLng();
+                    await getStreetName(pos.lat, pos.lng, 'startInput');
+                });
+            }, 300);
         };
 
-        // دالة جلب اسم الشارع الحقيقي من الإحداثيات (زي جوجل ماب)
         async function getStreetName(lat, lng, elementId) {
             try {
                 let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
                 let data = await res.json();
                 if (data && data.display_name) {
-                    let shortName = data.display_name.split(',')[0] + '، ' + (data.address.city || data.address.town || 'القاهرة');
+                    let shortName = data.display_name.split(',')[0] + '، القاهرة';
                     document.getElementById(elementId).value = shortName;
                 }
             } catch (err) {
@@ -111,7 +108,6 @@
             }
         }
 
-        // دالة البحث التفاعلي عن الشوارع والأماكن
         async function searchPlaces(query, containerId) {
             const listContainer = document.getElementById(containerId);
             if (query.length < 3) {
@@ -152,7 +148,7 @@
                     const lat = pos.coords.latitude;
                     const lng = pos.coords.longitude;
                     map.setView([lat, lng], 16);
-                    mainMarker.setLatLng([lat, lng]);
+                    if (mainMarker) mainMarker.setLatLng([lat, lng]);
                     await getStreetName(lat, lng, 'startInput');
                 });
             } else {
@@ -177,7 +173,7 @@
                 return;
             }
 
-(data && data.length > 0) {
+            if (data && data.length > 0) {
                 activeTripId = data[0].id;
                 document.getElementById('formCard').style.display = 'none';
                 document.getElementById('statusCard').style.display = 'block';
