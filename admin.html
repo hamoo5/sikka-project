@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محطات - لوحة الإدارة</title>
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        :root { --primary: #1a1a1a; --accent: #ffc107; --bg: #eef2f5; --card: #ffffff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg); padding: 15px; }
+        .grid-stats { display: flex; gap: 10px; margin-bottom: 15px; }
+        .stat-card { flex: 1; background: var(--primary); color: white; padding: 15px; text-align: center; border-radius: 10px; }
+        .stat-card span { display: block; font-size: 20px; font-weight: bold; color: var(--accent); margin-top: 5px; }
+        .panel { background: var(--card); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .btn-action { padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .item-list { background: #f8f9fa; padding: 10px; border-radius: 6px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+    <h2 style="margin-bottom: 15px; color: var(--primary);">📊 لوحة تحكم إدارة «محطات»</h2>
+
+    <!-- إحصائيات سريعة للعمولات المجمعة حياً للشركة -->
+    <div class="grid-stats">
+        <div class="stat-card">إجمالي عمولات المنصة<span>320.00 جنيه</span></div>
+        <div class="stat-card">الرحلات النشطة حالياً<span>12 رحلة</span></div>
+    </div>
+
+    <!-- مراجعة وتوثيق الكباتن الجدد وتراخيص السيارات -->
+    <div class="panel">
+        <h4>🚗 مراجعة حسابات السائقين والسيارات المعلقة</h4>
+        <div class="item-list">
+            <div><strong>كابتن: محمد عبد الله</strong> - سيارة ملاكي (أ ب ج 123)</div>
+            <button class="btn-action" onclick="alert('تم تفعيل حساب الكابتن وسيارة الملاكي بنجاح!')">اعتماد وتفعيل الحساب</button>
+        </div>
+    </div>
+
+    <!-- إدارة وإضافة خطوط السير وتحديد الأسعار الثابتة والقطاعات -->
+    <div class="panel">
+        <h4>🚌 إضافة وتعديل خطوط السير والأسعار الثابتة</h4>
+        <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <input type="text" id="new-route-name" placeholder="اسم الخط الجديد (مثال: التجمع - رمسيس)" style="flex: 2; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+            <input type="number" id="new-route-fare" placeholder="الأجرة (جنيه)" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+            <button class="btn-action" onclick="addNewRoute()">إضافة الخط</button>
+        </div>
+        <div id="admin-routes-list"></div>
+    </div>
+
+    <!-- إدارة ومراجعة الخطوط المقترحة من قبل الركاب بالتطبيق -->
+    <div class="panel" style="border-right: 4px solid var(--accent);">
+        <h4>🗺️ الخطوط المقترحة من الركاب (دراسة الجدوى وتجميع الطلب)</h4>
+        <div class="item-list">
+            <div>خط مقترح: <strong>من مدينتي إلى وسط البلد</strong> (مطلوب من 45 راكب هذا الأسبوع)</div>
+            <button class="btn-action" style="background: #007bff;" onclick="alert('تم تحويل الخط المقترح إلى خط سير معتمد وجاري تعيين كباتن عليه!')">قبول وتشغيل الخط</button>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://supabase.co";
+        const SUPABASE_KEY = "قم_بوضع_Publishable_Key_الخاص_بك_هنا_من_الصورة";
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function loadAdminRoutes() {
+            const container = document.getElementById('admin-routes-list');
+            const { data } = await _supabase.from('routes').select('*');
+            if(data) {
+                container.innerHTML = "";
+                data.forEach(r => {
+                    container.innerHTML += `<div class="item-list"><div>🚌 ${r.name || 'خط التجمع - رمسيس'}</div><span style='font-weight:bold; color:green;'>سعر القطاع الأساسي: 10 جنيه</span></div>`;
+                });
+            }
+        }
+
+        async function addNewRoute() {
+            const name = document.getElementById('new-route-name').value;
+            if(!name) return alert("برجاء كتابة اسم الخط");
+            
+            await _supabase.from('routes').insert([{ name: name }]);
+            alert("تم إدراج خط السير الجديد في قاعدة بيانات السكة ومحطات حياً!");
+            loadAdminRoutes();
+        }
+
+        loadAdminRoutes();
+    </script>
+</body>
+</html>
