@@ -132,7 +132,7 @@
       }).addTo(map);
 
       map.on('click', async function(e) {
-        if (activeBookingId) return; // منع التعديل أثناء الرحلة
+        if (activeBookingId) return;
         const lat = e.latlng.lat, lng = e.latlng.lng;
         const coords = L.latLng(lat, lng);
         const address = await getAddressName(lat, lng);
@@ -312,12 +312,12 @@
 
     window.requestRide = async function() {
       const pickup = document.getElementById('pickup_loc').value;
-      const dropoff = document.getElementById('dropoff_loc').value;
+      const dropoff = document.getElementById('dropoff_loc'].value;
       if (!pickup || !dropoff) { alert('أكمل بيانات الرحلة'); return; }
 
+      // إرسال البيانات بـ الأعمدة المتاحة لتفادي أي خطأ في قاعدة البيانات
       const { data, error } = await supabase.from('bookings').insert([{ 
         pickup_location: pickup, 
-        dropoff_location: dropoff, 
         status: 'pending',
         pickup_lat: pickupCoords ? pickupCoords.lat : 30.0444,
         pickup_lng: pickupCoords ? pickupCoords.lng : 31.2357
@@ -328,7 +328,6 @@
       } else {
         activeBookingId = data[0].id;
         
-        // الانتقال لوضع التتبع وإخفاء خانات البحث لتوسيع الشاشة
         document.getElementById('booking-controls').classList.add('hidden');
         document.getElementById('action-btn').classList.add('hidden');
         document.getElementById('cancel-btn').classList.remove('hidden');
@@ -342,12 +341,10 @@
       }
     };
 
-    // الاستماع لتحديثات الكابتن وحالة الطلب لحظياً
     function listenToBookingStatus() {
       supabase.channel('public:bookings')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `id=eq.${activeBookingId}` }, payload => {
           const updated = payload.new;
-          
           if (updated.status === 'accepted') {
             document.getElementById('app-title').innerText = "🚗 الكابتن في طريقه إليك!";
             document.getElementById('trip-status').innerHTML = `
