@@ -11,80 +11,104 @@
 
     <style>
         * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
-        body { background: #121212; color: #fff; margin: 0; padding: 0; direction: rtl; }
-        .top-bar { background: #000; padding: 14px; display: flex; justify-content: space-between; border-bottom: 1px solid #333; }
-        .container { padding: 12px; }
-        .card { background: #1e1e1e; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
-        .btn { background: #00875a; color: #fff; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; }
-        .map-container { width: 100%; height: 280px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; }
-        .pin-box { font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; border: 1px dashed #00e676; }
-        input { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; margin: 6px 0; font-size: 14px; }
+        body { background: #121212; color: #fff; margin: 0; padding: 10px; direction: rtl; }
+        .top-bar { background: #000; padding: 12px; display: flex; justify-content: space-between; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333; }
+        .card { background: #181818; padding: 14px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
+        
+        .btn-blue { background: #0066cc; color: #fff; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-bottom: 10px; font-size: 14px; }
+        .btn-green { background: #00875a; color: #fff; border: none; padding: 16px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; font-size: 16px; }
+        
+        .input-box { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; margin-top: 6px; margin-bottom: 12px; font-size: 14px; outline: none; }
+        label { font-size: 12px; color: #aaa; display: block; }
+        
+        .map-container { width: 100%; height: 240px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; }
+        
+        .info-box { background: #1e1e1e; padding: 12px; border-radius: 8px; border: 1px dashed #00e676; margin-bottom: 12px; text-align: center; font-size: 13px; color: #00e676; font-weight: bold; }
+        .pin-box { font-size: 26px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; border: 1px dashed #00e676; }
     </style>
 </head>
 <body>
+
     <div class="top-bar">
         <b>🚗 كومبو - واجهة الراكب</b>
-        <a href="captain.html" style="color:#00e676; text-decoration:none;">صفحة الكابتن ➔</a>
+        <a href="captain.html" style="color:#00e676; text-decoration:none; font-weight:bold;">صفحة الكابتن ➔</a>
     </div>
 
-    <div class="container">
-        <!-- كارت البحث وإدخال الأماكن -->
-        <div class="card" id="formCard">
-            <h3>📍 إين تريد الذهاب؟</h3>
-            
-            <label style="font-size:12px; color:#aaa;">موقعك الآن (النقطة الأولى):</label>
-            <input type="text" id="startInput" value="طريق النصر، مدينة نصر" />
-            
-            <label style="font-size:12px; color:#aaa;">وجهة النزول (النقطة الثانية):</label>
-            <input type="text" id="endInput" placeholder="ابحث عن وجهتك أو الشارع..." />
+    <div class="card" id="formCard">
+        <button class="btn-blue" onclick="useCurrentLocation()">📍 استخدام موقعي الحالي على الخريطة</button>
+        
+        <label>مكان الاستلام (من):</label>
+        <input type="text" id="startInput" class="input-box" value="شارع مصطفي ابو زهره" />
+        
+        <label>الوجهة (إلى):</label>
+        <input type="text" id="endInput" class="input-box" value="شارع الاتحاد" />
 
-            <div id="map" class="map-container"></div>
-            
-            <button class="btn" onclick="requestTrip()">طلب الكابتن الأقرب 🚀</button>
+        <div id="map" class="map-container"></div>
+
+        <div class="info-box">
+            🛣️ المسافة: 17.9 كم | ⏱️ الوقت: 19 دقيقة | 💰 السعر: 159 ج.م
         </div>
 
-        <!-- كارت حالة الرحلة -->
-        <div class="card" id="statusCard" style="display:none; text-align:center;">
-            <div id="statusBadge" style="background:#333; color:#ff9800; padding:10px; border-radius:6px; font-weight:bold;">⏳ في انتظار قبول الكابتن...</div>
-            <div id="statusMap" class="map-container"></div>
-            <div id="pinContainer" style="display:none;">
-                <label style="font-size:12px; color:#aaa;">كود الـ PIN الخاص بك (أعطه للكابتن عند الركوب):</label>
-                <div class="pin-box">4480</div>
-            </div>
+        <label>رقم الهاتف:</label>
+        <input type="text" id="phoneInput" class="input-box" value="01255555588" />
+
+        <button class="btn-green" onclick="requestTrip()">اطلب الرحلة الآن 🚀</button>
+    </div>
+
+    <!-- كارت حالة الرحلة ومتابعة الكابتن والـ PIN -->
+    <div class="card" id="statusCard" style="display:none; text-align:center;">
+        <div id="statusBadge" style="background:#222; color:#ff9800; padding:12px; border-radius:8px; font-weight:bold; border:1px solid #333; margin-bottom: 10px;">⏳ في انتظار قبول الكابتن...</div>
+        <div id="statusMap" class="map-container"></div>
+        <div id="pinContainer" style="display:none;">
+            <label style="font-size:12px; color:#aaa;">كود الـ PIN الخاص بك (أعطه للكابتن عند ركوب السيارة):</label>
+            <div class="pin-box">4480</div>
         </div>
     </div>
 
     <script>
-        const supabaseClient = supabase.createClient("https://pmpzilqpcomoodaksbhw.supabase.co", "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx");
-        let activeTripId = null, map = null, statusMap = null;
+        const SUPABASE_URL = "https://pmpzilqpcomoodaksbhw.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let map = null, statusMap = null, activeTripId = null;
 
         window.onload = function() {
-            // خريطة البحث والاستلام مع تفاصيل الشوارع وموقعك الآن
-            map = L.map('map').setView([30.0561, 31.3285], 14);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/*{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+            map = L.map('map').setView([30.0561, 31.3285], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
             
-            // محاكاة تحديد موقعك الآن بالـ GPS أو افتراضياً
+            // دبابيس ومسار الرحلة الافتراضي مطابق للصورة
+            L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 مكان الاستلام").openPopup();
+            L.marker([30.0421, 31.2355]).addTo(map).bindPopup("🎯 الوجهة").openPopup();
+            
+            // رسم خط الرحلة الأخضر
+            let latlngs = [[30.0561, 31.3285], [30.0490, 31.2800], [30.0421, 31.2355]];
+            L.polyline(latlngs, {color: '#00e676', weight: 4}).addTo(map);
+        };
+
+        function useCurrentLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition((pos) => {
                     const lat = pos.coords.latitude;
                     const lng = pos.coords.longitude;
                     map.setView([lat, lng], 15);
-                    L.marker([lat, lng]).addTo(map).bindPopup("🟢 موقعي الآن").openPopup();
-                }, null, { enableHighAccuracy: true });
+                    L.marker([lat, lng]).addTo(map).bindPopup("📍 موقعك الحالي").openPopup();
+                    document.getElementById('startInput').value = "موقعي الحالي (GPS)";
+                });
             } else {
-                L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 موقعي الآن").openPopup();
+                alert('الخواص الجغرافية غير مدعومة في متصفحك');
             }
-        };
+        }
 
         async function requestTrip() {
             const start = document.getElementById('startInput').value;
             const end = document.getElementById('endInput').value;
+            const phone = document.getElementById('phoneInput').value;
 
             const { data, error } = await supabaseClient.from('trips_data').insert([{
                 start_station: start,
                 end_station: end,
-                trip_price: '100_pending',
-                user_mobile: "01112142750"
+                trip_price: '159_pending',
+                user_mobile: phone
             }]).select();
 
             if (error) {
@@ -104,7 +128,7 @@
 
         function initStatusMap() {
             if (!statusMap) {
-                statusMap = L.map('statusMap').setView([30.0561, 31.3285], 14);
+                statusMap = L.map('statusMap').setView([30.0561, 31.3285], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(statusMap);
                 L.marker([30.0561, 31.3285]).addTo(statusMap).bindPopup("🟢 نقطة الاستلام").openPopup();
             }
@@ -117,19 +141,19 @@
                 if (!data) return;
 
                 const badge = document.getElementById('statusBadge');
-                if (data.trip_price === '100_accepted') {
+                if (data.trip_price === '159_accepted') {
                     badge.innerText = "🚗 الكابتن قبل الرحلة وهو في الطريق إليك!";
                     badge.style.color = "#00e676";
-                } else if (data.trip_price === '100_arrived') {
+                } else if (data.trip_price === '159_arrived') {
                     badge.innerText = "📍 الكابتن وصل موقعك، أعطه كود PIN (4480)";
                     badge.style.color = "#ff9800";
                     document.getElementById('pinContainer').style.display = 'block';
-                } else if (data.trip_price === '100_started') {
+                } else if (data.trip_price === '159_started') {
                     badge.innerText = "🎯 الرحلة جارية الآن نحو نقطة النزول النهائية!";
                     badge.style.color = "#00e676";
-                    statusMap.setView([30.0602, 31.2569], 14);
-                    L.marker([30.0602, 31.2569]).addTo(statusMap).bindPopup("🎯 وجهة النزول").openPopup();
-                } else if (data.trip_price === '100_completed') {
+                    statusMap.setView([30.0421, 31.2355], 14);
+                    L.marker([30.0421, 31.2355]).addTo(statusMap).bindPopup("🎯 وجهة النزول").openPopup();
+                } else if (data.trip_price === '159_completed') {
                     alert('تم إنهاء الرحلة بنجاح! شكراً لاستخدامك كومبو.');
                     window.location.reload();
                 }
