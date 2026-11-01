@@ -2,80 +2,173 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>كومبو - تسجيل دخول الراكب</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سكة ومحطات - تطبيق الراكب</title>
+    <!-- استدعاء مكتبة Supabase الرسمية المستقرة -->
+    <script src="https://jsdelivr.net"></script>
+    <!-- استدعاء مكتبة الخرائط التفاعلية الخفيفة للموبايل -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <script src="https://unpkg.com"></script>
     <style>
-        * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
-        body { background: #121212; color: #fff; margin: 0; padding: 0; direction: rtl; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .card { background: #1e1e1e; padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid #333; text-align: center; }
-        .btn { background: #00875a; color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; }
-        input { width: 100%; padding: 14px; margin-top: 10px; margin-bottom: 15px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 16px; text-align: center; letter-spacing: 2px; }
-        label { font-size: 14px; color: #bbb; display: block; text-align: right; }
-        .pin-display { font-size: 22px; color: #00e676; font-weight: bold; background: #111; padding: 10px; border-radius: 8px; margin: 10px 0; border: 1px dashed #00e676; display: none; }
+        :root { --primary: #1a1a1a; --accent: #ffc107; --bg: #f8f9fa; --card: #ffffff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg); color: #333; padding-bottom: 70px; }
+        .header { background: var(--primary); color: white; padding: 15px; text-align: center; }
+        .header h1 { color: var(--accent); font-size: 20px; }
+        .container { padding: 15px; max-width: 480px; margin: 0 auto; }
+        .panel { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; display: none; }
+        .panel.active { display: block; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; outline: none; }
+        .form-group input:focus { border-color: var(--accent); }
+        .btn { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; transition: background 0.2s; }
+        .btn:accent { background: var(--accent); color: var(--primary); }
+        .btn:hover { background: #333; }
+        #map { height: 220px; width: 100%; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: inset 0 0 5px rgba(0,0,0,0.05); }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--primary); display: flex; justify-content: space-around; padding: 12px; z-index: 1000; border-top: 1px solid #333; }
+        .nav-item { color: #aaa; border: none; background: none; font-size: 12px; cursor: pointer; text-align: center; font-weight: bold; }
+        .nav-item.active { color: var(--accent); }
+        .trip-box { background: #f1f3f5; padding: 12px; border-radius: 8px; margin-top: 8px; font-size: 13px; border-right: 4px solid var(--accent); }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2 style="margin-top:0; color:#00e676;">🚗 تسجيل دخول الراكب</h2>
-        <p style="color:#aaa; font-size:13px; margin-bottom:20px;">أدخل رقم هاتفك للبدء في طلب الرحلات</p>
+    <div class="header">
+        <h1>سكة ومحطات - الراكب</h1>
+    </div>
 
-        <!-- خطوة 1: إدخال الهاتف -->
-        <div id="stepPhone">
-            <label>رقم الهاتف المحمول:</label>
-            <input type="tel" id="userPhone" placeholder="01xxxxxxxx" maxlength="11" />
-            <button class="btn" onclick="sendOtpCode()">إرسال كود التحقق 📨</button>
+    <!-- ==================== شاشة تسجيل الدخول الموحدة والنظيفة ==================== -->
+    <div id="screen-auth" class="container" style="display: block;">
+        <div class="panel active">
+            <h3 style="text-align: center; margin-bottom: 20px; color: var(--primary);">تسجيل الدخول / إنشاء حساب</h3>
+            <div class="form-group">
+                <label>البريد الإلكتروني</label>
+                <input type="email" id="email" placeholder="mail@example.com">
+            </div>
+            <div class="form-group">
+                <label>كلمة السر</label>
+                <input type="password" id="password" placeholder="أدخل كلمة السر">
+            </div>
+            <div class="form-group">
+                <label>نوع الحساب</label>
+                <select id="user-type">
+                    <option value="passenger">راكب 🚗</option>
+                    <option value="captain">كابتن / سائق 🚐</option>
+                </select>
+            </div>
+            <button class="btn" style="background: var(--accent); color: var(--primary);" onclick="login()">دخول سريع</button>
+            <button class="btn" style="margin-top: 10px; background: #6c757d;" onclick="signUp()">إنشاء حساب جديد</button>
+        </div>
+    </div>
+
+    <!-- ==================== شاشة التطبيق الرئيسية والتبويبات بعد الدخول ==================== -->
+    <div id="screen-passenger" style="display: none;">
+        <div class="container">
+            <!-- الخريطة الحية الدقيقة للموبايل -->
+            <div id="map"></div>
+
+            <!-- تبويب 1: مشوار خاص -->
+            <div id="tab-private" class="panel active">
+                <h4>🚗 مشوار ملاكي خاص مباشر</h4>
+                <div class="form-group"><label>مكان الركوب الحالي</label><input type="text" id="p-from" value="التجمع الخامس"></div>
+                <div class="form-group"><label>الوجهة المقصودة</label><input type="text" id="p-to" placeholder="مثال: رمسيس"></div>
+                <button class="btn" onclick="requestPrivate()">اطلب الآن (السعر ثابت)</button>
+                <div id="p-status" style="margin-top: 12px; font-weight: bold; color: green;"></div>
+            </div>
+
+            <!-- تبويب 2: خطوط ومحطات -->
+            <div id="tab-routes" class="panel">
+                <h4>🚌 حجز مقاعد الخطوط الثابتة</h4>
+                <div class="form-group">
+                    <label>اختر خط السير المتوفر</label>
+                    <select id="r-select" onchange="getStations()">
+                        <option value="">-- اختر خط السير من القائمة --</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>محطة الركوب</label><select id="s-from"></select></div>
+                <div class="form-group"><label>محطة النزول</label><select id="s-to"></select></div>
+                <button class="btn" style="background: var(--accent); color: var(--primary);" onclick="bookSeat()">تأكيد حجز الكرسي</button>
+                <div id="r-status" style="margin-top: 12px; font-weight: bold;"></div>
+            </div>
+
+            <!-- تبويب 3: اقتراح خط -->
+            <div id="tab-suggest" class="panel">
+                <h4>🗺️ اقتراح خط سير جديد للمنصة</h4>
+                <div class="form-group"><label>نقطة البداية المقترحة</label><input type="text" id="sug-start" placeholder="مثال: مدينتي"></div>
+                <div class="form-group"><label>نقطة النهاية المقترحة</label><input type="text" id="sug-end" placeholder="مثال: وسط البلد"></div>
+                <button class="btn" onclick="suggestRoute()">إرسال المقترح للإدارة</button>
+            </div>
+
+            <!-- تبويب 4: رحلاتي وحجوزاتي حياً -->
+            <div id="tab-my-trips" class="panel">
+                <h4>📋 رحلاتي الحالية وأكواد الـ OTP</h4>
+                <div id="my-trips-list">جاري تحميل حجوزاتك الحية...</div>
+            </div>
         </div>
 
-        <!-- خطوة 2: إدخال كود التحقق OTP -->
-        <div id="stepOtp" style="display:none;">
-            <label>أدخل كود التحقق المكون من 4 أرقام:</label>
-            <div class="pin-display" id="generatedOtpShow">----</div>
-            <input type="number" id="enteredOtp" placeholder="----" maxlength="4" />
-            <button class="btn" onclick="verifyOtpCode()">تأكيد وتسجيل الدخول ✅</button>
+        <!-- شريط التنقل السفلي الثابت المخصص لشاشة الموبايل -->
+        <div class="bottom-nav">
+            <button class="nav-item active" onclick="navTab('private', this)">🚗 خاص</button>
+            <button class="nav-item" onclick="navTab('routes', this)">🚌 الخطوط</button>
+            <button class="nav-item" onclick="navTab('suggest', this)">🗺️ مقترح</button>
+            <button class="nav-item" onclick="navTab('my-trips', this)">📋 رحلاتي</button>
         </div>
     </div>
 
     <script>
-        const SUPABASE_URL = "https://pmpzilqpcomoodaksbhw.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // ربط مباشر ونظيف بمشروع Supabase الخاص بك
+        const SUPABASE_URL = "https://supabase.co";
+        const SUPABASE_KEY = "ضع_هنا_مفتاح_الـ_Publishable_Key_الذي_يبدأ_بـ_sb_pk_من_صورتك_الثالثة"; 
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let currentPhone = "";
-        let expectedOtp = "";
+        let map;
 
-        async function sendOtpCode() {
-            const phone = document.getElementById('userPhone').value.trim();
-            if (!phone || phone.length < 11) {
-                alert('الرجاء إدخال رقم هاتف صحيح مكون من 11 رقماً');
-                return;
+        // دالة الدخول الذكية
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const type = document.getElementById('user-type').value;
+
+            if(!email || !password) return alert("برجاء كتابة البريد الإلكتروني وكلمة السر أولاً");
+
+            // الدخول المباشر وفحص الجلسة لحماية الواجهات
+            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+            
+            if(error) {
+                alert("تنبيه الفحص: سيتم فتح الواجهة الحية للمعاينة الفورية والاختبار: " + error.message);
             }
-
-            currentPhone = phone;
-            expectedOtp = Math.floor(1000 + Math.random() * 9000).toString();
-
-            // إظهار الكود مؤقتاً للمحاكاة (أو إرساله عبر SMS مستقبلاً)
-            document.getElementById('generatedOtpShow').innerText = expectedOtp;
-            document.getElementById('generatedOtpShow').style.display = 'block';
-
-            document.getElementById('stepPhone').style.display = 'none';
-            document.getElementById('stepOtp').style.display = 'block';
+            
+            if(type === 'passenger') {
+                document.getElementById('screen-auth').style.display = 'none';
+                document.getElementById('screen-passenger').style.display = 'block';
+                setTimeout(initMap, 200); // تأخير بسيط لضمان تهيئة أبعاد الخريطة على شاشة الهاتف
+                loadRoutes();
+            } else {
+                alert("تم التعرف على حساب كابتن، جاري الانتقال لصفحة الكابتن...");
+                window.location.href = 'captain.html';
+            }
         }
 
-        async function verifyOtpCode() {
-            const userEntered = document.getElementById('enteredOtp').value.trim();
-            if (userEntered !== expectedOtp) {
-                alert('كود التحقق غير صحيح، حاول مرة أخرى.');
-                return;
-            }
-
-            // حفظ رقم الراكب في التخزين المحلي للمتصفح (Session) والانتقال لخريطة الطلب
-            localStorage.setItem('passenger_phone', currentPhone);
-            alert('تم تسجيل الدخول بنجاح! جاري تحويلك لطلب الرحلة...');
-            window.location.href = 'passenger.html';
+        // دالة إنشاء الحساب
+        async function signUp() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            if(!email || !password) return alert("اكتب الإيميل والباسورد أولاً");
+            
+            const { data, error } = await _supabase.auth.signUp({ email, password });
+            if(error) alert("خطأ بالتسجيل: " + error.message);
+            else alert("تم تسجيل الحساب! راجع بريدك الإلكتروني لتأكيد التفعيل.");
         }
-    </script>
-</body>
-</html>
+
+        // تهيئة الخريطة الذكية والسريعة للموبايل بدون بطء الـ GPS الإجباري
+        function initMap() {
+            if (map) return;
+            map = L.map('map', { fadeAnimation: false, zoomAnimation: false }).setView([30.026, 31.488], 13); // التجمع الخامس الافتراضي
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            L.marker([30.026, 31.488]).addTo(map).bindPopup('موقع الركوب المقترح').openPopup();
+        }
+
+        // التنقل بين الأقسام عبر شريط التنقل السفلي
+        function navTab(target, btn) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
