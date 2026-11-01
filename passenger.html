@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>كومبو - واجهة الراكب</title>
+    <title>كومبو - واجهة الراكب الاحترافية</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -18,9 +18,14 @@
         .btn-blue { background: #0066cc; color: #fff; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-bottom: 10px; font-size: 14px; }
         .btn-green { background: #00875a; color: #fff; border: none; padding: 16px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; font-size: 16px; }
         
-        .input-box { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; margin-top: 6px; margin-bottom: 12px; font-size: 14px; outline: none; }
+        .input-box { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; margin-top: 6px; margin-bottom: 6px; font-size: 14px; outline: none; }
         label { font-size: 12px; color: #aaa; display: block; }
         
+        /* نتائج البحث المنسدلة زي جوجل ماب */
+        .suggestions-list { background: #222; border: 1px solid #444; border-radius: 8px; max-height: 150px; overflow-y: auto; margin-bottom: 10px; display: none; }
+        .suggestion-item { padding: 10px; font-size: 13px; border-bottom: 1px solid #333; cursor: pointer; }
+        .suggestion-item:hover { background: #333; color: #00e676; }
+
         .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; }
         .hint-text { font-size: 11px; color: #00e676; text-align: center; margin-bottom: 5px; }
         
@@ -36,15 +41,16 @@
     </div>
 
     <div class="card" id="formCard">
-        <button class="btn-blue" onclick="useCurrentLocation()">📍 استخدام موقعي الحالي على الخريطة</button>
+        <button class="btn-blue" onclick="useCurrentLocation()">📍 استخدام موقعي الحالي (جلب اسم الشارع)</button>
         
         <label>مكان الاستلام (من):</label>
-        <input type="text" id="startInput" class="input-box" value="شارع مصطفي ابو زهره، مدينة نصر" />
+        <input type="text" id="startInput" class="input-box" value="جاري تحديد اسم الشارع..." />
         
-        <label>الوجهة (إلى):</label>
-        <input type="text" id="endInput" class="input-box" value="شارع الاتحاد" />
+        <label>الوجهة (إلى - بحث مثل جوجل ماب):</label>
+        <input type="text" id="endInput" class="input-box" placeholder="اكتب اسم الشارع أو المنطقة للبحث..." oninput="searchPlaces(this.value, 'endSuggestions')" />
+        <div id="endSuggestions" class="suggestions-list"></div>
 
-        <div class="hint-text">💡 اسحب الدبوس الأزرق على الخريطة لتحديد مكانك بدقة!</div>
+        <div class="hint-text">💡 اسحب الدبوس الأزرق على الخريطة لتحديث اسم الشارع تلقائياً!</div>
         <div id="map" class="map-container"></div>
 
         <div class="info-box">
@@ -57,7 +63,7 @@
         <button class="btn-green" onclick="requestTrip()">اطلب الرحلة الآن 🚀</button>
     </div>
 
-    <!-- كارت حالة الرحلة ومتابعة الكابتن والـ PIN -->
+    <!-- كارت حالة الرحلة -->
     <div class="card" id="statusCard" style="display:none; text-align:center;">
         <div id="statusBadge" style="background:#222; color:#ff9800; padding:12px; border-radius:8px; font-weight:bold; border:1px solid #333; margin-bottom: 10px;">⏳ في انتظار قبول الكابتن...</div>
         <div id="statusMap" class="map-container"></div>
@@ -79,22 +85,75 @@
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
             
             mainMarker = L.marker([30.0561, 31.3285], { draggable: true }).addTo(map)
-                .bindPopup("🟢 موقعك الحالي").openPopup();
+                .bindPopup("🟢 اسحبني لتحديد موقعك").openPopup();
 
-            mainMarker.on('dragend', function(e) {
+            // جلب اسم الشارع تلقائياً عند تحريك الدبوس (Reverse Geocoding)
+            mainMarker.on('dragend', async function(e) {
                 const pos = mainMarker.getLatLng();
-                document.getElementById('startInput').value = `موقع محدد (خط عرض: ${pos.lat.toFixed(4)}, خط طول: ${pos.lng.toFixed(4)})`;
+                await getStreetName(pos.lat, pos.lng, 'startInput');
             });
+
+            // جلب الشارع الافتراضي عند الفتح
+            getStreetName(30.0561, 31.3285, 'startInput');
         };
+
+        // دالة جلب اسم الشارع الحقيقي من الإحداثيات (زي جوجل ماب)
+        async function getStreetName(lat, lng, elementId) {
+            try {
+                let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+                let data = await res.json();
+                if (data && data.display_name) {
+                    let shortName = data.display_name.split(',')[0] + '، ' + (data.address.city || data.address.town || 'القاهرة');
+                    document.getElementById(elementId).value = shortName;
+                }
+            } catch (err) {
+                document.getElementById(elementId).value = `خط عرض: ${lat.toFixed(4)}, خط طول: ${lng.toFixed(4)}`;
+            }
+        }
+
+        // دالة البحث التفاعلي عن الشوارع والأماكن
+        async function searchPlaces(query, containerId) {
+            const listContainer = document.getElementById(containerId);
+            if (query.length < 3) {
+                listContainer.style.display = 'none';
+                return;
+            }
+
+            try {
+                let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' Cairo')}&limit=5`);
+                let results = await res.json();
+                
+                listContainer.innerHTML = '';
+                if (results.length > 0) {
+                    listContainer.style.display = 'block';
+                    results.forEach(place => {
+                        let div = document.createElement('div');
+                        div.className = 'suggestion-item';
+                        div.innerText = place.display_name;
+                        div.onclick = function() {
+                            document.getElementById('endInput').value = place.display_name.split(',')[0];
+                            listContainer.style.display = 'none';
+                            map.setView([parseFloat(place.lat), parseFloat(place.lon)], 16);
+                            L.marker([parseFloat(place.lat), parseFloat(place.lon)]).addTo(map).bindPopup("🎯 الوجهة").openPopup();
+                        };
+                        listContainer.appendChild(div);
+                    });
+                } else {
+                    listContainer.style.display = 'none';
+                }
+            } catch (err) {
+                console.log('خطأ في البحث');
+            }
+        }
 
         function useCurrentLocation() {
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition((pos) => {
+                navigator.geolocation.getCurrentPosition(async (pos) => {
                     const lat = pos.coords.latitude;
                     const lng = pos.coords.longitude;
                     map.setView([lat, lng], 16);
                     mainMarker.setLatLng([lat, lng]);
-                    document.getElementById('startInput').value = "موقعي الحالي (GPS)";
+                    await getStreetName(lat, lng, 'startInput');
                 });
             } else {
                 alert('الخواص الجغرافية غير مدعومة في متصفحك');
@@ -118,7 +177,7 @@
                 return;
             }
 
-            if (data && data.length > 0) {
+(data && data.length > 0) {
                 activeTripId = data[0].id;
                 document.getElementById('formCard').style.display = 'none';
                 document.getElementById('statusCard').style.display = 'block';
