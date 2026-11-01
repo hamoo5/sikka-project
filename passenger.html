@@ -93,7 +93,6 @@
         return; 
       }
 
-      // الانتقال المباشر للخريطة
       document.getElementById('auth-section').classList.add('hidden');
       document.getElementById('app-section').classList.remove('hidden');
       setTimeout(initMap, 200);
@@ -290,11 +289,10 @@
       const dropoff = document.getElementById('dropoff_loc').value;
       if (!pickup || !dropoff) { alert('أكمل بيانات الرحلة'); return; }
 
+      // إرسال الأعمدة المتوافقة فقط مع جدول قاعدة البيانات لتفادي أي أخطاء
       const { data, error } = await supabase.from('bookings').insert([{ 
         pickup_location: pickup, 
-        status: 'pending',
-        pickup_lat: pickupCoords ? pickupCoords.lat : 30.0444,
-        pickup_lng: pickupCoords ? pickupCoords.lng : 31.2357
+        status: 'pending'
       }]).select();
 
       if (error) {
