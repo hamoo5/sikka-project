@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>كومبو - واجهة الراكب</title>
   
-  <!-- مكتبة Leaflet ومكتبة البحث Geosearch -->
+  <!-- مكتبات الخرائط والبحث -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.11.0/dist/geosearch.css" />
 
@@ -21,7 +21,22 @@
     #map { height: 320px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
     .hidden { display: none; }
     .toggle-link { color: #007bff; text-align: center; cursor: pointer; margin-top: 10px; display: block; font-weight: bold; }
-    .leaflet-control-geosearch form { right: 0; left: auto; }
+    
+    /* تنسيق صندوق البحث فوق الخريطة يشبه خرائط جوجل */
+    .leaflet-control-geosearch {
+      width: 90% !important;
+      margin: 10px auto !important;
+      left: 0 !important;
+      right: 0 !important;
+    }
+    .leaflet-control-geosearch input {
+      padding: 10px !important;
+      font-size: 15px !important;
+      border-radius: 8px !important;
+      border: 1px solid #007bff !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .leaflet-bar { border: none !important; }
   </style>
 </head>
 <body>
@@ -45,20 +60,20 @@
     
     <button class="btn-gps" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
     
-    <!-- الخريطة -->
+    <!-- الخريطة التفاعلية -->
     <div id="map"></div>
 
     <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب:</label>
     <input type="text" id="pickup_loc" placeholder="اضغط على الخريطة أو استخدم البحث">
     
     <label style="font-weight:bold; font-size:13px; color:#555;">وجهة النزول:</label>
-    <input type="text" id="dropoff_loc" placeholder="اكتب المكان أو اضغط لتحديده">
+    <input type="text" id="dropoff_loc" placeholder="اكتب الوجهة أو اخترها">
     
     <button class="btn-fav" onclick="saveFavoriteTrip()">⭐ حفظ الرحلة في المفضلة</button>
     <button onclick="requestRide()">طلب المشوار الآن</button>
   </div>
 
-  <!-- نصفيات المكتبات -->
+  <!-- مكتبات الجافاسكريبت للخرائط والبحث -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-geosearch@3.11.0/dist/geosearch.umd.js"></script>
 
@@ -104,14 +119,12 @@
       }
     };
 
-    // تحويل الإحداثيات لاسم شارع ومكان
     async function updateAddressName(lat, lng) {
       document.getElementById('pickup_loc').value = "جاري جلب اسم الشارع...";
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`);
         const data = await res.json();
         if (data && data.display_name) {
-          // اختصار العنوان ليظهر اسم الشارع والمنطقة بوضوح
           const parts = data.display_name.split(',');
           const shortAddress = parts.slice(0, 3).join(',');
           document.getElementById('pickup_loc').value = shortAddress;
@@ -126,13 +139,11 @@
     function initMap() {
       if (map) return;
 
-      // إنشاء الخريطة وتركيزها على القاهرة
       map = L.map('map').setView([30.0444, 31.2357], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // إشعار شريط البحث أعلى الخريطة
       const searchControl = new GeoSearch.GeoSearchControl({
         provider: provider,
         style: 'bar',
@@ -144,14 +155,12 @@
       });
       map.addControl(searchControl);
 
-      // عند اختيار نتيجة من محرك البحث
       map.on('geosearch/showlocation', function(result) {
         const { x, y, label } = result.location;
         setMarker(y, x);
         document.getElementById('pickup_loc').value = label;
       });
 
-      // عند النقر على الخريطة
       map.on('click', function(e) {
         setMarker(e.latlng.lat, e.latlng.lng);
         updateAddressName(e.latlng.lat, e.latlng.lng);
@@ -199,7 +208,7 @@
       if (!pickup || !dropoff) { alert('أكمل بيانات الركوب والوجهة'); return; }
       const { error } = await supabase.from('bookings').insert([{ pickup_location: pickup, dropoff_location: dropoff, trip_type: 'private', status: 'pending' }]);
       if (error) alert('خطأ: ' + error.message);
-      else alert('تم إرسال طلب رحلتك بنجاح!');
+      else alert('تم إرسال طلب رحلتك بنجاح! جاري البحث عن كابتن.');
     };
   </script>
 </body>
