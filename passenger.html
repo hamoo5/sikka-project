@@ -135,31 +135,21 @@
         if (!pickupCoords) {
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
-          if (pickupMarker) {
-            pickupMarker.setLatLng(coords);
-          } else {
-            pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
-          }
+          if (pickupMarker) { pickupMarker.setLatLng(coords); } 
+          else { pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map); }
           map.setView(coords, 14);
         } else if (!dropoffCoords) {
           dropoffCoords = coords;
           document.getElementById('dropoff_loc').value = address;
-          if (dropoffMarker) {
-            dropoffMarker.setLatLng(coords);
-          } else {
-            dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map);
-          }
+          if (dropoffMarker) { dropoffMarker.setLatLng(coords); } 
+          else { dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map); }
           map.setView(coords, 14);
           drawRoute();
         } else {
-          // لو تم الضغط مرة ثالثة، نحدث الانطلاق ونعيد التعيين
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
-          if (pickupMarker) {
-            pickupMarker.setLatLng(coords);
-          } else {
-            pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
-          }
+          if (pickupMarker) { pickupMarker.setLatLng(coords); } 
+          else { pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map); }
           dropoffCoords = null;
           document.getElementById('dropoff_loc').value = '';
           if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
@@ -208,7 +198,6 @@
             }
           }
 
-          // تحريك الخريطة وتوجيهها مباشرة للمكان الجديد
           map.setView(coords, 15);
 
           if (pickupCoords && dropoffCoords) {
