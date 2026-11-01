@@ -13,9 +13,9 @@
         .top-bar { background: #000; padding: 14px; display: flex; justify-content: space-between; border-bottom: 1px solid #333; }
         .container { padding: 12px; }
         .card { background: #1e1e1e; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
-        .btn { background: #00875a; color: #fff; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 10px; }
-        .map-container { width: 100%; height: 280px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; }
-        .pin-box { font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #00e676; background: #111; padding: 12px; border-radius: 8px; text-align: center; margin: 10px 0; border: 1px dashed #00e676; }
+        .btn { background: #00875a; color: #fff; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; }
+        .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; }
+        .pin-box { font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; border: 1px dashed #00e676; }
     </style>
 </head>
 <body>
@@ -34,25 +34,29 @@
             <div id="statusBadge" style="background:#333; color:#ff9800; padding:8px; border-radius:6px; font-weight:bold;">⏳ في انتظار قبول الكابتن...</div>
             <div id="map" class="map-container" style="display:none;"></div>
             <div id="pinContainer" style="display:none;">
-                <label style="font-size:12px; color:#aaa;">كود الـ PIN الموحد للرحلة:</label>
-                <div class="pin-box" id="pinCode">----</div>
+                <label style="font-size:12px; color:#aaa;">كود الـ PIN الخاص بك (أعطه للكابتن):</label>
+                <div class="pin-box">4480</div>
             </div>
         </div>
     </div>
 
     <script>
         const supabaseClient = supabase.createClient("https://pmpzilqpcomoodaksbhw.supabase.co", "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx");
-        let activeTripId = null, map = null, pMarker, cMarker;
-        const myPin = "4480"; // كود ثابت ممرر للطرفين
+        let activeTripId = null, map = null;
 
         async function requestTrip() {
-            const { data } = await supabaseClient.from('trips_data').insert([{
+            const { data, error } = await supabaseClient.from('trips_data').insert([{
                 start_station: "طريق النصر",
                 end_station: "شارع صلاح الدين",
                 trip_price: "100 ج.م",
                 user_mobile: "01112142750",
-                notes: "pending" // استخدام notes كبديل لحقل الحالة
+                notes: "pending"
             }]).select();
+
+            if (error) {
+                alert('خطأ في إرسال الطلب: ' + error.message);
+                return;
+            }
 
             if (data && data.length > 0) {
                 activeTripId = data[0].id;
@@ -72,25 +76,27 @@
                 if (data.notes === 'accepted') {
                     badge.innerText = "🚗 الكابتن قبل الرحلة وهو في الطريق إليك!";
                     badge.style.color = "#00e676";
-                    showTrackingUI();
+                    showMap();
                 } else if (data.notes === 'arrived') {
-                    badge.innerText = "📍 الكابتن وصل موقعك وهو في انتظارك الآن!";
+                    badge.innerText = "📍 الكابتن وصل موقعك، أعطه كود PIN (4480)";
                     badge.style.color = "#ff9800";
-                    showTrackingUI();
+                } else if (data.notes === 'started') {
+                    badge.innerText = "🎯 الرحلة جارية الآن نحو الوجهة!";
+                    badge.style.color = "#00e676";
+                } else if (data.notes === 'completed') {
+                    alert('تم إنهاء الرحلة بنجاح! شكراً لاستخدامك كومبو.');
+                    window.location.reload();
                 }
             }, 2000);
         }
 
-        function showTrackingUI() {
+        function showMap() {
             document.getElementById('map').style.display = 'block';
             document.getElementById('pinContainer').style.display = 'block';
-            document.getElementById('pinCode').innerText = myPin;
-
             if (!map) {
                 map = L.map('map').setView([30.0561, 31.3285], 14);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                pMarker = L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 موقعك").openPopup();
-                cMarker = L.marker([30.0611, 31.3325]).addTo(map).bindPopup("🚗 الكابتن");
+                L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 موقعك").openPopup();
             }
         }
     </script>
