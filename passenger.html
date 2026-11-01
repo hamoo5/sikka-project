@@ -26,12 +26,10 @@
         .search-item { padding: 10px; border-bottom: 1px solid #333; font-size: 13px; cursor: pointer; }
         .search-item:hover { background: #333; }
         
-        /* كروت الكباتن */
         .captain-card { background: #2a2a2a; border: 1px solid #444; border-radius: 10px; padding: 12px; margin-bottom: 10px; text-align: right; }
         .captain-info { display: flex; justify-content: space-between; align-items: center; }
         .rating { color: #ffca28; font-weight: bold; }
         
-        /* تصميم الشات */
         .chat-box { background: #181818; border: 1px solid #333; border-radius: 10px; padding: 10px; height: 160px; overflow-y: auto; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
         .chat-msg { max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
         .chat-msg.me { background: #00875a; color: #fff; align-self: flex-end; }
@@ -66,7 +64,6 @@
                 📏 المسافة: <b id="txtDistance" style="color:#00e676;">0 كم</b> | ⏱️ الوقت: <b id="txtDuration" style="color:#ff9800;">0 دقيقة</b> | 💰 السعر: <b id="txtPrice" style="color:#00e676;">0 ج.م</b>
             </div>
 
-            <!-- تم حذف خانة رقم الهاتف واعتمدنا الرقم المسجل -->
             <button class="btn btn-green" onclick="showOnlineCaptains()">البحث عن كابتن أونلاين 🚀</button>
         </div>
 
@@ -112,7 +109,6 @@
         let activeTripId = null, generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
         let passengerPhone = localStorage.getItem('passenger_phone') || "01000000000";
 
-        // قائمة محاكاة لكباتن أونلاين
         const mockCaptains = [
             { id: 1, name: "كابتن أحمد محمود", car: "نيسان صني - أسود", rating: "4.9 ⭐", trips: 450 },
             { id: 2, name: "كابتن محمد مصطفى", car: "هيونداي إلنترا - أبيض", rating: "4.8 ⭐", trips: 310 },
@@ -258,15 +254,23 @@
         }
 
         async function confirmTripWithCaptain(captainName) {
-            const { data } = await supabaseClient.from('trips_data').insert([{
-                start_station: document.getElementById('pStartInput').value || "موقعي",
-                end_station: document.getElementById('pEndInput').value || "الوجهة",
+            const startName = document.getElementById('pStartInput').value || "طريق النصر";
+            const endName = document.getElementById('pEndInput').value || "شارع صلاح الدين";
+
+            const { data, error } = await supabaseClient.from('trips_data').insert([{
+                start_station: startName,
+                end_station: endName,
                 trip_price: `${finalPrice} ج.م`,
                 user_mobile: passengerPhone,
                 trip_pin: generatedPin,
                 status: 'pending',
                 notes: `تم توجيه الطلب إلى: ${captainName}`
             }]).select();
+
+            if (error) {
+                alert('خطأ في إرسال الطلب: ' + error.message);
+                return;
+            }
 
             if (data && data.length > 0) {
                 activeTripId = data[0].id;
