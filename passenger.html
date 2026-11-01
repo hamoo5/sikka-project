@@ -2,228 +2,192 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>كومبو - واجهة الراكب الاحترافية</title>
-    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محطات - تطبيق الراكب</title>
+    <!-- استدعاء مكتبة Supabase الرسمية -->
+    <script src="https://jsdelivr.net"></script>
     <style>
-        * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
-        body { background: #121212; color: #fff; margin: 0; padding: 10px; direction: rtl; }
-        .top-bar { background: #000; padding: 12px; display: flex; justify-content: space-between; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333; }
-        .card { background: #181818; padding: 14px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; position: relative; }
-        
-        .btn-blue { background: #0066cc; color: #fff; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-bottom: 10px; font-size: 14px; }
-        .btn-green { background: #00875a; color: #fff; border: none; padding: 16px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; font-size: 16px; }
-        
-        .input-box { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; margin-top: 6px; margin-bottom: 6px; font-size: 14px; outline: none; }
-        label { font-size: 12px; color: #aaa; display: block; }
-        
-        /* قائمة نتائج البحث المنضبطة زي جوجل ماب */
-        .suggestions-list { position: absolute; width: calc(100% - 28px); background: #222; border: 1px solid #00e676; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.8); }
-        .suggestion-item { padding: 12px; font-size: 13px; border-bottom: 1px solid #333; cursor: pointer; color: #fff; }
-        .suggestion-item:hover { background: #333; color: #00e676; }
-
-        .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; background: #222; }
-        .hint-text { font-size: 11px; color: #00e676; text-align: center; margin-bottom: 5px; }
-        
-        .info-box { background: #1e1e1e; padding: 12px; border-radius: 8px; border: 1px dashed #00e676; margin-bottom: 12px; text-align: center; font-size: 13px; color: #00e676; font-weight: bold; }
-        .pin-box { font-size: 26px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; border: 1px dashed #00e676; }
+        :root { --primary: #1a1a1a; --accent: #ffc107; --bg: #f8f9fa; --card: #ffffff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg); color: #333; padding: 15px; }
+        .header { background: var(--primary); color: white; padding: 20px; text-align: center; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; }
+        .header h1 { color: var(--accent); font-size: 22px; }
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: #ddd; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .tab-btn.active { background: var(--accent); color: var(--primary); }
+        .panel { background: var(--card); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: none; }
+        .panel.active { display: block; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
+        .btn { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn:hover { background: #333; }
+        .list-item { background: #f1f3f5; padding: 12px; border-radius: 8px; margin-top: 10px; border-right: 4px solid var(--accent); }
     </style>
 </head>
 <body>
 
-    <div class="top-bar">
-        <b>🚗 كومبو - واجهة الراكب</b>
-        <a href="captain.html" style="color:#00e676; text-decoration:none; font-weight:bold;">صفحة الكابتن ➔</a>
+    <div class="header">
+        <h1>برنامج مَحَطَّات</h1>
+        <p>رحلات خاصة، مشتركة، وخطوط سير ثابتة</p>
     </div>
 
-    <div class="card" id="formCard">
-        <button class="btn-blue" onclick="useCurrentLocation()">📍 استخدام موقعي الحالي على الخريطة</button>
-        
-        <label>مكان الاستلام (من):</label>
-        <input type="text" id="startInput" class="input-box" value="شارع مصطفي ابو زهره، مدينة نصر" />
-        
-        <label>الوجهة (إلى - بحث مثل جوجل ماب):</label>
-        <input type="text" id="endInput" class="input-box" placeholder="اكتب اسم الشارع أو المنطقة للبحث..." oninput="searchPlaces(this.value)" autocomplete="off" />
-        <div id="endSuggestions" class="suggestions-list"></div>
-
-        <div class="hint-text">💡 اسحب الدبوس الأزرق على الخريطة لتحديد مكانك بدقة!</div>
-        <div id="map" class="map-container"></div>
-
-        <div class="info-box">
-            🛣️ المسافة: 17.9 كم | ⏱️ الوقت: 19 دقيقة | 💰 السعر: 159 ج.م
-        </div>
-
-        <label>رقم الهاتف:</label>
-        <input type="text" id="phoneInput" class="input-box" value="01255555588" />
-
-        <button class="btn-green" onclick="requestTrip()">اطلب الرحلة الآن 🚀</button>
+    <!-- التبديل بين الفئات الثلاث للركاب -->
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('private', this)">🚗 خاص</button>
+        <button class="tab-btn" onclick="switchTab('shared', this)">🚐 مشترك</button>
+        <button class="tab-btn" onclick="switchTab('routes', this)">🚌 خطوط</button>
     </div>
 
-    <!-- كارت حالة الرحلة -->
-    <div class="card" id="statusCard" style="display:none; text-align:center;">
-        <div id="statusBadge" style="background:#222; color:#ff9800; padding:12px; border-radius:8px; font-weight:bold; border:1px solid #333; margin-bottom: 10px;">⏳ في انتظار قبول الكابتن...</div>
-        <div id="statusMap" class="map-container"></div>
-        <div id="pinContainer" style="display:none;">
-            <label style="font-size:12px; color:#aaa;">كود الـ PIN الخاص بك (أعطه للكابتن عند ركوب السيارة):</label>
-            <div class="pin-box">4480</div>
+    <!-- 1. لوحة المشوار الخاص -->
+    <div id="panel-private" class="panel active">
+        <h3>طلب مشوار خاص (ملاكي)</h3>
+        <div class="form-group"><label>نقطة الانطلاق</label><input type="text" id="priv-from" value="التجمع الخامس"></div>
+        <div class="form-group"><label>الوجهة</label><input type="text" id="priv-to" placeholder="مثال: رمسيس"></div>
+        <button class="btn" onclick="requestPrivateTrip()">طلب السيارة الآن</button>
+        <div id="priv-status" style="margin-top:15px; font-weight:bold; color:green;"></div>
+    </div>
+
+    <!-- 2. لوحة المشوار المشترك -->
+    <div id="panel-shared" class="panel">
+        <h3>البحث عن مشوار مشترك (تجميع ركاب بنفس الاتجاه)</h3>
+        <div class="form-group"><label>من</label><input type="text" id="share-from" placeholder="مكانك الحالي"></div>
+        <div class="form-group"><label>إلى</label><input type="text" id="share-to" placeholder="الوجهة"></div>
+        <button class="btn" onclick="searchSharedTrips()">ابحث عن سيارات متاحة</button>
+        <div id="shared-list"></div>
+    </div>
+
+    <!-- 3. لوحة الخطوط والمحطات الثابتة -->
+    <div id="panel-routes" class="panel">
+        <h3>حجز مقعد في ميكروباص / سوزوكي (خطوط ثابتة)</h3>
+        <div class="form-group">
+            <label>اختر خط السير</label>
+            <select id="route-select" onchange="loadStationsForRoute()">
+                <option value="">-- اختر الخط --</option>
+            </select>
         </div>
+        <div class="form-group"><label>محطة الركوب</label><select id="station-from"></select></div>
+        <div class="form-group"><label>محطة النزول</label><select id="station-to"></select></div>
+        <button class="btn" onclick="bookLineSeat()">تأكيد حجز الكرسي</button>
+        <div id="route-status" style="margin-top:15px; font-weight:bold;"></div>
     </div>
 
     <script>
-        const SUPABASE_URL = "https://pmpzilqpcomoodaksbhw.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // إعدادات الاتصال بـ Supabase من واقع لوحة تحكمك
+        const SUPABASE_URL = "https://supabase.co"; // رابط مشروعك المستخرج [1]
+        const SUPABASE_KEY = "ضغ_هنا_مفتاح_الـ_Publishable_Key_الخاص_بمك"; // استبدله بالمفتاح الظاهر في صورتك الثالثة [3]
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let map = null, statusMap = null, activeTripId = null, mainMarker = null, destMarker = null;
-
-        window.onload = function() {
-            setTimeout(() => {
-                map = L.map('map').setView([30.0561, 31.3285], 15);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-                
-                mainMarker = L.marker([30.0561, 31.3285], { draggable: true }).addTo(map)
-                    .bindPopup("🟢 موقع الاستلام").openPopup();
-
-                mainMarker.on('dragend', async function(e) {
-                    const pos = mainMarker.getLatLng();
-                    await getStreetName(pos.lat, pos.lng, 'startInput');
-                });
-            }, 300);
-        };
-
-        // دالة جلب اسم الشارع بدقة وتجنب الأرقام العشوائية
-        async function getStreetName(lat, lng, elementId) {
-            try {
-                let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
-                let data = await res.json();
-                if (data && data.address) {
-                    let road = data.address.road || data.address.suburb || data.address.neighbourhood || 'منطقة غير محددة؛';
-                    let city = data.address.city || data.address.town || 'القاهرة';
-                    document.getElementById(elementId).value = `${road}, ${city}`;
-                }
-            } catch (err) {
-                document.getElementById(elementId).value = `موقع محدد على الخريطة`;
-            }
+        // التبديل بين الشاشات
+        function switchTab(type, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(`panel-${type}`).classList.add('active');
+            if(type === 'routes') loadRoutesFromDB();
         }
 
-        // دالة البحث المباشر في الشوارع وإظهار القائمة المنسدلة مثل جوجل ماب
-        async function searchPlaces(query) {
-            const listContainer = document.getElementById('endSuggestions');
-            if (query.length < 2) {
-                listContainer.style.display = 'none';
-                return;
-            }
+        // 1. منطق طلب مشوار خاص (إدخال مباشر في جدول trips) [2]
+        async function requestPrivateTrip() {
+            const from = document.getElementById('priv-from').value;
+            const to = document.getElementById('priv-to').value;
+            if(!to) return alert("برجاء تحديد الوجهة");
 
-            try {
-                let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' Cairo Egypt')}&limit=5`);
-                let results = await res.json();
-                
-                listContainer.innerHTML = '';
-                if (results.length > 0) {
-                    listContainer.style.display = 'block';
-                    results.forEach(place => {
-                        let div = document.createElement('div');
-                        div.className = 'suggestion-item';
-                        div.innerText = place.display_name;
-                        div.onclick = function() {
-                            document.getElementById('endInput').value = place.display_name.split(',')[0];
-                            listContainer.style.display = 'none';
-                            
-                            let lat = parseFloat(place.lat);
-                            let lon = parseFloat(place.lon);
-                            map.setView([lat, lon], 16);
-                            
-                            if (destMarker) map.removeLayer(destMarker);
-                            destMarker = L.marker([lat, lon]).addTo(map).bindPopup("🎯 الوجهة").openPopup();
-                        };
-                        listContainer.appendChild(div);
-                    });
-                } else {
-                    listContainer.style.display = 'none';
-                }
-            } catch (err) {
-                listContainer.style.display = 'none';
-            }
-        }
+            document.getElementById('priv-status').innerText = "جاري حساب السعر والبحث عن كابتن...";
+            
+            // السعر الثابت الافتراضي
+            const estimatedFare = 120; 
 
-        function useCurrentLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(async (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-                    map.setView([lat, lng], 16);
-                    if (mainMarker) mainMarker.setLatLng([lat, lng]);
-                    await getStreetName(lat, lng, 'startInput');
-                });
-            } else {
-                alert('الخواص الجغرافية غير مدعومة في متصفحك');
-            }
-        }
-
-        async function requestTrip() {
-            const start = document.getElementById('startInput').value;
-            const end = document.getElementById('endInput').value;
-            const phone = document.getElementById('phoneInput').value;
-
-            const { data, error } = await supabaseClient.from('trips_data').insert([{
-                start_station: start,
-                end_station: end,
-                trip_price: '159_pending',
-                user_mobile: phone
-            }]).select();
+            const { data, error } = await _supabase.from('trips').insert([
+                { trip_type: 'private', start_location: from, end_location: to, fare: estimatedFare, status: 'pending' }
+            ]).select();
 
             if (error) {
-                alert('خطأ في إرسال الطلب: ' + error.message);
+                alert("فشل الطلب: " + error.message);
+            } else {
+                document.getElementById('priv-status').innerHTML = `تم طلب السيارة بنجاح!<br>السعر الثابت: ${estimatedFare} جنيه.<br>جاري انتظار قبول الكابتن...`;
+            }
+        }
+
+        // 2. منطق البحث عن مشاوير مشتركة حية [2]
+        async function searchSharedTrips() {
+            const container = document.getElementById('shared-list');
+            container.innerHTML = "جاري البحث...";
+
+            const { data, error } = await _supabase.from('trips')
+                .select('*')
+                .eq('trip_type', 'shared')
+                .eq('status', 'active');
+
+            if(error || !data.length) {
+                container.innerHTML = "لا توجد رحلات مشتركة متاحة في هذا الاتجاه حالياً.";
                 return;
             }
 
-            if (data && data.length > 0) {
-                activeTripId = data[0].id;
-                document.getElementById('formCard').style.display = 'none';
-                document.getElementById('statusCard').style.display = 'block';
-                
-                initStatusMap();
-                listenToTripUpdates();
+            container.innerHTML = "";
+            data.forEach(trip => {
+                container.innerHTML += `
+                    <div class="list-item">
+                        <strong>🚗 ملاكي مشترك متوفر الآن</strong><br>
+                        من: ${trip.start_location} -> إلى: ${trip.end_location}<br>
+                        أجرة المقعد الثابتة: ${trip.fare} جنيه<br>
+                        <button class="btn" style="padding:5px; font-size:12px;" onclick="confirmSharedBooking('${trip.id}', ${trip.fare})">احجز مقعدك</button>
+                    </div>`;
+            });
+        }
+
+        // تأكيد حجز مقعد مشترك في جدول bookings [2]
+        async function confirmSharedBooking(tripId, fare) {
+            const otpCode = Math.floor(1000 + Math.random() * 9000); // توليد كود الـ OTP تلقائياً للرحلة المشتركة
+            const { error } = await _supabase.from('bookings').insert([
+                { trip_id: tripId, fare: fare, otp: otpCode, status: 'confirmed' }
+            ]);
+            if(error) alert("خطأ بالحجز");
+            else alert(`تم حجز المقعد بنجاح! كود الـ OTP الخاص بك للركوب هو: ${otpCode}`);
+        }
+
+        // 3. جلب خطوط السير الثابتة من جدول routes [2]
+        async function loadRoutesFromDB() {
+            const select = document.getElementById('route-select');
+            const { data, error } = await _supabase.from('routes').select('*');
+            if(!error && data) {
+                select.innerHTML = '<option value="">-- اختر الخط --</option>';
+                data.forEach(r => {
+                    select.innerHTML += `<option value="${r.id}">${r.name || r.route_name}</option>`;
+                });
             }
         }
 
-        function initStatusMap() {
-            if (!statusMap) {
-                statusMap = L.map('statusMap').setView([30.0561, 31.3285], 14);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(statusMap);
-                L.marker([30.0561, 31.3285]).addTo(statusMap).bindPopup("🟢 نقطة الاستلام").openPopup();
-            }
+        // جلب المحطات ديناميكياً للخط المختار من جدول shuttle_steps أو المحطات المربوطة [2]
+        async function loadStationsForRoute() {
+            const routeId = document.getElementById('route-select').value;
+            const fromSelect = document.getElementById('station-from');
+            const toSelect = document.getElementById('station-to');
+            
+            // محطات افتراضية مرتبة تصاعدياً لخطك المذكور لتسهيل التجربة الفورية
+            const mockStations = ["التجمع الخامس", "زهراء مدينة نصر", "عباس العقاد", "رمسيس"];
+            
+            fromSelect.innerHTML = ""; toSelect.innerHTML = "";
+            mockStations.forEach((st, idx) => {
+                fromSelect.innerHTML += `<option value="${idx}">${st}</option>`;
+                toSelect.innerHTML += `<option value="${idx}">${st}</option>`;
+            });
         }
 
-        function listenToTripUpdates() {
-            setInterval(async () => {
-                if (!activeTripId) return;
-                const { data } = await supabaseClient.from('trips_data').select('*').eq('id', activeTripId).single();
-                if (!data) return;
+        // حجز مقعد ميكروباص/سوزوكي بالقطاع المحدد [2]
+        async function bookLineSeat() {
+            const fromIdx = parseInt(document.getElementById('station-from').value);
+            const toIdx = parseInt(document.getElementById('station-to').value);
+            
+            if(fromIdx >= toIdx) return alert("يجب أن تكون محطة النزول بعد محطة الركوب!");
+            
+            const segments = toIdx - fromIdx;
+            const finalFare = segments * 10; // 10 جنيه لكل قطاع ثابت
+            const otpCode = Math.floor(1000 + Math.random() * 9000);
 
-                const badge = document.getElementById('statusBadge');
-                if (data.trip_price === '159_accepted') {
-                    badge.innerText = "🚗 الكابتن قبل الرحلة وهو في الطريق إليك!";
-                    badge.style.color = "#00e676";
-                } else if (data.trip_price === '159_arrived') {
-                    badge.innerText = "📍 الكابتن وصل موقعك، أعطه كود PIN (4480)";
-                    badge.style.color = "#ff9800";
-                    document.getElementById('pinContainer').style.display = 'block';
-                } else if (data.trip_price === '159_started') {
-                    badge.innerText = "🎯 الرحلة جارية الآن نحو نقطة النزول النهائية!";
-                    badge.style.color = "#00e676";
-                    statusMap.setView([30.0421, 31.2355], 14);
-                    L.marker([30.0421, 31.2355]).addTo(statusMap).bindPopup("🎯 وجهة النزول").openPopup();
-                } else if (data.trip_price === '159_completed') {
-                    alert('تم إنهاء الرحلة بنجاح! شكراً لاستخدامك كومبو.');
-                    window.location.reload();
-                }
-            }, 2000);
-        }
-    </script>
-</body>
-</html>
+            document.getElementById('route-status').innerHTML = `جاري إرسال الحجز لجدول الـ Bookings...`;
+
+            const { error } = await _supabase.from('bookings').insert([
+                { fare: finalFare, otp: otpCode, status: 'pending' }
+            ]);
+
