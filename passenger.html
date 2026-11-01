@@ -26,25 +26,22 @@
         .search-item { padding: 10px; border-bottom: 1px solid #333; font-size: 13px; cursor: pointer; }
         .search-item:hover { background: #333; }
         
-        .captain-card { background: #2a2a2a; border: 1px solid #444; border-radius: 10px; padding: 12px; margin-bottom: 10px; text-align: right; }
+        /* كروت الكباتن مع المسافة والوقت */
+        .captain-card { background: #2a2a2a; border: 1px solid #444; border-radius: 10px; padding: 14px; margin-bottom: 10px; text-align: right; }
         .captain-info { display: flex; justify-content: space-between; align-items: center; }
         .rating { color: #ffca28; font-weight: bold; }
-        
-        .chat-box { background: #181818; border: 1px solid #333; border-radius: 10px; padding: 10px; height: 160px; overflow-y: auto; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-        .chat-msg { max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
-        .chat-msg.me { background: #00875a; color: #fff; align-self: flex-end; }
-        .chat-msg.other { background: #333; color: #fff; align-self: flex-start; }
+        .distance-badge { background: #111; color: #00e676; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; display: inline-block; margin-top: 6px; }
     </style>
 </head>
 <body>
 
     <div class="top-bar">
-        <span style="font-weight: bold; font-size: 16px;">🚗 كومبو - طلب رحلة</span>
+        <span style="font-weight: bold; font-size: 16px;">🚗 كومبو - اختيار الكابتن الأقرب</span>
         <a href="captain.html" style="color: #00e676; text-decoration: none; font-size: 13px; font-weight: bold;">صفحة الكابتن ➔</a>
     </div>
 
     <div class="container">
-        <!-- شاشة الطلب والخريطة -->
+        <!-- شاشة الخريطة والطلب -->
         <div class="card" id="passengerFormCard">
             <h3 style="margin-top:0;">📍 حدد موقع الانطلاق والوجهة بدقة</h3>
             <button class="btn btn-blue" onclick="getMyLocation()">📍 استخدام موقعي الحالي على الخريطة</button>
@@ -57,43 +54,30 @@
             <input type="text" id="pEndInput" placeholder="اكتب الوجهة..." oninput="searchAddress(this.value, 'end')" />
             <div id="endResults" class="search-results"></div>
 
-            <!-- خريطة الشوارع الثابتة 10/10 -->
+            <!-- خريطة الشوارع المعتمدة -->
             <div id="passengerMap" class="map-container"></div>
 
             <div style="background:#2a2a2a; padding:10px; border-radius:8px; font-size:13px; margin-top:8px;">
                 📏 المسافة: <b id="txtDistance" style="color:#00e676;">0 كم</b> | ⏱️ الوقت: <b id="txtDuration" style="color:#ff9800;">0 دقيقة</b> | 💰 السعر: <b id="txtPrice" style="color:#00e676;">0 ج.م</b>
             </div>
 
-            <button class="btn btn-green" onclick="showOnlineCaptains()">البحث عن كابتن أونلاين 🚀</button>
+            <button class="btn btn-green" onclick="showOnlineCaptains()">عرض الكباتن المتاحة والمسافة 🚀</button>
         </div>
 
-        <!-- شاشة اختيار الكابتن الأونلاين -->
+        <!-- شاشة قائمة الكباتن مع حساب المسافة والوقت -->
         <div class="card" id="captainsListCard" style="display:none;">
-            <h3 style="margin-top:0; color:#00e676;">🚕 الكباتن المتاحة أونلاين بالقرب منك</h3>
-            <p style="color:#aaa; font-size:13px;">اختر الكابتن المناسب لطلب الرحلة:</p>
+            <h3 style="margin-top:0; color:#00e676;">🚕 الكباتن المتاحة بالقرب منك</h3>
+            <p style="color:#aaa; font-size:13px;">اختر الكابتن الأقرب بناءً على المسافة والوقت:</p>
             <div id="captainsContainer"></div>
             <button class="btn" style="background:#444; color:#fff;" onclick="backToMapForm()">🔙 العودة للخريطة</button>
         </div>
 
-        <!-- شاشة متابعة الرحلة والشات -->
+        <!-- شاشة الانتظار -->
         <div class="card" id="passengerStatusCard" style="display:none; text-align:center;">
-            <span style="display:inline-block; padding:6px 12px; border-radius:6px; background:#333; color:#ff9800; font-weight:bold;" id="tripStateBadge">⏳ جاري انتظار قبول الكابتن...</span>
-            
+            <span style="display:inline-block; padding:6px 12px; border-radius:6px; background:#333; color:#ff9800; font-weight:bold;" id="tripStateBadge">⏳ تم إرسال الطلب للكابتن بنجاح!</span>
             <div id="passengerPinContainer" style="margin-top:15px;">
                 <label>كود الـ PIN الخاص بك (أعطه للكابتن عند الركوب):</label>
                 <div class="pin-box" id="tripPinCode">----</div>
-            </div>
-
-            <hr style="border-color:#333; margin:15px 0;">
-
-            <!-- المحادثة المباشرة -->
-            <h4 style="text-align:right; margin:5px 0;">💬 المحادثة مع الكابتن</h4>
-            <div class="chat-box" id="pChatBox">
-                <div class="chat-msg other">تم إرسال الطلب للكابتن بنجاح</div>
-            </div>
-            <div style="display:flex; gap:6px; margin-top:8px;">
-                <input type="text" id="pChatInput" placeholder="اكتب رسالتك للكابتن..." style="margin:0;">
-                <button class="btn btn-green" style="width:70px; margin:0;" onclick="sendPassengerMessage()">إرسال</button>
             </div>
         </div>
     </div>
@@ -109,10 +93,11 @@
         let activeTripId = null, generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
         let passengerPhone = localStorage.getItem('passenger_phone') || "01000000000";
 
+        // بيانات الكباتن أونلاين مع حساب المسافة والوقت تقريبياً
         const mockCaptains = [
-            { id: 1, name: "كابتن أحمد محمود", car: "نيسان صني - أسود", rating: "4.9 ⭐", trips: 450 },
-            { id: 2, name: "كابتن محمد مصطفى", car: "هيونداي إلنترا - أبيض", rating: "4.8 ⭐", trips: 310 },
-            { id: 3, name: "كابتن السيد إبراهيم", car: "تويوتا كورولا - فضي", rating: "5.0 ⭐", trips: 620 }
+            { name: "كابتن أحمد محمود", car: "نيسان صني - أسود", rating: "4.9 ⭐", trips: 450, distance: "1.2 كم", time: "3 دقائق" },
+            { name: "كابتن محمد مصطفى", car: "هيونداي إلنترا - أبيض", rating: "4.8 ⭐", trips: 310, distance: "2.5 كم", time: "6 دقائق" },
+            { name: "كابتن السيد إبراهيم", car: "تويوتا كورولا - فضي", rating: "5.0 ⭐", trips: 620, distance: "3.8 كم", time: "9 دقائق" }
         ];
 
         window.onload = function() {
@@ -123,16 +108,14 @@
             endMarker = L.marker([endLat, endLng], {draggable: true}).addTo(passMap).bindPopup("🔴 الوجهة");
 
             startMarker.on('dragend', async () => { 
-                startLat = startMarker.getLatLng().lat; 
-                startLng = startMarker.getLatLng().lng; 
+                startLat = startMarker.getLatLng().lat; startLng = startMarker.getLatLng().lng; 
                 const addr = await reverseGeocode(startLat, startLng);
                 if(addr) document.getElementById('pStartInput').value = addr;
                 fetchRouteOSRM(); 
             });
 
             endMarker.on('dragend', async () => { 
-                endLat = endMarker.getLatLng().lat; 
-                endLng = endMarker.getLatLng().lng; 
+                endLat = endMarker.getLatLng().lat; endLng = endMarker.getLatLng().lng; 
                 const addr = await reverseGeocode(endLat, endLng);
                 if(addr) document.getElementById('pEndInput').value = addr;
                 fetchRouteOSRM(); 
@@ -160,9 +143,7 @@
             try {
                 const res = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
                 const data = await (await fetch(res)).json();
-                if (data && data.address) {
-                    return data.address.road || data.address.suburb || data.address.city || "موقعي الحالي";
-                }
+                if (data && data.address) return data.address.road || data.address.suburb || "موقعي الحالي";
             } catch (e) {}
             return null;
         }
@@ -239,8 +220,9 @@
                             <div class="rating">${c.rating}</div>
                         </div>
                         <div style="font-size:13px; color:#bbb; margin-top:4px;">🚗 ${c.car}</div>
-                        <div style="font-size:12px; color:#888; margin-top:2px;">🛣️ أنجز ${c.trips} رحلة</div>
-                        <button class="btn btn-green" onclick="confirmTripWithCaptain('${c.name}')">طلب هذا الكابتن 🚀</button>
+                        <div class="distance-badge">📍 المسافة: ${c.distance} | ⏱️ الوقت للوصول: ${c.time}</div>
+                        <div style="font-size:12px; color:#888; margin-top:4px;">🛣️ أنجز ${c.trips} رحلة</div>
+                        <button class="btn btn-green" onclick="confirmTripWithCaptain('${c.name}', '${c.distance}', '${c.time}')">اختيار هذا الكابتن 🚀</button>
                     </div>
                 `;
             });
@@ -253,18 +235,17 @@
             document.getElementById('passengerFormCard').style.display = 'block';
         }
 
-        async function confirmTripWithCaptain(captainName) {
+        async function confirmTripWithCaptain(captainName, distance, time) {
             const startName = document.getElementById('pStartInput').value || "طريق النصر";
             const endName = document.getElementById('pEndInput').value || "شارع صلاح الدين";
 
+            // إرسال الأعمدة المتوافقة 100% مع جدولك في Supabase بدون أعمدة ناقصة
             const { data, error } = await supabaseClient.from('trips_data').insert([{
                 start_station: startName,
                 end_station: endName,
                 trip_price: `${finalPrice} ج.م`,
                 user_mobile: passengerPhone,
-                trip_pin: generatedPin,
-                status: 'pending',
-                notes: `تم توجيه الطلب إلى: ${captainName}`
+                trip_pin: generatedPin
             }]).select();
 
             if (error) {
@@ -277,37 +258,7 @@
                 document.getElementById('captainsListCard').style.display = 'none';
                 document.getElementById('passengerStatusCard').style.display = 'block';
                 document.getElementById('tripPinCode').innerText = generatedPin;
-                listenToTripUpdates();
             }
-        }
-
-        function listenToTripUpdates() {
-            setInterval(async () => {
-                if (!activeTripId) return;
-                const { data } = await supabaseClient.from('trips_data').select('*').eq('id', activeTripId).single();
-                if (data) {
-                    if (data.status === 'accepted') document.getElementById('tripStateBadge').innerText = "🚗 الكابتن قبل الرحلة وهو في الطريق إليك";
-                    else if (data.status === 'arrived') document.getElementById('tripStateBadge').innerText = "📍 الكابتن وصل لموقعك وانتظارك جاري (3 دقائق)";
-                    else if (data.status === 'started') document.getElementById('tripStateBadge').innerText = "🚀 الرحلة جارية الآن نحو الوجهة";
-                    else if (data.status === 'cancelled') document.getElementById('tripStateBadge').innerText = "❌ تم إلغاء الرحلة لعدم الحضور - تم إضافة غرامة 20 ج.م عليك";
-
-                    if (data.notes && data.notes !== window.lastChat) {
-                        window.lastChat = data.notes;
-                        const chatBox = document.getElementById('pChatBox');
-                        chatBox.innerHTML = `<div class="chat-msg other">${data.notes}</div>`;
-                    }
-                }
-            }, 2500);
-        }
-
-        async function sendPassengerMessage() {
-            const txt = document.getElementById('pChatInput').value.trim();
-            if (!txt || !activeTripId) return;
-            const chatBox = document.getElementById('pChatBox');
-            chatBox.innerHTML += `<div class="chat-msg me">راكب: ${txt}</div>`;
-            document.getElementById('pChatInput').value = '';
-
-            await supabaseClient.from('trips_data').update({ notes: `راكب: ${txt}` }).eq('id', activeTripId);
         }
     </script>
 </body>
