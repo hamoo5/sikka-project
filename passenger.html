@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>كومبو - واجهة الراكب</title>
   
-  <!-- مكتبات الخرائط والبحث -->
+  <!-- مكتبات الخرائط وخطوط السير -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.11.0/dist/geosearch.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; padding: 12px; background: #f4f4f9; direction: rtl; text-align: right; margin: 0; }
@@ -18,42 +18,11 @@
     .btn-secondary { background: #007bff; }
     .btn-gps { background: #17a2b8; }
     .btn-fav { background: #ffc107; color: #222; }
-    #map { height: 320px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; position: relative; }
+    .btn-route { background: #6f42c1; }
+    #map { height: 340px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
     .hidden { display: none; }
     .toggle-link { color: #007bff; text-align: center; cursor: pointer; margin-top: 10px; display: block; font-weight: bold; }
-    
-    /* تنسيق صندوق البحث فوق الخريطة ليطابق خرائط جوجل تماماً */
-    .leaflet-control-geosearch {
-      width: 94% !important;
-      margin: 10px auto !important;
-      left: 0 !important;
-      right: 0 !important;
-      background: white !important;
-      border-radius: 8px !important;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
-      z-index: 1000;
-    }
-    .leaflet-control-geosearch form {
-      background: white !important;
-      border-radius: 8px !important;
-      border: 2px solid #007bff !important;
-      display: flex !important;
-    }
-    .leaflet-control-geosearch input {
-      width: 100% !important;
-      padding: 10px 12px !important;
-      font-size: 15px !important;
-      border: none !important;
-      outline: none !important;
-      background: transparent !important;
-      color: #333 !important;
-    }
-    .leaflet-control-geosearch a.reset {
-      background: transparent !important;
-      color: #666 !important;
-      font-weight: bold;
-    }
-    .leaflet-bar { border: none !important; }
+    .leaflet-routing-container { display: none !important; } /* إخفاء لوحة الإرشادات النصية للتركيز على الخريطة فقط */
   </style>
 </head>
 <body>
@@ -73,33 +42,42 @@
 
   <!-- 2. قسم الخريطة والطلب -->
   <div id="app-section" class="card hidden">
-    <h3 style="margin-top:0;">🗺️ تحديد موقع الركوب والوجهة</h3>
+    <h3 style="margin-top:0;">🗺️ تحديد موقع الرحلة وخط السير</h3>
     
     <button class="btn-gps" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
     
-    <!-- الخريطة التفاعلية -->
-    <div id="map"></div>
+    <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب (نقطة الانطلاق):</label>
+    <div style="display:flex; gap:5px;">
+      <input type="text" id="pickup_loc" placeholder="اكتب المكان واضغط بحث أو اضغط الخريطة" style="margin:0;">
+      <button style="width:30%; margin:0; background:#007bff;" onclick="searchAndSet('pickup')">بحث</button>
+    </div>
 
-    <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب:</label>
-    <input type="text" id="pickup_loc" placeholder="اضغط على الخريطة أو استخدم البحث بالأعلى">
-    
-    <label style="font-weight:bold; font-size:13px; color:#555;">وجهة النزول:</label>
-    <input type="text" id="dropoff_loc" placeholder="اكتب الوجهة أو اخترها">
+    <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">وجهة النزول (الوصول):</label>
+    <div style="display:flex; gap:5px;">
+      <input type="text" id="dropoff_loc" placeholder="اكتب المكان واضغط بحث" style="margin:0;">
+      <button style="width:30%; margin:0; background:#007bff;" onclick="searchAndSet('dropoff')">بحث</button>
+    </div>
+
+    <button class="btn-route" onclick="drawRoute()">🛣️ عرض خط السير على الخريطة</button>
+
+    <!-- الخريطة -->
+    <div id="map"></div>
     
     <button class="btn-fav" onclick="saveFavoriteTrip()">⭐ حفظ الرحلة في المفضلة</button>
     <button onclick="requestRide()">طلب المشوار الآن</button>
   </div>
 
-  <!-- مكتبات الجافاسكريبت للخرائط والبحث -->
+  <!-- المكتبات -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-geosearch@3.11.0/dist/geosearch.umd.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
   <script type="module">
     import { supabase } from './supabase.js';
 
     let isRegistering = false;
-    let map, marker;
-    const provider = new GeoSearch.OpenStreetMapProvider();
+    let map, routingControl;
+    let pickupCoords = null;
+    let dropoffCoords = null;
 
     window.toggleAuthMode = function() {
       isRegistering = !isRegistering;
@@ -136,76 +114,100 @@
       }
     };
 
-    async function updateAddressName(lat, lng) {
-      document.getElementById('pickup_loc').value = "جاري جلب اسم الشارع...";
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`);
-        const data = await res.json();
-        if (data && data.display_name) {
-          const parts = data.display_name.split(',');
-          const shortAddress = parts.slice(0, 3).join(',');
-          document.getElementById('pickup_loc').value = shortAddress;
-        } else {
-          document.getElementById('pickup_loc').value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        }
-      } catch (e) {
-        document.getElementById('pickup_loc').value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      }
-    }
-
     function initMap() {
       if (map) return;
-
       map = L.map('map').setView([30.0444, 31.2357], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      const searchControl = new GeoSearch.GeoSearchControl({
-        provider: provider,
-        style: 'bar',
-        autoComplete: true,
-        autoCompleteDelay: 250,
-        showMarker: false,
-        searchLabel: 'ابحث عن شارع أو منطقة (مثلاً: المعادي)...',
-        keepResult: true
-      });
-      map.addControl(searchControl);
-
-      map.on('geosearch/showlocation', function(result) {
-        const { x, y, label } = result.location;
-        setMarker(y, x);
-        document.getElementById('pickup_loc').value = label;
-      });
-
       map.on('click', function(e) {
-        setMarker(e.latlng.lat, e.latlng.lng);
-        updateAddressName(e.latlng.lat, e.latlng.lng);
+        pickupCoords = e.latlng;
+        updateAddressName(e.latlng.lat, e.latlng.lng, 'pickup_loc');
+        if (pickupCoords && dropoffCoords) {
+          drawRoute();
+        }
       });
     }
 
-    function setMarker(lat, lng) {
-      if (marker) {
-        marker.setLatLng([lat, lng]);
-      } else {
-        marker = L.marker([lat, lng], { draggable: true }).addTo(map);
-        marker.on('dragend', function(e) {
-          const coord = e.target.getLatLng();
-          updateAddressName(coord.lat, coord.lng);
-        });
+    async function updateAddressName(lat, lng, elementId) {
+      document.getElementById(elementId).value = "جاري جلب العنوان...";
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`);
+        const data = await res.json();
+        if (data && data.display_name) {
+          document.getElementById(elementId).value = data.display_name.split(',').slice(0, 3).join(',');
+        } else {
+          document.getElementById(elementId).value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        }
+      } catch (e) {
+        document.getElementById(elementId).value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       }
     }
+
+    window.searchAndSet = async function(type) {
+      const inputId = type === 'pickup' ? 'pickup_loc' : 'dropoff_loc';
+      const query = document.getElementById(inputId).value;
+      if (!query) { alert('اكتب اسم المكان أولاً للبحث'); return; }
+
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&accept-language=ar`);
+        const results = await res.json();
+        if (results && results.length > 0) {
+          const lat = parseFloat(results[0].lat);
+          const lon = parseFloat(results[0].lon);
+          const coords = L.latLng(lat, lon);
+          
+          if (type === 'pickup') pickupCoords = coords;
+          else dropoffCoords = coords;
+
+          document.getElementById(inputId).value = results[0].display_name.split(',').slice(0, 3).join(',');
+          
+          if (pickupCoords && dropoffCoords) {
+            drawRoute();
+          } else {
+            map.setView(coords, 15);
+            L.marker(coords).addTo(map);
+          }
+        } else {
+          alert('لم يتم العثور على المكان، جرب كتابة اسم أكثر توضيحاً.');
+        }
+      } catch (e) {
+        alert('حدث خطأ أثناء البحث.');
+      }
+    };
+
+    window.drawRoute = function() {
+      if (!pickupCoords || !dropoffCoords) {
+        alert('من فضلك حدد موقع الركوب والوجهة أولاً ليرسم خط السير');
+        return;
+      }
+
+      if (routingControl) {
+        map.removeControl(routingControl);
+      }
+
+      routingControl = L.Routing.control({
+        waypoints: [pickupCoords, dropoffCoords],
+        routeWhileDragging: false,
+        addWaypoints: false,
+        lineOptions: {
+          styles: [{ color: '#007bff', opacity: 0.8, weight: 6 }]
+        }
+      }).addTo(map);
+    };
 
     window.getMyLocation = function() {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(position => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
-          map.setView([lat, lng], 16);
-          setMarker(lat, lng);
-          updateAddressName(lat, lng);
+          pickupCoords = L.latLng(lat, lng);
+          map.setView(pickupCoords, 15);
+          updateAddressName(lat, lng, 'pickup_loc');
+          if (pickupCoords && dropoffCoords) drawRoute();
         }, () => {
-          alert('تعذر تحديد موقعك، تأكد من إعطاء إذن الـ GPS للمتصفح.');
+          alert('تعذر تحديد موقعك بالـ GPS.');
         });
       }
     };
@@ -213,7 +215,7 @@
     window.saveFavoriteTrip = function() {
       const pickup = document.getElementById('pickup_loc').value;
       const dropoff = document.getElementById('dropoff_loc').value;
-      if (!pickup || !dropoff) { alert('حدد نقطة الركوب والوجهة أولاً'); return; }
+      if (!pickup || !dropoff) { alert('حدد المكانين أولاً'); return; }
       localStorage.setItem('fav_pickup', pickup);
       localStorage.setItem('fav_dropoff', dropoff);
       alert('⭐ تم حفظ الرحلة في المفضلة!');
@@ -222,10 +224,10 @@
     window.requestRide = async function() {
       const pickup = document.getElementById('pickup_loc').value;
       const dropoff = document.getElementById('dropoff_loc').value;
-      if (!pickup || !dropoff) { alert('أكمل بيانات الركوب والوجهة'); return; }
+      if (!pickup || !dropoff) { alert('أكمل بيانات الرحلة أولاً'); return; }
       const { error } = await supabase.from('bookings').insert([{ pickup_location: pickup, dropoff_location: dropoff, trip_type: 'private', status: 'pending' }]);
       if (error) alert('خطأ: ' + error.message);
-      else alert('تم إرسال طلب رحلتك بنجاح! جاري البحث عن كابتن.');
+      else alert('تم إرسال طلب رحلتك بنجاح!');
     };
   </script>
 </body>
