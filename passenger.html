@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>كومبو - واجهة الراكب</title>
+    <title>كومبو - واجهة الراكب الاحترافية</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -21,7 +21,8 @@
         .input-box { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; margin-top: 6px; margin-bottom: 12px; font-size: 14px; outline: none; }
         label { font-size: 12px; color: #aaa; display: block; }
         
-        .map-container { width: 100%; height: 240px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; }
+        .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; }
+        .hint-text { font-size: 11px; color: #00e676; text-align: center; margin-bottom: 5px; }
         
         .info-box { background: #1e1e1e; padding: 12px; border-radius: 8px; border: 1px dashed #00e676; margin-bottom: 12px; text-align: center; font-size: 13px; color: #00e676; font-weight: bold; }
         .pin-box { font-size: 26px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; border: 1px dashed #00e676; }
@@ -40,9 +41,10 @@
         <label>مكان الاستلام (من):</label>
         <input type="text" id="startInput" class="input-box" value="شارع مصطفي ابو زهره" />
         
-        <label>الوجهة (إلى):</label>
-        <input type="text" id="endInput" class="input-box" value="شارع الاتحاد" />
+        <label>الوجهة (إلى - ابحث أو حدد على الخريطة):</label>
+        <input type="text" id="endInput" class="input-box" placeholder="اكتب اسم الشارع أو الوجهة هنا..." oninput="searchLocation(this.value)" />
 
+        <div class="hint-text">💡 يمكنك سحب الدبوس الأزرق على الخريطة لتحديد مكانك بدقة!</div>
         <div id="map" class="map-container"></div>
 
         <div class="info-box">
@@ -70,32 +72,51 @@
         const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let map = null, statusMap = null, activeTripId = null;
+        let map = null, statusMap = null, activeTripId = null, mainMarker = null;
 
         window.onload = function() {
-            map = L.map('map').setView([30.0561, 31.3285], 13);
+            // الخريطة الأساسية مع دبوس قابل للسحب (Draggable) لتحديد الموقع بدقة
+            map = L.map('map').setView([30.0561, 31.3285], 14);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
             
-            // دبابيس ومسار الرحلة الافتراضي مطابق للصورة
-            L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 مكان الاستلام").openPopup();
-            L.marker([30.0421, 31.2355]).addTo(map).bindPopup("🎯 الوجهة").openPopup();
-            
-            // رسم خط الرحلة الأخضر
-            let latlngs = [[30.0561, 31.3285], [30.0490, 31.2800], [30.0421, 31.2355]];
-            L.polyline(latlngs, {color: '#00e676', weight: 4}).addTo(map);
+            mainMarker = L.marker([30.0561, 31.3285], { draggable: true }).addTo(map)
+                .bindPopup("🟢 اسحبني لمكانك بدقة").openPopup();
+
+            // تحديث اسم الشارع تلقائياً عند سحب الدبوس
+            mainMarker.on('dragend', function(e) {
+                const pos = mainMarker.getLatLng();
+                document.getElementById('startInput').value = `إحداثيات: ${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}`;
+            });
         };
 
         function useCurrentLocation() {
             if (navigator.geolocation) {
-                navigator.geolocation.watchPosition((pos) => {
+                navigator.geolocation.getCurrentPosition((pos) => {
                     const lat = pos.coords.latitude;
                     const lng = pos.coords.longitude;
-                    map.setView([lat, lng], 15);
-                    L.marker([lat, lng]).addTo(map).bindPopup("📍 موقعك الحالي").openPopup();
+                    map.setView([lat, lng], 16);
+                    mainMarker.setLatLng([lat, lng]);
                     document.getElementById('startInput').value = "موقعي الحالي (GPS)";
                 });
             } else {
                 alert('الخواص الجغرافية غير مدعومة في متصفحك');
+            }
+        }
+
+        // خاصية البحث السريع في الشوارع باستخدام Nominatim (مجاني ومدمج مع OpenStreetMap)
+        async function searchLocation(query) {
+            if (query.length < 3) return;
+            try {
+                let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' Cairo')}`);
+                let data = await res.json();
+                if (data && data.length > 0) {
+                    let lat = parseFloat(data[0].lat);
+                    let lon = parseFloat(data[0].lon);
+                    map.setView([lat, lon], 15);
+                    L.marker([lat, lon]).addTo(map).bindPopup(`🎯 ${data[0].display_name.split(',')[0]}`).openPopup();
+                }
+            } catch (err) {
+                console.log('بحث الشوارع جارٍ...');
             }
         }
 
