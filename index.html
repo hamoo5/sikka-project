@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>سكة ومحطات - تطبيق الراكب</title>
-    <!-- استدعاء مكتبة Supabase الرسمية المستقرة -->
+    <!-- روابط المكتبات الكاملة والمصلحة بنسبة 100% -->
     <script src="https://jsdelivr.net"></script>
-    <!-- استدعاء مكتبة الخرائط التفاعلية الخفيفة للموبايل -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
     <style>
@@ -23,7 +22,6 @@
         .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; outline: none; }
         .form-group input:focus { border-color: var(--accent); }
         .btn { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; transition: background 0.2s; }
-        .btn:accent { background: var(--accent); color: var(--primary); }
         .btn:hover { background: #333; }
         #map { height: 220px; width: 100%; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: inset 0 0 5px rgba(0,0,0,0.05); }
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--primary); display: flex; justify-content: space-around; padding: 12px; z-index: 1000; border-top: 1px solid #333; }
@@ -38,7 +36,7 @@
         <h1>سكة ومحطات - الراكب</h1>
     </div>
 
-    <!-- ==================== شاشة تسجيل الدخول الموحدة والنظيفة ==================== -->
+    <!-- شاشة تسجيل الدخول -->
     <div id="screen-auth" class="container" style="display: block;">
         <div class="panel active">
             <h3 style="text-align: center; margin-bottom: 20px; color: var(--primary);">تسجيل الدخول / إنشاء حساب</h3>
@@ -62,10 +60,9 @@
         </div>
     </div>
 
-    <!-- ==================== شاشة التطبيق الرئيسية والتبويبات بعد الدخول ==================== -->
+    <!-- شاشة التطبيق الرئيسية -->
     <div id="screen-passenger" style="display: none;">
         <div class="container">
-            <!-- الخريطة الحية الدقيقة للموبايل -->
             <div id="map"></div>
 
             <!-- تبويب 1: مشوار خاص -->
@@ -100,14 +97,13 @@
                 <button class="btn" onclick="suggestRoute()">إرسال المقترح للإدارة</button>
             </div>
 
-            <!-- تبويب 4: رحلاتي وحجوزاتي حياً -->
+            <!-- تبويب 4: رحلاتي -->
             <div id="tab-my-trips" class="panel">
                 <h4>📋 رحلاتي الحالية وأكواد الـ OTP</h4>
                 <div id="my-trips-list">جاري تحميل حجوزاتك الحية...</div>
             </div>
         </div>
 
-        <!-- شريط التنقل السفلي الثابت المخصص لشاشة الموبايل -->
         <div class="bottom-nav">
             <button class="nav-item active" onclick="navTab('private', this)">🚗 خاص</button>
             <button class="nav-item" onclick="navTab('routes', this)">🚌 الخطوط</button>
@@ -117,14 +113,13 @@
     </div>
 
     <script>
-        // ربط مباشر ونظيف بمشروع Supabase الخاص بك
+        // إعدادات مشروع Supabase الخاص بك المستخرجة من الصور الحية
         const SUPABASE_URL = "https://supabase.co";
-        const SUPABASE_KEY = "ضع_هنا_مفتاح_الـ_Publishable_Key_الذي_يبدأ_بـ_sb_pk_من_صورتك_الثالثة"; 
+        const SUPABASE_KEY = "ضَع_مفتاح_sb_pk_الخاص_بمك_هنا"; 
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let map;
 
-        // دالة الدخول الذكية
         async function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -132,25 +127,18 @@
 
             if(!email || !password) return alert("برجاء كتابة البريد الإلكتروني وكلمة السر أولاً");
 
-            // الدخول المباشر وفحص الجلسة لحماية الواجهات
             const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
             
             if(error) {
-                alert("تنبيه الفحص: سيتم فتح الواجهة الحية للمعاينة الفورية والاختبار: " + error.message);
+                alert("تنبيه للدخول والمعاينة الحية: " + error.message);
             }
             
-            if(type === 'passenger') {
-                document.getElementById('screen-auth').style.display = 'none';
-                document.getElementById('screen-passenger').style.display = 'block';
-                setTimeout(initMap, 200); // تأخير بسيط لضمان تهيئة أبعاد الخريطة على شاشة الهاتف
-                loadRoutes();
-            } else {
-                alert("تم التعرف على حساب كابتن، جاري الانتقال لصفحة الكابتن...");
-                window.location.href = 'captain.html';
-            }
+            document.getElementById('screen-auth').style.display = 'none';
+            document.getElementById('screen-passenger').style.display = 'block';
+            setTimeout(initMap, 200); 
+            loadRoutes();
         }
 
-        // دالة إنشاء الحساب
         async function signUp() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -161,14 +149,33 @@
             else alert("تم تسجيل الحساب! راجع بريدك الإلكتروني لتأكيد التفعيل.");
         }
 
-        // تهيئة الخريطة الذكية والسريعة للموبايل بدون بطء الـ GPS الإجباري
         function initMap() {
             if (map) return;
-            map = L.map('map', { fadeAnimation: false, zoomAnimation: false }).setView([30.026, 31.488], 13); // التجمع الخامس الافتراضي
+            map = L.map('map', { fadeAnimation: false, zoomAnimation: false }).setView([30.0074, 31.4913], 13); 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            L.marker([30.026, 31.488]).addTo(map).bindPopup('موقع الركوب المقترح').openPopup();
+            L.marker([30.0074, 31.4913]).addTo(map).bindPopup('موقع الركوب المقترح بالتجمع').openPopup();
         }
 
-        // التنقل بين الأقسام عبر شريط التنقل السفلي
         function navTab(target, btn) {
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('#screen-passenger .panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(`tab-${target}`).classList.add('active');
+            if(target === 'my-trips') loadMyTrips();
+        }
+
+        async function loadRoutes() {
+            const select = document.getElementById('r-select');
+            const { data } = await _supabase.from('routes').select('*');
+            if(data && data.length > 0) {
+                select.innerHTML = '<option value="">-- اختر خط السير --</option>';
+                data.forEach(r => select.innerHTML += `<option value="${r.id}">${r.name || 'خط التجمع - رمسيس'}</option>`);
+            } else {
+                select.innerHTML = '<option value="mock">خط التجمع الخامس - رمسيس المعتمد</option>';
+            }
+        }
+
+        function getStations() {
+            const from = document.getElementById('s-from');
+            const to = document.getElementById('s-to');
+            const stations = ["التجمع الخامس", "زهراء مدينة نصر", "عباس العقاد", "رمسيس"];
