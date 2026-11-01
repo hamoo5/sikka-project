@@ -18,13 +18,6 @@
     .btn-gps { background: #17a2b8; }
     .btn-fav { background: #ffc107; color: #222; }
     .btn-route { background: #6f42c1; }
-    
-    /* تنسيق أزرار وضع الخريطة */
-    .mode-container { display: flex; gap: 6px; margin-bottom: 10px; }
-    .mode-btn { flex: 1; background: #e0e0e0; color: #333; font-size: 13px; padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
-    .mode-btn.active-pickup { background: #007bff; color: white; }
-    .mode-btn.active-dropoff { background: #dc3545; color: white; }
-
     #map { height: 340px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
     .hidden { display: none; }
     .toggle-link { color: #007bff; text-align: center; cursor: pointer; margin-top: 10px; display: block; font-weight: bold; }
@@ -52,21 +45,15 @@
     
     <button class="btn-gps" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
     
-    <!-- أزرار اختيار وضع النقر على الخريطة -->
-    <div class="mode-container">
-      <button id="btn-mode-pickup" class="mode-btn active-pickup" onclick="setClickMode('pickup')">📍 تحديد الركوب بالخريطة</button>
-      <button id="btn-mode-dropoff" class="mode-btn" onclick="setClickMode('dropoff')">🎯 تحديد الوصول بالخريطة</button>
-    </div>
-
     <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب (نقطة الانطلاق):</label>
     <div style="display:flex; gap:5px;">
-      <input type="text" id="pickup_loc" placeholder="اكتب المكان أو اضغط الخريطة" style="margin:0;">
+      <input type="text" id="pickup_loc" placeholder="اكتب مكان الانطلاق أو ابحث" style="margin:0;">
       <button style="width:30%; margin:0; background:#007bff;" onclick="searchAndSet('pickup')">بحث</button>
     </div>
 
     <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">وجهة النزول (الوصول):</label>
     <div style="display:flex; gap:5px;">
-      <input type="text" id="dropoff_loc" placeholder="اكتب المكان أو اضغط الخريطة" style="margin:0;">
+      <input type="text" id="dropoff_loc" placeholder="اكتب مكان الوصول أو ابحث" style="margin:0;">
       <button style="width:30%; margin:0; background:#007bff;" onclick="searchAndSet('dropoff')">بحث</button>
     </div>
 
@@ -90,7 +77,6 @@
     let dropoffCoords = null;
     let pickupMarker = null;
     let dropoffMarker = null;
-    let currentClickMode = 'pickup';
 
     window.toggleAuthMode = function() {
       isRegistering = !isRegistering;
@@ -124,66 +110,15 @@
       }
     };
 
-    window.setClickMode = function(mode) {
-      currentClickMode = mode;
-      const btnPickup = document.getElementById('btn-mode-pickup');
-      const btnDropoff = document.getElementById('btn-mode-dropoff');
-      
-      if (mode === 'pickup') {
-        btnPickup.className = "mode-btn active-pickup";
-        btnDropoff.className = "mode-btn";
-      } else {
-        btnDropoff.className = "mode-btn active-dropoff";
-        btnPickup.className = "mode-btn";
-      }
-    };
-
     function initMap() {
       if (map) return;
-      map = L.map('map').setView([30.0444, 31.2357], 13);
+      map = L.map('map').setView([30.0444, 31.2357], 12);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
-
-      map.on('click', function(e) {
-        const lat = e.latlng.lat;
-        const lng = e.latlng.lng;
-        const coords = L.latLng(lat, lng);
-
-        if (currentClickMode === 'pickup') {
-          pickupCoords = coords;
-          if (pickupMarker) map.removeLayer(pickupMarker);
-          pickupMarker = L.marker(coords, {draggable: true}).addTo(map);
-          pickupMarker.on('dragend', function(event) {
-            const pos = event.target.getLatLng();
-            pickupCoords = pos;
-            updateAddressName(pos.lat, pos.lng, 'pickup');
-            if (pickupCoords && dropoffCoords) drawRoute();
-          });
-          updateAddressName(lat, lng, 'pickup');
-          setClickMode('dropoff'); // التبديل تلقائياً للوصول لتسهيل التجربة
-        } else {
-          dropoffCoords = coords;
-          if (dropoffMarker) map.removeLayer(dropoffMarker);
-          dropoffMarker = L.marker(coords, {draggable: true}).addTo(map);
-          dropoffMarker.on('dragend', function(event) {
-            const pos = event.target.getLatLng();
-            dropoffCoords = pos;
-            updateAddressName(pos.lat, pos.lng, 'dropoff');
-            if (pickupCoords && dropoffCoords) drawRoute();
-          });
-          updateAddressName(lat, lng, 'dropoff');
-          setClickMode('pickup');
-        }
-
-        if (pickupCoords && dropoffCoords) {
-          drawRoute();
-        }
-      });
     }
 
-    async function updateAddressName(lat, lng, type) {
-      const elementId = type === 'pickup' ? 'pickup_loc' : 'dropoff_loc';
+    async function getAddress(lat, lng, elementId) {
       document.getElementById(elementId).value = "جاري جلب العنوان...";
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`);
@@ -203,7 +138,7 @@
       let query = document.getElementById(inputId).value;
       if (!query) { alert('اكتب اسم المكان أولاً للبحث'); return; }
 
-      if (!query.includes('القاهرة') && !query.includes('الجيزة') && !query.includes('مصر')) {
+      if (!query.includes('القاهرة') && !query.includes('الجيزة') && !query.includes('مصر') && !query.includes('العبور') && !query.includes('حلوان')) {
         query += ", القاهرة, مصر";
       }
 
@@ -219,21 +154,17 @@
           if (type === 'pickup') {
             pickupCoords = coords;
             if (pickupMarker) map.removeLayer(pickupMarker);
-            pickupMarker = L.marker(coords, {draggable: true}).addTo(map);
+            pickupMarker = L.marker(coords, {title: 'الركوب'}).addTo(map);
           } else {
             dropoffCoords = coords;
             if (dropoffMarker) map.removeLayer(dropoffMarker);
-            dropoffMarker = L.marker(coords, {draggable: true}).addTo(map);
+            dropoffMarker = L.marker(coords, {title: 'الوصول'}).addTo(map);
           }
 
           document.getElementById(inputId).value = results[0].display_name.split(',').slice(0, 3).join(',');
-          map.setView(coords, 14);
-
-          if (pickupCoords && dropoffCoords) {
-            drawRoute();
-          }
+          map.setView(coords, 13);
         } else {
-          alert('لم يتم العثور على المكان، حاول كتابة اسم الحي والمدينة بدقة.');
+          alert('لم يتم العثور على المكان بدقة.');
         }
       } catch (e) {
         alert('حدث خطأ أثناء البحث.');
@@ -241,7 +172,10 @@
     };
 
     window.drawRoute = function() {
-      if (!pickupCoords || !dropoffCoords) return;
+      if (!pickupCoords || !dropoffCoords) {
+        alert('من فضلك تأكد من تحديد نقطة الركوب ونقطة الوصول أولاً');
+        return;
+      }
 
       if (routingControl) {
         map.removeControl(routingControl);
@@ -253,7 +187,7 @@
         addWaypoints: false,
         createMarker: function() { return null; },
         lineOptions: {
-          styles: [{ color: '#007bff', opacity: 0.8, weight: 6 }]
+          styles: [{ color: '#007bff', opacity: 0.85, weight: 6 }]
         }
       }).addTo(map);
     };
@@ -265,10 +199,9 @@
           const lng = position.coords.longitude;
           pickupCoords = L.latLng(lat, lng);
           if (pickupMarker) map.removeLayer(pickupMarker);
-          pickupMarker = L.marker(pickupCoords, {draggable: true}).addTo(map);
-          map.setView(pickupCoords, 15);
-          updateAddressName(lat, lng, 'pickup');
-          if (pickupCoords && dropoffCoords) drawRoute();
+          pickupMarker = L.marker(pickupCoords).addTo(map);
+          map.setView(pickupCoords, 14);
+          getAddress(lat, lng, 'pickup_loc');
         }, () => {
           alert('تعذر تحديد موقعك بالـ GPS.');
         });
