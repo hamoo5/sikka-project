@@ -20,11 +20,14 @@
         .btn-blue { background: #0288d1; color: #fff; margin-bottom: 8px; padding: 10px; font-size: 13px; }
         input { width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 4px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 14px; }
         label { font-size: 13px; color: #bbb; }
-        .map-container { width: 100%; height: 280px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; z-index: 1; }
-        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #333; color: #ff9800; }
-        .search-results { background: #222; border: 1px solid #444; border-radius: 8px; max-height: 140px; overflow-y: auto; margin-bottom: 8px; display: none; }
-        .search-item { padding: 10px; border-bottom: 1px solid #333; font-size: 13px; cursor: pointer; }
-        .search-item:hover { background: #333; }
+        .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; z-index: 1; }
+        .pin-box { font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #00e676; background: #111; padding: 12px; border-radius: 8px; text-align: center; margin: 10px 0; border: 1px dashed #00e676; }
+        
+        /* تصميم الشات */
+        .chat-box { background: #181818; border: 1px solid #333; border-radius: 10px; padding: 10px; height: 180px; overflow-y: auto; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .chat-msg { max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
+        .chat-msg.me { background: #00875a; color: #fff; align-self: flex-end; }
+        .chat-msg.other { background: #333; color: #fff; align-self: flex-start; }
     </style>
 </head>
 <body>
@@ -35,20 +38,17 @@
     </div>
 
     <div class="container">
+        <!-- شاشة الطلب -->
         <div class="card" id="passengerFormCard">
             <h3 style="margin-top:0;">📍 حدد موقع الانطلاق والوجهة بدقة</h3>
-            
             <button class="btn btn-blue" onclick="getMyLocation()">📍 استخدام موقعي الحالي على الخريطة</button>
 
             <label>مكان الاستلام (من):</label>
-            <input type="text" id="pStartInput" placeholder="اكتب اسم الشارع أو استخدم موقعك..." oninput="searchAddress(this.value, 'start')" />
-            <div id="startResults" class="search-results"></div>
+            <input type="text" id="pStartInput" placeholder="اسم الشارع..." />
 
             <label>الوجهة (إلى):</label>
-            <input type="text" id="pEndInput" placeholder="اكتب الوجهة النهائية..." oninput="searchAddress(this.value, 'end')" />
-            <div id="endResults" class="search-results"></div>
+            <input type="text" id="pEndInput" placeholder="الوجهة..." />
 
-            <!-- خريطة الشوارع -->
             <div id="passengerMap" class="map-container"></div>
 
             <div style="background:#2a2a2a; padding:10px; border-radius:8px; font-size:13px; margin-top:8px;">
@@ -61,9 +61,26 @@
             <button class="btn btn-green" onclick="requestTripFinal()">اطلب الرحلة الآن 🚀</button>
         </div>
 
+        <!-- شاشة متابعة الرحلة والشات -->
         <div class="card" id="passengerStatusCard" style="display:none; text-align:center;">
-            <span class="status-badge" id="tripStateBadge">⏳ جاري انتظار الكابتن...</span>
-            <p id="tripDetailsText" style="margin-top: 15px; font-size: 15px;"></p>
+            <span style="display:inline-block; padding:6px 12px; border-radius:6px; background:#333; color:#ff9800; font-weight:bold;" id="tripStateBadge">⏳ جاري البحث عن كابتن...</span>
+            
+            <div id="passengerPinContainer" style="margin-top:15px;">
+                <label>كود الـ PIN الخاص بك (أعطه للكابتن عند الركوب):</label>
+                <div class="pin-box" id="tripPinCode">----</div>
+            </div>
+
+            <hr style="border-color:#333; margin:15px 0;">
+
+            <!-- الشات المباشر -->
+            <h4 style="text-align:right; margin:5px 0;">💬 المحادثة مع الكابتن</h4>
+            <div class="chat-box" id="pChatBox">
+                <div class="chat-msg other">تم إنشاء الطلب وفي انتظار قبول الكابتن</div>
+            </div>
+            <div style="display:flex; gap:6px; margin-top:8px;">
+                <input type="text" id="pChatInput" placeholder="اكتب رسالتك للكابتن..." style="margin:0;">
+                <button class="btn btn-green" style="width:70px; margin:0;" onclick="sendPassengerMessage()">إرسال</button>
+            </div>
         </div>
     </div>
 
@@ -72,115 +89,39 @@
         const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let passMap = null;
-        let startLat = 30.0561, startLng = 31.3285;
-        let endLat = 29.9602, endLng = 31.2569;
+        let passMap = null, startLat = 30.0561, startLng = 31.3285, endLat = 29.9602, endLng = 31.2569;
         let startMarker, endMarker, routeLayer;
         let calculatedDistKm = 5.0, calculatedMin = 15, finalPrice = 75;
+        let activeTripId = null, generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
 
         window.onload = function() {
             passMap = L.map('passengerMap').setView([startLat, startLng], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(passMap);
-            
-            startMarker = L.marker([startLat, startLng], {draggable: true}).addTo(passMap).bindPopup("🟢 موقعك الحالي");
-            endMarker = L.marker([endLat, endLng], {draggable: true}).addTo(passMap).bindPopup("🔴 الوجهة");
+            startMarker = L.marker([startLat, startLng], {draggable: true}).addTo(passMap);
+            endMarker = L.marker([endLat, endLng], {draggable: true}).addTo(passMap);
 
-            startMarker.on('dragend', async () => {
-                const p = startMarker.getLatLng();
-                startLat = p.lat; startLng = p.lng;
-                const addr = await reverseGeocode(startLat, startLng);
-                if(addr) document.getElementById('pStartInput').value = addr;
-                fetchRouteOSRM();
-            });
+            startMarker.on('dragend', () => { startLat = startMarker.getLatLng().lat; startLng = startMarker.getLatLng().lng; fetchRouteOSRM(); });
+            endMarker.on('dragend', () => { endLat = endMarker.getLatLng().lat; endLng = endMarker.getLatLng().lng; fetchRouteOSRM(); });
 
-            endMarker.on('dragend', async () => {
-                const p = endMarker.getLatLng();
-                endLat = p.lat; endLng = p.lng;
-                const addr = await reverseGeocode(endLat, endLng);
-                if(addr) document.getElementById('pEndInput').value = addr;
-                fetchRouteOSRM();
-            });
-
-            // محاولة جلب موقع المستخدم أوتوماتيك أول ما الصفحة تفتح
-            getMyLocation();
+            document.getElementById('pStartInput').value = "طريق النصر";
+            document.getElementById('pEndInput').value = "شارع صلاح الدين";
+            fetchRouteOSRM();
         };
 
-        // دالة جلب الموقع الحالي عبر الـ GPS
         function getMyLocation() {
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(async (position) => {
-                    startLat = position.coords.latitude;
-                    startLng = position.coords.longitude;
-                    
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    startLat = pos.coords.latitude; startLng = pos.coords.longitude;
                     startMarker.setLatLng([startLat, startLng]);
                     passMap.setView([startLat, startLng], 15);
-
-                    const addr = await reverseGeocode(startLat, startLng);
-                    if (addr) {
-                        document.getElementById('pStartInput').value = addr;
-                    }
                     fetchRouteOSRM();
-                }, (error) => {
-                    console.log("GPS Error: ", error);
-                }, { enableHighAccuracy: true });
-            } else {
-                alert("المتصفح لا يدعم تحديد الموقع الجغرافي");
+                }, null, { enableHighAccuracy: true });
             }
-        }
-
-        async function reverseGeocode(lat, lon) {
-            try {
-                const res = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
-                const data = await (await fetch(res)).json();
-                if (data && data.address) {
-                    return data.address.road || data.address.suburb || data.address.city || "موقعي الحالي";
-                }
-            } catch (e) {}
-            return null;
-        }
-
-        let searchTimeout;
-        function searchAddress(query, type) {
-            clearTimeout(searchTimeout);
-            const resultsBox = document.getElementById(type === 'start' ? 'startResults' : 'endResults');
-            if (query.length < 3) { resultsBox.style.display = 'none'; return; }
-
-            searchTimeout = setTimeout(async () => {
-                try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=eg`);
-                    const data = await res.json();
-                    if (data.length > 0) {
-                        resultsBox.innerHTML = '';
-                        resultsBox.style.display = 'block';
-                        data.slice(0, 4).forEach(item => {
-                            const div = document.createElement('div');
-                            div.className = 'search-item';
-                            div.innerText = item.display_name;
-                            div.onclick = () => {
-                                if (type === 'start') {
-                                    startLat = parseFloat(item.lat); startLng = parseFloat(item.lon);
-                                    startMarker.setLatLng([startLat, startLng]);
-                                    document.getElementById('pStartInput').value = item.display_name.split(',')[0];
-                                } else {
-                                    endLat = parseFloat(item.lat); endLng = parseFloat(item.lon);
-                                    endMarker.setLatLng([endLat, endLng]);
-                                    document.getElementById('pEndInput').value = item.display_name.split(',')[0];
-                                }
-                                resultsBox.style.display = 'none';
-                                passMap.setView([parseFloat(item.lat), parseFloat(item.lon)], 14);
-                                fetchRouteOSRM();
-                            };
-                            resultsBox.appendChild(div);
-                        });
-                    }
-                } catch (e) {}
-            }, 300);
         }
 
         async function fetchRouteOSRM() {
             try {
-                const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
-                const res = await (await fetch(url)).json();
+                const res = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`)).json();
                 if (res.routes && res.routes.length > 0) {
                     const route = res.routes[0];
                     calculatedDistKm = (route.distance / 1000);
@@ -193,40 +134,60 @@
 
                     if (routeLayer) passMap.removeLayer(routeLayer);
                     routeLayer = L.geoJSON(route.geometry, { style: { color: '#00e676', weight: 5 } }).addTo(passMap);
-                    passMap.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
                 }
             } catch (e) {}
         }
 
         async function requestTripFinal() {
             const phone = document.getElementById('pPhone').value.trim();
-            const startName = document.getElementById('pStartInput').value.trim() || "موقعي الحالي";
-            const endName = document.getElementById('pEndInput').value.trim() || "الوجهة الأخيرة";
-            
-            if (!phone || phone.length < 11) { 
-                alert('الرجاء إدخال رقم هاتف صحيح مكون من 11 رقماً'); 
-                return; 
-            }
+            if (!phone || phone.length < 11) { alert('الرجاء إدخال رقم هاتف صحيح'); return; }
 
-            const { data, error } = await supabaseClient
-                .from('trips_data')
-                .insert([
-                    {
-                        start_station: startName,
-                        end_station: endName,
-                        trip_price: `${finalPrice} ج.م`,
-                        user_mobile: phone
-                    }
-                ])
-                .select();
+            const { data, error } = await supabaseClient.from('trips_data').insert([{
+                start_station: document.getElementById('pStartInput').value || "موقعي",
+                end_station: document.getElementById('pEndInput').value || "الوجهة",
+                trip_price: `${finalPrice} ج.م`,
+                user_mobile: phone,
+                trip_pin: generatedPin,
+                status: 'pending',
+                notes: ''
+            }]).select();
 
-            if (error) {
-                alert('خطأ في إرسال الطلب: ' + error.message);
-            } else if (data && data.length > 0) {
+            if (data && data.length > 0) {
+                activeTripId = data[0].id;
                 document.getElementById('passengerFormCard').style.display = 'none';
                 document.getElementById('passengerStatusCard').style.display = 'block';
-                document.getElementById('tripDetailsText').innerText = `تم إرسال الطلب بنجاح! السعر: ${finalPrice} ج.م | الاستلام من: ${startName}`;
+                document.getElementById('tripPinCode').innerText = generatedPin;
+                listenToTripUpdates();
             }
+        }
+
+        function listenToTripUpdates() {
+            setInterval(async () => {
+                if (!activeTripId) return;
+                const { data } = await supabaseClient.from('trips_data').select('*').eq('id', activeTripId).single();
+                if (data) {
+                    if (data.status === 'accepted') document.getElementById('tripStateBadge').innerText = "🚗 الكابتن قبل الرحلة وهو في الطريق إليك";
+                    else if (data.status === 'arrived') document.getElementById('tripStateBadge').innerText = "📍 الكابتن وصل لموقعك وانتظارك جاري (3 دقائق)";
+                    else if (data.status === 'started') document.getElementById('tripStateBadge').innerText = "🚀 الرحلة جارية الآن نحو الوجهة";
+                    else if (data.status === 'cancelled') document.getElementById('tripStateBadge').innerText = "❌ تم إلغاء الرحلة لعدم الحضور - تم إضافة غرامة 20 ج.م عليك";
+
+                    if (data.notes && data.notes !== window.lastChat) {
+                        window.lastChat = data.notes;
+                        const chatBox = document.getElementById('pChatBox');
+                        chatBox.innerHTML = `<div class="chat-msg other">${data.notes}</div>`;
+                    }
+                }
+            }, 2500);
+        }
+
+        async function sendPassengerMessage() {
+            const txt = document.getElementById('pChatInput').value.trim();
+            if (!txt || !activeTripId) return;
+            const chatBox = document.getElementById('pChatBox');
+            chatBox.innerHTML += `<div class="chat-msg me">راكب: ${txt}</div>`;
+            document.getElementById('pChatInput').value = '';
+
+            await supabaseClient.from('trips_data').update({ notes: `راكب: ${txt}` }).eq('id', activeTripId);
         }
     </script>
 </body>
