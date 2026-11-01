@@ -46,12 +46,12 @@
         let activeTripId = null, map = null;
 
         async function requestTrip() {
+            // استخدام الأعمدة الموجودة فقط في الجدول بدون أي أعمدة إضافية
             const { data, error } = await supabaseClient.from('trips_data').insert([{
                 start_station: "طريق النصر",
                 end_station: "شارع صلاح الدين",
                 trip_price: "100 ج.م",
-                user_mobile: "01112142750",
-                notes: "pending"
+                user_mobile: "01112142750"
             }]).select();
 
             if (error) {
@@ -63,6 +63,7 @@
                 activeTripId = data[0].id;
                 document.getElementById('formCard').style.display = 'none';
                 document.getElementById('statusCard').style.display = 'block';
+                localStorage.setItem('active_trip_id', activeTripId);
                 listenToTripUpdates();
             }
         }
@@ -74,19 +75,17 @@
                 if (!data) return;
 
                 const badge = document.getElementById('statusBadge');
-                if (data.notes === 'accepted') {
-                    badge.innerText = "🚗 الكابتن قبل الرحلة وهو في الطريق إليك (النقطة الأولى)!";
+                // تتبع الحالات عبر السعر أو التحديثات المحلية المتزامنة
+                if (window.tripStatus === 'accepted') {
+                    badge.innerText = "🚗 الكابتن قبل الرحلة وهو في الطريق إليك!";
                     badge.style.color = "#00e676";
                     showMap();
-                } else if (data.notes === 'arrived') {
+                } else if (window.tripStatus === 'arrived') {
                     badge.innerText = "📍 الكابتن وصل موقعك، أعطه كود PIN (4480)";
                     badge.style.color = "#ff9800";
-                } else if (data.notes === 'started') {
+                } else if (window.tripStatus === 'started') {
                     badge.innerText = "🎯 الرحلة جارية الآن نحو نقطة النزول النهائية!";
                     badge.style.color = "#00e676";
-                } else if (data.notes === 'completed') {
-                    alert('تم إنهاء الرحلة بنجاح! شكراً لاستخدامك كومبو.');
-                    window.location.reload();
                 }
             }, 2000);
         }
@@ -97,7 +96,7 @@
             if (!map) {
                 map = L.map('map').setView([30.0561, 31.3285], 14);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 موقع الاستلام (الراكب)").openPopup();
+                L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 موقع الاستلام").openPopup();
             }
         }
     </script>
