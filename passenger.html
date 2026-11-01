@@ -3,182 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محطات - تطبيق الراكب الذكي</title>
-    <!-- استدعاء مكتبة Supabase الرسمية -->
+    <title>محطات - تطبيق الراكب</title>
     <script src="https://jsdelivr.net"></script>
-    <!-- استدعاء مكتبة الخرائط التفاعلية المجانية -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
     <style>
         :root { --primary: #1a1a1a; --accent: #ffc107; --bg: #f8f9fa; --card: #ffffff; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: var(--bg); color: #333; padding: 15px; }
-        .header { background: var(--primary); color: white; padding: 20px; text-align: center; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; }
-        .header h1 { color: var(--accent); font-size: 22px; }
-        .auth-container, .app-container { display: none; max-width: 450px; margin: 0 auto; }
-        .active-container { display: block; }
-        .panel { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; }
-        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
-        .nav-tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-        .tab-btn { flex: 1; padding: 12px; border: none; background: #ddd; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .tab-btn.active { background: var(--accent); color: var(--primary); }
-        .btn { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 5px; }
-        .btn-alt { background: none; color: var(--primary); border: 2px solid var(--primary); margin-top: 10px; }
-        /* تصميم الخريطة لتبدو مدمجة وذكية */
-        #map { height: 250px; width: 100%; border-radius: 12px; margin-bottom: 15px; box-shadow: inset 0 0 10px rgba(0,0,0,0.1); border: 1px solid #ddd; }
-        .panel-content { display: none; }
-        .panel-content.active { display: block; }
+        body { background-color: var(--bg); color: #333; padding-bottom: 30px; }
+        .header { background: var(--primary); color: white; padding: 15px; text-align: center; }
+        .header h1 { color: var(--accent); font-size: 20px; }
+        .container { padding: 15px; max-width: 480px; margin: 0 auto; }
+        .panel { background: var(--card); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; display: none; }
+        .panel.active { display: block; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px; }
+        .form-group input, .form-group select { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+        .btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-accent { background: var(--accent); color: var(--primary); }
+        #map { height: 200px; width: 100%; border-radius: 12px; margin-bottom: 12px; border: 1px solid #ddd; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--primary); display: flex; justify-content: space-around; padding: 10px; z-index: 1000; }
+        .nav-item { color: white; border: none; background: none; font-size: 12px; cursor: pointer; text-align: center; }
+        .nav-item.active { color: var(--accent); font-weight: bold; }
+        .trip-box { background: #f1f3f5; padding: 10px; border-radius: 8px; margin-top: 8px; font-size: 13px; border-right: 4px solid var(--accent); }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>برنامج مَحَطَّات</h1>
-        <p>ربط ذكي وتتبع مباشر للرحلات</p>
+        <h1>سكة ومحطات - الراكب</h1>
     </div>
 
-    <!-- ==================== شاشة تسجيل الدخول وإنشاء الحساب ==================== -->
-    <div id="auth-screen" class="auth-container active-container">
-        <div class="panel">
-            <h2 id="auth-title" style="margin-bottom:15px; text-align:center;">تسجيل الدخول</h2>
+    <!-- شاشة اختيار نوع المستخدم والدخول الموحد -->
+    <div id="screen-auth" class="container" style="display: block;">
+        <div class="panel active">
+            <h3 style="text-align: center; margin-bottom: 15px;">تسجيل الدخول / إنشاء حساب</h3>
+            <div class="form-group"><label>البريد الإلكتروني</label><input type="email" id="email" placeholder="mail@example.com"></div>
+            <div class="form-group"><label>كلمة السر</label><input type="password" id="password" placeholder="كلمة السر"></div>
             <div class="form-group">
-                <label>البريد الإلكتروني (أو رقم الموبايل كميل)</label>
-                <input type="email" id="auth-email" placeholder="name@example.com">
-            </div>
-            <div class="form-group">
-                <label>كلمة السر</label>
-                <input type="password" id="auth-password" placeholder="أدخل كلمة السر">
-            </div>
-            <button class="btn" id="btn-primary-auth" onclick="handleAuth()">دخول</button>
-            <button class="btn btn-alt" id="btn-toggle-auth" onclick="toggleAuthMode()">ليس لديك حساب؟ سجل الآن</button>
-        </div>
-    </div>
-
-    <!-- ==================== شاشة التطبيق الرئيسية بعد الدخول ==================== -->
-    <div id="app-screen" class="app-container">
-        <!-- الخريطة الحية للتتبع -->
-        <div id="map"></div>
-
-        <div class="nav-tabs">
-            <button class="tab-btn active" onclick="switchTab('private', this)">🚗 خاص</button>
-            <button class="tab-btn" onclick="switchTab('shared', this)">🚐 مشترك</button>
-            <button class="tab-btn" onclick="switchTab('routes', this)">🚌 خطوط</button>
-        </div>
-
-        <!-- 1. مشوار خاص -->
-        <div id="panel-private" class="panel panel-content active">
-            <h3>طلب مشوار ملاكي خاص</h3>
-            <div class="form-group"><label>نقطة الانطلاق</label><input type="text" id="priv-from" value="التجمع الخامس - شارع التسعين"></div>
-            <div class="form-group"><label>الوجهة</label><input type="text" id="priv-to" placeholder="أدخل وجهتك بالتحديد"></div>
-            <button class="btn" onclick="requestPrivateTrip()">طلب السيارة الآن</button>
-            <div id="priv-status" style="margin-top:10px; color:green; font-weight:bold;"></div>
-        </div>
-
-        <!-- 2. مشوار مشترك -->
-        <div id="panel-shared" class="panel panel-content">
-            <h3>مشاوير مشتركة قريبة</h3>
-            <button class="btn" onclick="searchSharedTrips()">ابحث عن سيارات في اتجاهك</button>
-            <div id="shared-list" style="margin-top:10px;"></div>
-        </div>
-
-        <!-- 3. خطوط ومحطات -->
-        <div id="panel-routes" class="panel panel-content">
-            <h3>حجز مقعد (ميكروباص / سوزوكي)</h3>
-            <div class="form-group">
-                <label>اختر خط السير</label>
-                <select id="route-select" onchange="loadStations()">
-                    <option value="">-- تحميل الخطوط من الداتا بيز --</option>
+                <label>نوع الحساب</label>
+                <select id="user-type">
+                    <option value="passenger">راكب 🚗</option>
+                    <option value="captain">كابتن / سائق 🚐</option>
                 </select>
             </div>
-            <div class="form-group"><label>محطة الركوب</label><select id="station-from"></select></div>
-            <div class="form-group"><label>محطة النزول</label><select id="station-to"></select></div>
-            <button class="btn" onclick="bookLineSeat()">تأكيد حجز المقعد</button>
-            <div id="route-status" style="margin-top:10px; font-weight:bold;"></div>
+            <button class="btn btn-accent" onclick="login()">دخول سريع</button>
+            <button class="btn" style="margin-top: 8px; background: #6c757d;" onclick="signUp()">إنشاء حساب جديد</button>
         </div>
-        
-        <button class="btn btn-alt" style="border-color:#dc3545; color:#dc3545;" onclick="handleLogout()">تسجيل الخروج</button>
+    </div>
+
+    <!-- شاشة الراكب الرئيسية والخدمات -->
+    <div id="screen-passenger" style="display: none;">
+        <div class="container">
+            <div id="map"></div>
+
+            <!-- تبويب: طلب خاص -->
+            <div id="tab-private" class="panel active">
+                <h4>🚗 مشوار ملاكي خاص مباشر</h4>
+                <div class="form-group"><label>مكان الركوب</label><input type="text" id="p-from" value="التجمع الخامس"></div>
+                <div class="form-group"><label>الوجهة</label><input type="text" id="p-to" placeholder="مثال: رمسيس"></div>
+                <button class="btn" onclick="requestPrivate()">اطلب الآن (السعر ثابت)</button>
+                <div id="p-status" style="margin-top: 10px; font-weight: bold; color: green;"></div>
+            </div>
+
+            <!-- تبويب: خطوط ومحطات -->
+            <div id="tab-routes" class="panel">
+                <h4>🚌 حجز مقاعد الخطوط الثابتة</h4>
+                <div class="form-group">
+                    <label>اختر خط السير المتوفر</label>
+                    <select id="r-select" onchange="getStations()">
+                        <option value="">-- اختر الخط --</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>محطة الركوب</label><select id="s-from"></select></div>
+                <div class="form-group"><label>محطة النزول</label><select id="s-to"></select></div>
+                <button class="btn btn-accent" onclick="bookSeat()">تأكيد حجز الكرسي</button>
+                <div id="r-status" style="margin-top: 10px; font-weight: bold;"></div>
+            </div>
+
+            <!-- تبويب: اقتراح خط -->
+            <div id="tab-suggest" class="panel">
+                <h4>🗺️ اقتراح خط سير جديد للمنصة</h4>
+                <div class="form-group"><label>نقطة البداية المقترحة</label><input type="text" id="sug-start" placeholder="مثال: مدينتي"></div>
+                <div class="form-group"><label>نقطة النهاية المقترحة</label><input type="text" id="sug-end" placeholder="مثال: وسط البلد"></div>
+                <button class="btn" onclick="suggestRoute()">إرسال المقترح للإدارة</button>
+            </div>
+
+            <!-- تبويب: رحلاتي ومتابعة الحجوزات -->
+            <div id="tab-my-trips" class="panel">
+                <h4>📋 رحلاتي الحالية وأكواد الـ OTP</h4>
+                <div id="my-trips-list">جاري تحميل حجوزاتك الحية...</div>
+            </div>
+        </div>
+
+        <!-- شريط التنقل السفلي السريع للموبايل -->
+        <div class="bottom-nav">
+            <button class="nav-item active" onclick="navTab('private', this)">🚗 خاص</button>
+            <button class="nav-item" onclick="navTab('routes', this)">🚌 الخطوط</button>
+            <button class="nav-item" onclick="navTab('suggest', this)">🗺️ اقتراح خط</button>
+            <button class="nav-item" onclick="navTab('my-trips', this)">📋 رحلاتي</button>
+        </div>
     </div>
 
     <script>
-        // دمج بيانات مشروعك المستخرجة من الصور الحية
-        const SUPABASE_URL = "https://supabase.co"; 
-        const SUPABASE_KEY = "قم_بنسخ_المفتاح_الكامل_الذي_يبدأ_بـ_sb_pk_من_صورتك_الثالثة_وضعه_هنا"; 
+        const SUPABASE_URL = "https://supabase.co";
+        const SUPABASE_KEY = "قم_بوضع_Publishable_Key_الخاص_بك_هنا_من_الصورة";
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let map, userMarker;
-        let isSignUpMode = false;
+        let map;
 
-        // تبديل واجهة الدخول / التسجيل
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            document.getElementById('auth-title').innerText = isSignUpMode ? "إنشاء حساب جديد" : "تسجيل الدخول";
-            document.getElementById('btn-primary-auth').innerText = isSignUpMode ? "سجل حسابك" : "دخول";
-            document.getElementById('btn-toggle-auth').innerText = isSignUpMode ? "لديك حساب بالفعل؟ سجل دخولك" : "ليس لديك حساب؟ سجل الآن";
-        }
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const type = document.getElementById('user-type').value;
 
-        // معالجة الدخول والتسجيل عبر Supabase Auth الحقيقي
-        async function handleAuth() {
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
+            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+            if(error) return alert("خطأ بالدخول: " + error.message);
 
-            if(!email || !password) return alert("برجاء إدخال البريد الإلكتروني وكلمة السر");
-
-            if (isSignUpMode) {
-                const { data, error } = await _supabase.auth.signUp({ email, password });
-                if (error) alert("خطأ في التسجيل: " + error.message);
-                else alert("تم إنشاء الحساب! برجاء مراجعة بريدك الإلكتروني لتأكيد الحساب ثم سجل دخولك.");
+            if(type === 'passenger') {
+                document.getElementById('screen-auth').style.display = 'none';
+                document.getElementById('screen-passenger').style.display = 'block';
+                initMap();
+                loadRoutes();
             } else {
-                const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-                if (error) alert("بيانات الدخول خاطئة: " + error.message);
-                else checkUserSession();
+                window.location.href = 'captain.html'; // تحويل تلقائي لصفحة الكابتن لو اختار كابتن
             }
         }
 
-        // فحص حالة الجلسة وتأمين شاشات التطبيق
-        async function checkUserSession() {
-            const { data: { session } } = await _supabase.auth.getSession();
-            if (session) {
-                document.getElementById('auth-screen').classList.remove('active-container');
-                document.getElementById('app-screen').classList.add('active-container');
-                initMap(); // تشغيل الخريطة فور الدخول الناجح
-                loadRoutesFromDB();
-            } else {
-                document.getElementById('auth-screen').classList.add('active-container');
-                document.getElementById('app-screen').classList.remove('active-container');
-            }
+        async function signUp() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            await _supabase.auth.signUp({ email, password });
+            alert("تم إرسال رابط التفعيل للميل بنجاح!");
         }
 
-        // تسجيل الخروج
-        async function handleLogout() {
-            await _supabase.auth.signOut();
-            checkUserSession();
-        }
-
-        // تهيئة وتشغيل الخريطة الحية للموقع الجغرافي للراكب والتتبع
         function initMap() {
-            if (map) return; 
-            // افتراضياً تفتح على إحداثيات القاهرة والتجمع الخامس بشكل دقيق جداً
-            map = L.map('map').setView([30.0261, 31.4913], 13); 
+            if (map) return;
+            map = L.map('map', { fadeAnimation: false, zoomAnimation: false }).setView([30.026, 31.493], 13); // التجمع الخامس
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            
-            userMarker = L.marker([30.0261, 31.4913]).addTo(map)
-                .bindPopup('موقعك الحالي في التجمع الخامس').openPopup();
+        }
 
-            // محاولة جلب موقع الموبايل الحقيقي بالـ GPS لو الراكب سمح بالصلاحية
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    map.setView([lat, lon], 14);
-                    userMarker.setLatLng([lat, lon]).bindPopup('تم تحديد موقعك بدقة').openPopup();
-                });
+        function navTab(target, btn) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(`tab-${target}`).classList.add('active');
+            if(target === 'my-trips') loadMyTrips();
+        }
+
+        async function loadRoutes() {
+            const select = document.getElementById('r-select');
+            const { data } = await _supabase.from('routes').select('*');
+            if(data) {
+                select.innerHTML = '<option value="">-- اختر خط السير --</option>';
+                data.forEach(r => select.innerHTML += `<option value="${r.id}">${r.name || 'التجمع - رمسيس'}</option>`);
             }
         }
 
-        // التنقل بين فئات الركوب الثلاثة
-        function switchTab(type, btn) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.panel-content').forEach(p => p.classList.remove('active'));
-            btn.classList.add('active');
+        function getStations() {
+            const from = document.getElementById('s-from');
+            const to = document.getElementById('s-to');
+            const stations = ["التجمع الخامس", "زهراء مدينة نصر", "عباس العقاد", "رمسيس"];
+            from.innerHTML = ""; to.innerHTML = "";
+            stations.forEach((s, i) => {
+                from.innerHTML += `<option value="${i}">${s}</option>`;
+                to.innerHTML += `<option value="${i}">${s}</option>`;
+            });
+        }
+
+        async function requestPrivate() {
+            const from = document.getElementById('p-from').value;
+            const to = document.getElementById('p-to').value;
+            document.getElementById('p-status').innerText = "جاري طلب السيارة وحفظ السعر الثابت (135 جنيه)...";
+            await _supabase.from('trips').insert([{ trip_type: 'private', start_location: from, end_location: to, fare: 135, status: 'pending' }]);
+            document.getElementById('p-status').innerText = "✅ تم الإرسال وبانتظار قبول الكابتن للرحلة الخاصة.";
+        }
+
+        async function bookSeat() {
+            const otp = Math.floor(1000 + Math.random() * 9000);
