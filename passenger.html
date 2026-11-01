@@ -6,7 +6,6 @@
   <title>كومبو - واجهة الراكب</title>
   
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.11.0/dist/geosearch.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
   <style>
@@ -47,10 +46,16 @@
     <button class="btn-gps" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
     
     <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب (نقطة الانطلاق):</label>
-    <input type="text" id="pickup_loc" placeholder="اضغط على الخريطة لتحديد مكان الركوب">
+    <div style="display:flex; gap:5px;">
+      <input type="text" id="pickup_loc" placeholder="اكتب الشارع أو اضغط على الخريطة" style="margin:0;">
+      <button style="width:30%; margin:0; background:#007bff;" onclick="searchLocation('pickup')">بحث</button>
+    </div>
 
     <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">وجهة النزول (الوصول):</label>
-    <input type="text" id="dropoff_loc" placeholder="اضغط على الخريطة لتحديد مكان الوصول">
+    <div style="display:flex; gap:5px;">
+      <input type="text" id="dropoff_loc" placeholder="اكتب الوجهة أو اضغط على الخريطة" style="margin:0;">
+      <button style="width:30%; margin:0; background:#007bff;" onclick="searchLocation('dropoff')">بحث</button>
+    </div>
 
     <button class="btn-route" onclick="drawRoute()">🛣️ عرض خط السير على الخريطة</button>
 
@@ -61,7 +66,6 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-geosearch@3.11.0/dist/geosearch.umd.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
   <script type="module">
@@ -113,73 +117,37 @@
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // شريط البحث المدمج مباشرة في الخريطة (مثل جوجل ماب تماماً)
-      const provider = new GeoSearch.OpenStreetMapProvider();
-      const searchControl = new GeoSearch.GeoSearchControl({
-        provider: provider,
-        style: 'bar',
-        autoComplete: true,
-        autoCompleteDelay: 250,
-        showMarker: false,
-        searchLabel: 'ابحث عن شارع أو منطقة...',
-        keepResult: true
-      });
-      map.addControl(searchControl);
-
-      // عند اختيار مكان من بحث الخريطة
-      map.on('geosearch/showlocation', function(result) {
-        const coords = L.latLng(result.location.y, result.location.x);
-        const label = result.location.label;
-
-        if (!pickupCoords) {
-          pickupCoords = coords;
-          document.getElementById('pickup_loc').value = label;
-          if (pickupMarker) map.removeLayer(pickupMarker);
-          pickupMarker = L.marker(coords, {draggable: true}).addTo(map);
-        } else if (!dropoffCoords) {
-          dropoffCoords = coords;
-          document.getElementById('dropoff_loc').value = label;
-          if (dropoffMarker) map.removeLayer(dropoffMarker);
-          dropoffMarker = L.marker(coords, {draggable: true}).addTo(map);
-          drawRoute();
-        } else {
-          // إعادة التعيين لو تم اختيار نقطة جديدة
-          pickupCoords = coords;
-          document.getElementById('pickup_loc').value = label;
-          if (pickupMarker) map.removeLayer(pickupMarker);
-          pickupMarker = L.marker(coords, {draggable: true}).addTo(map);
-          dropoffCoords = null;
-          document.getElementById('dropoff_loc').value = '';
-          if (dropoffMarker) map.removeLayer(dropoffMarker);
-          if (routingControl) map.removeControl(routingControl);
-        }
-      });
-
-      // الضغط المباشر على الخريطة لتحديد النقاط
+      // الضغط المباشر على الخريطة بالترتيب (أول ضغطة للركوب، تاني ضغطة للوصول)
       map.on('click', async function(e) {
-        const coords = e.latlng;
-        const address = await getAddressName(coords.lat, coords.lng);
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        const coords = L.latLng(lat, lng);
+        const address = await getAddressName(lat, lng);
 
         if (!pickupCoords) {
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
           if (pickupMarker) map.removeLayer(pickupMarker);
-          pickupMarker = L.marker(coords, {draggable: true}).addTo(map);
+          pickupMarker = L.marker(coords).addTo(map);
+          map.setView(coords, 14);
         } else if (!dropoffCoords) {
           dropoffCoords = coords;
           document.getElementById('dropoff_loc').value = address;
           if (dropoffMarker) map.removeLayer(dropoffMarker);
-          dropoffMarker = L.marker(coords, {draggable: true}).addTo(map);
+          dropoffMarker = L.marker(coords).addTo(map);
+          map.setView(coords, 14);
           drawRoute();
         } else {
+          // إعادة ضبط لو حابب تبدأ رحلة جديدة بالضغط
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
           if (pickupMarker) map.removeLayer(pickupMarker);
-          pickupMarker = L.marker(coords, {draggable: true}).addTo(map);
+          pickupMarker = L.marker(coords).addTo(map);
           dropoffCoords = null;
           document.getElementById('dropoff_loc').value = '';
           if (dropoffMarker) map.removeLayer(dropoffMarker);
           if (routingControl) map.removeControl(routingControl);
+          map.setView(coords, 14);
         }
       });
     }
@@ -195,9 +163,51 @@
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
+    window.searchLocation = async function(type) {
+      const inputId = type === 'pickup' ? 'pickup_loc' : 'dropoff_loc';
+      let query = document.getElementById(inputId).value;
+      if (!query) { alert('اكتب اسم الشارع أو المنطقة أولاً للبحث'); return; }
+
+      if (!query.includes('القاهرة') && !query.includes('الجيزة') && !query.includes('مصر')) {
+        query += ", القاهرة, مصر";
+      }
+
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=eg&limit=1&accept-language=ar`);
+        const results = await res.json();
+        
+        if (results && results.length > 0) {
+          const lat = parseFloat(results[0].lat);
+          const lon = parseFloat(results[0].lon);
+          const coords = L.latLng(lat, lon);
+          
+          if (type === 'pickup') {
+            pickupCoords = coords;
+            if (pickupMarker) map.removeLayer(pickupMarker);
+            pickupMarker = L.marker(coords).addTo(map);
+          } else {
+            dropoffCoords = coords;
+            if (dropoffMarker) map.removeLayer(dropoffMarker);
+            dropoffMarker = L.marker(coords).addTo(map);
+          }
+
+          document.getElementById(inputId).value = results[0].display_name.split(',').slice(0, 3).join(',');
+          map.setView(coords, 15);
+
+          if (pickupCoords && dropoffCoords) {
+            drawRoute();
+          }
+        } else {
+          alert('لم يتم العثور على المكان، تأكد من كتابة اسم الشارع والمدينة بوضوح.');
+        }
+      } catch (e) {
+        alert('حدث خطأ أثناء البحث.');
+      }
+    };
+
     window.drawRoute = function() {
       if (!pickupCoords || !dropoffCoords) {
-        alert('من فضلك حدد نقطة الركوب ونقطة الوصول على الخريطة أولاً');
+        alert('حدد نقطة الركوب ونقطة الوصول أولاً');
         return;
       }
 
@@ -227,7 +237,7 @@
           document.getElementById('pickup_loc').value = address;
           if (pickupMarker) map.removeLayer(pickupMarker);
           pickupMarker = L.marker(pickupCoords).addTo(map);
-          map.setView(pickupCoords, 15);
+          map.setView(pickupCoords, 16);
         }, () => {
           alert('تعذر تحديد موقعك بالـ GPS.');
         });
@@ -236,7 +246,7 @@
 
     window.saveFavoriteTrip = function() {
       const pickup = document.getElementById('pickup_loc').value;
-      const dropoff = document.getElementById('dropoff_loc').value;
+      const dropoff = document.getElementById('dropoff_loc'].value;
       if (!pickup || !dropoff) { alert('حدد المكانين أولاً'); return; }
       localStorage.setItem('fav_pickup', pickup);
       localStorage.setItem('fav_dropoff', dropoff);
