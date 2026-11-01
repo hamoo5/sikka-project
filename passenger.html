@@ -26,11 +26,9 @@
         .search-item { padding: 10px; border-bottom: 1px solid #333; font-size: 13px; cursor: pointer; }
         .search-item:hover { background: #333; }
         
-        /* كروت الكباتن الاحترافية بالصور والبيانات */
         .captain-card { background: #222; border: 1px solid #444; border-radius: 12px; padding: 14px; margin-bottom: 14px; text-align: right; }
         .captain-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
         .captain-avatar { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #00e676; }
-        .captain-details flex-grow: 1; }
         .rating { color: #ffca28; font-weight: bold; font-size: 13px; }
         .mini-map { width: 100%; height: 120px; border-radius: 8px; margin: 8px 0; border: 1px solid #444; }
         .info-badge { background: #111; color: #00e676; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; display: flex; justify-content: space-between; margin-top: 6px; }
@@ -57,7 +55,6 @@
             <input type="text" id="pEndInput" placeholder="اكتب الوجهة..." oninput="searchAddress(this.value, 'end')" />
             <div id="endResults" class="search-results"></div>
 
-            <!-- خريطة الشوارع الأساسية -->
             <div id="passengerMap" class="map-container"></div>
 
             <div style="background:#2a2a2a; padding:10px; border-radius:8px; font-size:13px; margin-top:8px;">
@@ -67,7 +64,7 @@
             <button class="btn btn-green" onclick="showOnlineCaptains()">عرض الكباتن المتاحة ومواقعهم 🚀</button>
         </div>
 
-        <!-- شاشة قائمة الكباتن مع الصور والسيارات والخريطة المصغرة -->
+        <!-- شاشة قائمة الكباتن -->
         <div class="card" id="captainsListCard" style="display:none;">
             <h3 style="margin-top:0; color:#00e676;">🚕 الكباتن المتاحة أونلاين بالقرب منك</h3>
             <p style="color:#aaa; font-size:13px;">شاهد صورة الكابتن، سيارته، وموقعه على الخريطة قبل الاختيار:</p>
@@ -96,7 +93,6 @@
         let activeTripId = null, generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
         let passengerPhone = localStorage.getItem('passenger_phone') || "01000000000";
 
-        // قائمة كباتن تفصيلية تضم الصور، بيانات السيارة، والإحداثيات للموقع
         const onlineCaptains = [
             { 
                 name: "كابتن أحمد محمود", 
@@ -250,12 +246,11 @@
                             <img src="${c.img}" class="captain-avatar" />
                             <div>
                                 <b style="font-size:15px;">${c.name}</b>
-                                <div class="rating">${c.rating} | 🛣️ أنجز ${c.trips} رحلة</div>
+                                <div class="rating">${c.rating} | 🛣️ ${c.trips} رحلة ناجحة</div>
                                 <div style="font-size:12px; color:#aaa; margin-top:2px;">🚗 ${c.car}</div>
                             </div>
                         </div>
                         
-                        <!-- خريطة مصغرة توضح موقع الكابتن الحالي في الشارع -->
                         <div id="${mapId}" class="mini-map"></div>
 
                         <div class="info-badge">
@@ -270,7 +265,6 @@
 
             document.getElementById('captainsListCard').style.display = 'block';
 
-            // رسم الخرائط المصغرة لكل كابتن بعد ظهور العنصر في الصفحة
             setTimeout(() => {
                 onlineCaptains.forEach((c, index) => {
                     const mapId = `miniMap_${index}`;
