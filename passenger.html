@@ -117,7 +117,7 @@
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // الضغط المباشر على الخريطة بالترتيب (أول ضغطة للركوب، تاني ضغطة للوصول)
+      // الضغط المباشر على الخريطة لتحديد النقاط بالترتيب
       map.on('click', async function(e) {
         const lat = e.latlng.lat;
         const lng = e.latlng.lng;
@@ -138,7 +138,6 @@
           map.setView(coords, 14);
           drawRoute();
         } else {
-          // إعادة ضبط لو حابب تبدأ رحلة جديدة بالضغط
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
           if (pickupMarker) map.removeLayer(pickupMarker);
@@ -246,7 +245,7 @@
 
     window.saveFavoriteTrip = function() {
       const pickup = document.getElementById('pickup_loc').value;
-      const dropoff = document.getElementById('dropoff_loc'].value;
+      const dropoff = document.getElementById('dropoff_loc').value;
       if (!pickup || !dropoff) { alert('حدد المكانين أولاً'); return; }
       localStorage.setItem('fav_pickup', pickup);
       localStorage.setItem('fav_dropoff', dropoff);
