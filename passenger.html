@@ -18,8 +18,13 @@
     .btn-gps { background: #17a2b8; }
     .btn-fav { background: #ffc107; color: #222; }
     .btn-route { background: #6f42c1; }
-    .mode-btn { background: #6c757d; font-size: 13px; padding: 8px; margin-bottom: 4px; }
-    .mode-btn.active { background: #d9534f; border: 2px solid #fff; }
+    
+    /* تنسيق أزرار وضع الخريطة */
+    .mode-container { display: flex; gap: 6px; margin-bottom: 10px; }
+    .mode-btn { flex: 1; background: #e0e0e0; color: #333; font-size: 13px; padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+    .mode-btn.active-pickup { background: #007bff; color: white; }
+    .mode-btn.active-dropoff { background: #dc3545; color: white; }
+
     #map { height: 340px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
     .hidden { display: none; }
     .toggle-link { color: #007bff; text-align: center; cursor: pointer; margin-top: 10px; display: block; font-weight: bold; }
@@ -47,10 +52,10 @@
     
     <button class="btn-gps" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
     
-    <!-- أزرار لاختيار وضع الضغط على الخريطة -->
-    <div style="display:flex; gap:5px; margin-top: 10px;">
-      <button id="btn-mode-pickup" class="mode-btn active" onclick="setClickMode('pickup')">📍 اضغط لتحديد (الركوب)</button>
-      <button id="btn-mode-dropoff" class="mode-btn" onclick="setClickMode('dropoff')">🎯 اضغط لتحديد (الوصول)</button>
+    <!-- أزرار اختيار وضع النقر على الخريطة -->
+    <div class="mode-container">
+      <button id="btn-mode-pickup" class="mode-btn active-pickup" onclick="setClickMode('pickup')">📍 تحديد الركوب بالخريطة</button>
+      <button id="btn-mode-dropoff" class="mode-btn" onclick="setClickMode('dropoff')">🎯 تحديد الوصول بالخريطة</button>
     </div>
 
     <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب (نقطة الانطلاق):</label>
@@ -85,7 +90,7 @@
     let dropoffCoords = null;
     let pickupMarker = null;
     let dropoffMarker = null;
-    let currentClickMode = 'pickup'; // تحديد هل النقر للركوب أم الوصول
+    let currentClickMode = 'pickup';
 
     window.toggleAuthMode = function() {
       isRegistering = !isRegistering;
@@ -121,18 +126,25 @@
 
     window.setClickMode = function(mode) {
       currentClickMode = mode;
-      document.getElementById('btn-mode-pickup').classList.toggle('active', mode === 'pickup');
-      document.getElementById('btn-mode-dropoff').classList.toggle('active', mode === 'dropoff');
+      const btnPickup = document.getElementById('btn-mode-pickup');
+      const btnDropoff = document.getElementById('btn-mode-dropoff');
+      
+      if (mode === 'pickup') {
+        btnPickup.className = "mode-btn active-pickup";
+        btnDropoff.className = "mode-btn";
+      } else {
+        btnDropoff.className = "mode-btn active-dropoff";
+        btnPickup.className = "mode-btn";
+      }
     };
 
     function initMap() {
       if (map) return;
-      map = L.map('map').setView([30.0444, 31.2357], 12);
+      map = L.map('map').setView([30.0444, 31.2357], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // النقر على الخريطة لتحديث الدبوس والنص حسب الوضع الحالي
       map.on('click', function(e) {
         const lat = e.latlng.lat;
         const lng = e.latlng.lng;
@@ -149,7 +161,7 @@
             if (pickupCoords && dropoffCoords) drawRoute();
           });
           updateAddressName(lat, lng, 'pickup');
-          setClickMode('dropoff'); // التبديل تلقائياً لوضع الوصول لتسهيل الاستخدام
+          setClickMode('dropoff'); // التبديل تلقائياً للوصول لتسهيل التجربة
         } else {
           dropoffCoords = coords;
           if (dropoffMarker) map.removeLayer(dropoffMarker);
@@ -191,7 +203,6 @@
       let query = document.getElementById(inputId).value;
       if (!query) { alert('اكتب اسم المكان أولاً للبحث'); return; }
 
-      // إضافة كلمة القاهرة للبحث لضمان دقة النتائج وعدم الذهاب لأسوان أو محافظات بعيدة
       if (!query.includes('القاهرة') && !query.includes('الجيزة') && !query.includes('مصر')) {
         query += ", القاهرة, مصر";
       }
@@ -240,7 +251,7 @@
         waypoints: [pickupCoords, dropoffCoords],
         routeWhileDragging: false,
         addWaypoints: false,
-        createMarker: function() { return null; }, // الاعتماد على الدبابيس المخصصة
+        createMarker: function() { return null; },
         lineOptions: {
           styles: [{ color: '#007bff', opacity: 0.8, weight: 6 }]
         }
@@ -274,7 +285,7 @@
     };
 
     window.requestRide = async function() {
-      const pickup = document.getElementById('pickup_loc'.value);
+      const pickup = document.getElementById('pickup_loc').value;
       const dropoff = document.getElementById('dropoff_loc').value;
       if (!pickup || !dropoff) { alert('أكمل بيانات الرحلة أولاً'); return; }
       const { error } = await supabase.from('bookings').insert([{ pickup_location: pickup, dropoff_location: dropoff, trip_type: 'private', status: 'pending' }]);
