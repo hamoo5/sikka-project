@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>كومبو - واجهة الراكب الاحترافية</title>
+    <title>كومبو - واجهة الراكب</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -11,59 +11,42 @@
 
     <style>
         * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
-        body { background: #121212; color: #fff; margin: 0; padding: 0; direction: rtl; overflow: hidden; }
-        
-        /* خريطة ملء الشاشة تماماً مثل التطبيقات الاحترافية */
-        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-        
-        /* الشريط العلوي الشفاف */
-        .top-nav { position: absolute; top: 15px; right: 15px; left: 15px; z-index: 10; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.85); padding: 10px 15px; border-radius: 10px; border: 1px solid #333; backdrop-filter: blur(5px); }
-        
-        /* الكارت السفلي العائم (BottomSheet) */
-        .bottom-sheet { position: absolute; bottom: 0; left: 0; width: 100%; background: #181818; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 20px; z-index: 10; box-shadow: 0 -5px 25px rgba(0,0,0,0.9); border-top: 1px solid #333; max-height: 85vh; overflow-y: auto; }
-        
-        .btn-uber { background: #fff; color: #000; border: none; padding: 16px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 12px; }
-        .btn-green { background: #00875a; color: #fff; }
-        
-        .input-group { background: #222; padding: 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #333; }
-        .input-group label { font-size: 11px; color: #aaa; display: block; margin-bottom: 4px; }
-        .input-group input { width: 100%; background: transparent; border: none; color: #fff; font-size: 14px; outline: none; }
-        
-        .pin-box { font-size: 28px; font-weight: bold; letter-spacing: 8px; color: #00e676; background: #111; padding: 12px; border-radius: 8px; text-align: center; margin: 10px 0; border: 1px dashed #00e676; }
+        body { background: #121212; color: #fff; margin: 0; padding: 0; direction: rtl; }
+        .top-bar { background: #000; padding: 14px; display: flex; justify-content: space-between; border-bottom: 1px solid #333; }
+        .container { padding: 12px; }
+        .card { background: #1e1e1e; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
+        .btn { background: #00875a; color: #fff; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; }
+        .map-container { width: 100%; height: 280px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; }
+        .pin-box { font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #00e676; background: #111; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; border: 1px dashed #00e676; }
+        input { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; margin: 6px 0; font-size: 14px; }
     </style>
 </head>
 <body>
-
-    <!-- الخريطة كخلفية حية -->
-    <div id="map"></div>
-
-    <!-- شريط علوي -->
-    <div class="top-nav">
-        <span style="font-weight: bold; font-size: 15px;">🚗 كومبو - واجهة الراكب</span>
-        <a href="captain.html" style="color: #00e676; text-decoration: none; font-size: 12px; font-weight: bold;">صفحة الكابتن ➔</a>
+    <div class="top-bar">
+        <b>🚗 كومبو - واجهة الراكب</b>
+        <a href="captain.html" style="color:#00e676; text-decoration:none;">صفحة الكابتن ➔</a>
     </div>
 
-    <!-- الكارت السفلي التفاعلي -->
-    <div class="bottom-sheet" id="sheetContainer">
-        <div id="formView">
-            <h3 style="margin-top: 0; font-size: 18px; margin-bottom: 12px;">إلى أين تريد الذهاب؟</h3>
+    <div class="container">
+        <!-- كارت البحث وإدخال الأماكن -->
+        <div class="card" id="formCard">
+            <h3>📍 إين تريد الذهاب؟</h3>
             
-            <div class="input-group">
-                <label>📍 مكان الاستلام (النقطة الأولى)</label>
-                <input type="text" id="startInput" value="طريق النصر، مدينة نصر" />
-            </div>
+            <label style="font-size:12px; color:#aaa;">موقعك الآن (النقطة الأولى):</label>
+            <input type="text" id="startInput" value="طريق النصر، مدينة نصر" />
+            
+            <label style="font-size:12px; color:#aaa;">وجهة النزول (النقطة الثانية):</label>
+            <input type="text" id="endInput" placeholder="ابحث عن وجهتك أو الشارع..." />
 
-            <div class="input-group">
-                <label>🎯 الوجهة النهائية (النقطة الثانية)</label>
-                <input type="text" id="endInput" value="شارع صلاح الدين" />
-            </div>
-
-            <button class="btn-uber btn-green" onclick="requestTrip()">طلب الكابتن الأقرب 🚀</button>
+            <div id="map" class="map-container"></div>
+            
+            <button class="btn" onclick="requestTrip()">طلب الكابتن الأقرب 🚀</button>
         </div>
 
-        <div id="statusView" style="display:none; text-align:center;">
-            <div id="statusBadge" style="background:#222; color:#ff9800; padding:10px; border-radius:8px; font-weight:bold; margin-bottom: 12px; border: 1px solid #333;">⏳ في انتظار قبول الكابتن...</div>
-            
+        <!-- كارت حالة الرحلة -->
+        <div class="card" id="statusCard" style="display:none; text-align:center;">
+            <div id="statusBadge" style="background:#333; color:#ff9800; padding:10px; border-radius:6px; font-weight:bold;">⏳ في انتظار قبول الكابتن...</div>
+            <div id="statusMap" class="map-container"></div>
             <div id="pinContainer" style="display:none;">
                 <label style="font-size:12px; color:#aaa;">كود الـ PIN الخاص بك (أعطه للكابتن عند الركوب):</label>
                 <div class="pin-box">4480</div>
@@ -72,17 +55,25 @@
     </div>
 
     <script>
-        const SUPABASE_URL = "https://pmpzilqpcomoodaksbhw.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        let map, activeTripId = null;
+        const supabaseClient = supabase.createClient("https://pmpzilqpcomoodaksbhw.supabase.co", "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx");
+        let activeTripId = null, map = null, statusMap = null;
 
         window.onload = function() {
-            // تشغيل الخريطة بملء الشاشة بستايل احترافي
-            map = L.map('map', {zoomControl: false}).setView([30.0561, 31.3285], 14);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-            L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 مكانك الحالي").openPopup();
+            // خريطة البحث والاستلام مع تفاصيل الشوارع وموقعك الآن
+            map = L.map('map').setView([30.0561, 31.3285], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/*{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+            
+            // محاكاة تحديد موقعك الآن بالـ GPS أو افتراضياً
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition((pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    map.setView([lat, lng], 15);
+                    L.marker([lat, lng]).addTo(map).bindPopup("🟢 موقعي الآن").openPopup();
+                }, null, { enableHighAccuracy: true });
+            } else {
+                L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 موقعي الآن").openPopup();
+            }
         };
 
         async function requestTrip() {
@@ -103,9 +94,19 @@
 
             if (data && data.length > 0) {
                 activeTripId = data[0].id;
-                document.getElementById('formView').style.display = 'none';
-                document.getElementById('statusView').style.display = 'block';
+                document.getElementById('formCard').style.display = 'none';
+                document.getElementById('statusCard').style.display = 'block';
+                
+                initStatusMap();
                 listenToTripUpdates();
+            }
+        }
+
+        function initStatusMap() {
+            if (!statusMap) {
+                statusMap = L.map('statusMap').setView([30.0561, 31.3285], 14);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(statusMap);
+                L.marker([30.0561, 31.3285]).addTo(statusMap).bindPopup("🟢 نقطة الاستلام").openPopup();
             }
         }
 
@@ -126,8 +127,8 @@
                 } else if (data.trip_price === '100_started') {
                     badge.innerText = "🎯 الرحلة جارية الآن نحو نقطة النزول النهائية!";
                     badge.style.color = "#00e676";
-                    map.setView([30.0602, 31.2569], 14);
-                    L.marker([30.0602, 31.2569]).addTo(map).bindPopup("🎯 وجهة النزول").openPopup();
+                    statusMap.setView([30.0602, 31.2569], 14);
+                    L.marker([30.0602, 31.2569]).addTo(statusMap).bindPopup("🎯 وجهة النزول").openPopup();
                 } else if (data.trip_price === '100_completed') {
                     alert('تم إنهاء الرحلة بنجاح! شكراً لاستخدامك كومبو.');
                     window.location.reload();
