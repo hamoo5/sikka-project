@@ -39,7 +39,7 @@
     <span class="toggle-link" id="toggle-auth-mode" onclick="toggleAuthMode()">ليس لديك حساب؟ سجل حساب جديد</span>
   </div>
 
-  <!-- 2. الخريطة -->
+  <!-- 2. الخريطة والطلب -->
   <div id="app-section" class="card hidden">
     <h3 style="margin-top:0;">🗺️ تحديد موقع الرحلة وخط السير</h3>
     
@@ -47,13 +47,13 @@
     
     <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب (نقطة الانطلاق):</label>
     <div style="display:flex; gap:5px;">
-      <input type="text" id="pickup_loc" placeholder="اكتب المكان بدقة (مثلاً: المعادي، القاهرة)" style="margin:0;">
+      <input type="text" id="pickup_loc" placeholder="اكتب المكان أو اضغط على الخريطة" style="margin:0;">
       <button style="width:30%; margin:0; background:#007bff;" onclick="searchAndSet('pickup')">بحث</button>
     </div>
 
     <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">وجهة النزول (الوصول):</label>
     <div style="display:flex; gap:5px;">
-      <input type="text" id="dropoff_loc" placeholder="اكتب الوجهة بدقة (مثلاً: التحرير، القاهرة)" style="margin:0;">
+      <input type="text" id="dropoff_loc" placeholder="اكتب المكان أو اضغط على الخريطة" style="margin:0;">
       <button style="width:30%; margin:0; background:#007bff;" onclick="searchAndSet('dropoff')">بحث</button>
     </div>
 
@@ -75,8 +75,7 @@
     let map, routingControl;
     let pickupCoords = null;
     let dropoffCoords = null;
-    let pickupMarker = null;
-    let dropoffMarker = null;
+    let activeInputType = 'pickup'; // الافتراضي تحديد نقطة الركوب
 
     window.toggleAuthMode = function() {
       isRegistering = !isRegistering;
@@ -116,6 +115,28 @@
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
+
+      // النقر على الخريطة لتحديد الموقع والدبوس مباشرة
+      map.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+
+        if (!pickupCoords || activeInputType === 'pickup') {
+          pickupCoords = L.latLng(lat, lng);
+          updateAddressName(lat, lng, 'pickup');
+          activeInputType = 'dropoff'; // تحويل النقر التالي للوجهة تلقائياً
+        } else {
+          dropoffCoords = L.latLng(lat, lng);
+          updateAddressName(lat, lng, 'dropoff');
+          activeInputType = 'pickup';
+        }
+
+        if (pickupCoords && dropoffCoords) {
+          drawRoute();
+        } else {
+          L.marker([lat, lng]).addTo(map);
+        }
+      });
     }
 
     async function updateAddressName(lat, lng, type) {
@@ -139,15 +160,17 @@
       let query = document.getElementById(inputId).value;
       if (!query) { alert('اكتب اسم المكان أولاً للبحث'); return; }
 
-      // إضافة كلمة مصر للبحث لضمان النتائج داخل مصر وعدم الخروج لمحافظات أخرى بالغلط
-      if (!query.includes('مصر') && !query.includes('القاهرة') && !query.includes('الجيزة')) {
-        query += ", مصر";
-      }
-
       try {
-        // حصر البحث داخل مصر فقط باستخدام countrycodes=eg
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=eg&limit=1&accept-language=ar`);
-        const results = await res.json();
+        // حصر نطاق البحث جغرافيات في منطقة القاهرة والنواحي المجاورة (viewbox + bounded)
+        const bbox = '30.80,29.80,31.60,30.30'; 
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=eg&viewbox=${bbox}&bounded=1&accept-language=ar`);
+        let results = await res.json();
+
+        // في حال عدم وجود نتائج بحدود القاهرة، يتم البحث عامة داخل مصر
+        if (!results || results.length === 0) {
+          const fallbackRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=eg&accept-language=ar`);
+          results = await fallbackRes.json();
+        }
         
         if (results && results.length > 0) {
           const lat = parseFloat(results[0].lat);
@@ -156,12 +179,8 @@
           
           if (type === 'pickup') {
             pickupCoords = coords;
-            if (pickupMarker) map.removeLayer(pickupMarker);
-            pickupMarker = L.marker(coords, {title: 'انطلاق'}).addTo(map);
           } else {
             dropoffCoords = coords;
-            if (dropoffMarker) map.removeLayer(dropoffMarker);
-            dropoffMarker = L.marker(coords, {title: 'وصول'}).addTo(map);
           }
 
           document.getElementById(inputId).value = results[0].display_name.split(',').slice(0, 3).join(',');
@@ -169,9 +188,11 @@
 
           if (pickupCoords && dropoffCoords) {
             drawRoute();
+          } else {
+            L.marker(coords).addTo(map);
           }
         } else {
-          alert('لم يتم العثور على المكان بدقة، حاول كتابة اسم الحي والمدينة (مثل: المعادي، القاهرة)');
+          alert('لم يتم العثور على المكان، حاول تجربة اسم أكثر دقة.');
         }
       } catch (e) {
         alert('حدث خطأ أثناء البحث.');
@@ -192,9 +213,6 @@
         waypoints: [pickupCoords, dropoffCoords],
         routeWhileDragging: false,
         addWaypoints: false,
-        createMarker: function(i, wp) {
-          return L.marker(wp.latLng); // الاحتفاظ بالعلامات للمكانين
-        },
         lineOptions: {
           styles: [{ color: '#007bff', opacity: 0.8, weight: 6 }]
         }
@@ -207,8 +225,6 @@
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           pickupCoords = L.latLng(lat, lng);
-          if (pickupMarker) map.removeLayer(pickupMarker);
-          pickupMarker = L.marker(pickupCoords).addTo(map);
           map.setView(pickupCoords, 15);
           updateAddressName(lat, lng, 'pickup');
           if (pickupCoords && dropoffCoords) drawRoute();
