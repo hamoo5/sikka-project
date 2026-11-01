@@ -284,12 +284,13 @@
             const startName = document.getElementById('pStartInput').value || "طريق النصر";
             const endName = document.getElementById('pEndInput').value || "شارع صلاح الدين";
 
+            // إرسال الأعمدة الأساسية المضمونة ومتاحة بالجدول
             const { data, error } = await supabaseClient.from('trips_data').insert([{
                 start_station: startName,
                 end_station: endName,
                 trip_price: `${finalPrice} ج.م`,
                 user_mobile: passengerPhone,
-                trip_pin: generatedPin
+                status: 'pending'
             }]).select();
 
             if (error) {
