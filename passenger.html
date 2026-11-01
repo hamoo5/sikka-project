@@ -16,6 +16,7 @@
     button:hover { background: #218838; }
     .btn-secondary { background: #007bff; }
     .btn-gps { background: #17a2b8; }
+    .btn-danger { background: #dc3545; }
     #map { height: 350px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
     .hidden { display: none; }
     .toggle-link { color: #007bff; text-align: center; cursor: pointer; margin-top: 10px; display: block; font-weight: bold; }
@@ -40,26 +41,29 @@
 
   <!-- 2. الخريطة والطلب -->
   <div id="app-section" class="card hidden">
-    <h3 style="margin-top:0;">🗺️ حجز وتحديد الرحلة</h3>
+    <h3 style="margin-top:0;" id="app-title">🗺️ حجز وتحديد الرحلة</h3>
     
-    <button class="btn-gps" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
-    
-    <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب (نقطة الانطلاق - أخضر 🟢):</label>
-    <div style="display:flex; gap:5px;">
-      <input type="text" id="pickup_loc" placeholder="اكتب الشارع أو اضغط على الخريطة" style="margin:0;">
-      <button style="width:30%; margin:0; background:#007bff;" onclick="searchPickupLocation()">بحث</button>
+    <div id="booking-controls">
+      <button class="btn-gps" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
+      
+      <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب (نقطة الانطلاق - أخضر 🟢):</label>
+      <div style="display:flex; gap:5px;">
+        <input type="text" id="pickup_loc" placeholder="اكتب الشارع أو اضغط على الخريطة" style="margin:0;">
+        <button style="width:30%; margin:0; background:#007bff;" onclick="searchPickupLocation()">بحث</button>
+      </div>
+
+      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">وجهة النزول (الوصول - أحمر 🔴):</label>
+      <div style="display:flex; gap:5px;">
+        <input type="text" id="dropoff_loc" placeholder="اكتب وجهة النزول أو اضغط الخريطة" style="margin:0;">
+        <button style="width:30%; margin:0; background:#007bff;" onclick="searchDropoffLocation()">بحث</button>
+      </div>
     </div>
 
-    <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">وجهة النزول (الوصول - أحمر 🔴):</label>
-    <div style="display:flex; gap:5px;">
-      <input type="text" id="dropoff_loc" placeholder="اكتب وجهة النزول أو اضغط الخريطة" style="margin:0;">
-      <button style="width:30%; margin:0; background:#007bff;" onclick="searchDropoffLocation()">بحث</button>
-    </div>
-
-    <!-- صندوق تفاصيل الرحلة يظهر أوتوماتيك -->
+    <!-- صندوق تفاصيل الرحلة والتتبع -->
     <div id="trip-status">حدد نقطة الانطلاق والوصول ليتم حساب الرحلة أوتوماتيكياً...</div>
 
-    <button onclick="requestRide()" style="background:#28a745;">🚀 تأكيد وطلب المشوار الآن</button>
+    <button id="action-btn" onclick="requestRide()" style="background:#28a745;">🚀 تأكيد وطلب المشوار الآن</button>
+    <button id="cancel-btn" class="btn-danger hidden" onclick="cancelRide()">❌ إلغاء الرحلة</button>
 
     <div id="map"></div>
   </div>
@@ -128,6 +132,7 @@
       }).addTo(map);
 
       map.on('click', async function(e) {
+        if (activeBookingId) return; // منع التعديل أثناء الرحلة
         const lat = e.latlng.lat, lng = e.latlng.lng;
         const coords = L.latLng(lat, lng);
         const address = await getAddressName(lat, lng);
@@ -160,7 +165,7 @@
             });
           }
           map.setView(coords, 14);
-          drawRoute(); // رسم المسار أوتوماتيك بمجرد اكتمال النقطتين
+          drawRoute();
         } else {
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
@@ -211,7 +216,7 @@
             });
           }
           map.setView(pickupCoords, 15);
-          if (pickupCoords && dropoffCoords) drawRoute(); // رسم المسار أوتوماتيك
+          if (pickupCoords && dropoffCoords) drawRoute();
         } else {
           alert('لم يتم العثور على مكان الانطلاق');
         }
@@ -242,7 +247,7 @@
             });
           }
           map.setView(dropoffCoords, 15);
-          if (pickupCoords && dropoffCoords) drawRoute(); // رسم المسار أوتوماتيك
+          if (pickupCoords && dropoffCoords) drawRoute();
         } else {
           alert('لم يتم العثور على وجهة الوصول');
         }
@@ -322,10 +327,59 @@
         alert('خطأ في الطلب: ' + error.message);
       } else {
         activeBookingId = data[0].id;
+        
+        // الانتقال لوضع التتبع وإخفاء خانات البحث لتوسيع الشاشة
+        document.getElementById('booking-controls').classList.add('hidden');
+        document.getElementById('action-btn').classList.add('hidden');
+        document.getElementById('cancel-btn').classList.remove('hidden');
+        document.getElementById('app-title').innerText = "🚗 جاري البحث عن كابتن...";
+        
         const statusDiv = document.getElementById('trip-status');
         statusDiv.style.display = 'block';
-        statusDiv.innerHTML = "🔄 تم إرسال طلبك بنجاح، جاري البحث عن كابتن قريب منك...";
+        statusDiv.innerHTML = "🔄 تم إرسال طلبك، جاري التواصل مع أقرب كابتن...";
+
+        listenToBookingStatus();
       }
+    };
+
+    // الاستماع لتحديثات الكابتن وحالة الطلب لحظياً
+    function listenToBookingStatus() {
+      supabase.channel('public:bookings')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `id=eq.${activeBookingId}` }, payload => {
+          const updated = payload.new;
+          
+          if (updated.status === 'accepted') {
+            document.getElementById('app-title').innerText = "🚗 الكابتن في طريقه إليك!";
+            document.getElementById('trip-status').innerHTML = `
+              ✅ <b>تم قبول الرحلة بواسطة الكابتن!</b><br>
+              📱 يمكنك رؤية حركة الكابتن الحية على الخريطة الآن.
+            `;
+
+            if (updated.captain_lat && updated.captain_lng) {
+              const capLatLng = [updated.captain_lat, updated.captain_lng];
+              if (captainMarker) {
+                captainMarker.setLatLng(capLatLng);
+              } else {
+                captainMarker = L.marker(capLatLng, {
+                  icon: L.icon({ 
+                    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png', 
+                    iconSize: [35, 35], 
+                    iconAnchor: [17, 17] 
+                  })
+                }).addTo(map);
+              }
+              map.setView(capLatLng, 15);
+            }
+          }
+        })
+        .subscribe();
+    }
+
+    window.cancelRide = async function() {
+      if (!activeBookingId) return;
+      await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', activeBookingId);
+      alert('تم إلغاء الرحلة.');
+      location.reload();
     };
   </script>
 </body>
