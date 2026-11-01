@@ -17,8 +17,14 @@
         .card { background: #1e1e1e; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
         .btn { background: #fff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 10px; }
         .btn-green { background: #00875a; color: #fff; }
-        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #333; color: #ff9800; }
-        .map-container { width: 100%; height: 280px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; z-index: 1; }
+        .btn-red { background: #d32f2f; color: #fff; }
+        .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; z-index: 1; }
+        .timer-box { font-size: 24px; font-weight: bold; color: #ff9800; background: #2a2a2a; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; }
+        
+        .chat-box { background: #181818; border: 1px solid #333; border-radius: 10px; padding: 10px; height: 150px; overflow-y: auto; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .chat-msg { max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
+        .chat-msg.me { background: #0288d1; color: #fff; align-self: flex-end; }
+        .chat-msg.other { background: #333; color: #fff; align-self: flex-start; }
     </style>
 </head>
 <body>
@@ -30,8 +36,8 @@
 
     <div class="container" id="captainContent">
         <div class="card" style="text-align:center;">
-            <span class="status-badge">🟢 متصل - جاري البحث عن طلبات الركاب...</span>
-            <div id="availableTrips" style="margin-top: 15px;">جاري رصد الطلبات على الشوارع... 📡</div>
+            <span style="padding:6px 12px; border-radius:6px; background:#333; color:#ff9800; font-weight:bold;">🟢 متصل - جاري البحث عن رحلات...</span>
+            <div id="availableTrips" style="margin-top:15px;">جاري جلب الطلبات... 📡</div>
         </div>
     </div>
 
@@ -41,59 +47,140 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let fetchInterval = setInterval(fetchAvailableTrips, 3000);
+        let activeTrip = null, waitTimer = null, timeLeft = 180;
 
         async function fetchAvailableTrips() {
             const container = document.getElementById('captainContent');
-            const { data, error } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false });
+            const { data } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false });
 
-            if (error || !data || data.length === 0) {
-                container.innerHTML = `
-                    <div class="card" style="text-align:center;">
-                        <span class="status-badge">🟢 متصل - في انتظار طلبات جديدة</span>
-                        <p style="color:#aaa; margin-top:15px;">📭 لا توجد رحلات متاحة في الوقت الحالي</p>
-                    </div>
-                `;
+            if (!data || data.length === 0) {
+                container.innerHTML = `<div class="card" style="text-align:center;">📭 لا توجد رحلات متاحة حالياً</div>`;
                 return;
             }
 
-            let html = `<div class="card"><h3 style="margin-top:0; color:#ff9800;">🚗 الطلبات الواردة من الركاب</h3>`;
+            let html = `<div class="card"><h3 style="margin-top:0; color:#ff9800;">🚗 الطلبات الواردة</h3>`;
             data.forEach(t => {
                 html += `
-                    <div style="background:#2a2a2a; padding:14px; border-radius:10px; margin-bottom:12px; border-right:4px solid #00e676; text-align:right;">
-                        <div>📍 مكان الراكب (الشارع): <b style="color:#00e676;">${t.start_station}</b></div>
-                        <div>🎯 الوجهة النهائية: <b>${t.end_station}</b></div>
-                        <div>💰 السعر المطلوب: <b style="color:#00e676;">${t.trip_price}</b></div>
-                        <div>📱 هاتف الراكب: <a href="tel:${t.user_mobile}" style="color:#0288d1; text-decoration:none;">${t.user_mobile}</a></div>
-                        <button class="btn btn-green" onclick="acceptTrip(${t.id}, '${t.start_station}', '${t.end_station}')">قبول الرحلة والتوجه للراكب ✅</button>
+                    <div style="background:#2a2a2a; padding:14px; border-radius:10px; margin-bottom:12px; border-right:4px solid #00e676;">
+                        <div>📍 الشارع: <b style="color:#00e676;">${t.start_station}</b></div>
+                        <div>🎯 الوجهة: <b>${t.end_station}</b></div>
+                        <div>💰 السعر الصافي: <b style="color:#00e676;">${t.trip_price}</b></div>
+                        <div>📱 هاتف الراكب: ${t.user_mobile}</div>
+                        <button class="btn btn-green" onclick="acceptTrip(${t.id}, '${t.start_station}', '${t.end_station}', '${t.trip_price}', '${t.trip_pin}')">قبول الرحلة والتوجه للراكب ✅</button>
                     </div>
                 `;
             });
-            html += `</div>`;
-            container.innerHTML = html;
+            container.innerHTML = html + `</div>`;
         }
 
-        async function acceptTrip(tripId, start, end) {
+        async function acceptTrip(id, start, end, price, pin) {
             clearInterval(fetchInterval);
-            
-            // تحديث حالة الرحلة في قاعدة البيانات إذا أردت لاحقاً
+            activeTrip = { id, start, end, price, pin };
+
+            await supabaseClient.from('trips_data').update({ status: 'accepted' }).eq('id', id);
+
             const container = document.getElementById('captainContent');
             container.innerHTML = `
                 <div class="card">
-                    <h3 style="color:#00e676; margin-top:0;">🚀 جاري التوجه لموقع الراكب</h3>
-                    <p>📍 مكان الاستلام: <b>${start}</b></p>
-                    <p>🎯 الوجهة: <b>${end}</b></p>
-                    
-                    <!-- خريطة الشوارع للكابتن -->
+                    <h3 style="color:#00e676; margin-top:0;">🚀 جاري التوجه للراكب</h3>
+                    <p>📍 مكان الاستلام: <b>${start}</b> | 💰 السعر: <b>${price}</b></p>
                     <div id="captainMap" class="map-container"></div>
+
+                    <button class="btn btn-green" id="btnArrived" onclick="arrivedAtPassenger()">📍 وصلت لمكان الراكب</button>
                     
-                    <button class="btn" style="background:#d32f2f; color:#fff;" onclick="window.location.reload()">إنهاء أو إلغاء الرحلة</button>
+                    <div id="timerContainer" style="display:none;">
+                        <div class="timer-box" id="timerBox">⏱️ وقت الانتظار: 03:00</div>
+                        <button class="btn btn-red" id="btnCancelFine" style="display:none;" onclick="cancelWithFine()">❌ إلغاء الرحلة وتطبيق غرامة (20 ج.م)</button>
+                    </div>
+
+                    <hr style="border-color:#333; margin:15px 0;">
+
+                    <!-- قسم إدخال كود الـ PIN لتشغيل الرحلة -->
+                    <div style="background:#2a2a2a; padding:12px; border-radius:8px; text-align:center;">
+                        <label>🔑 أدخل كود الـ PIN المأخوذ من الراكب لبدء الرحلة:</label>
+                        <input type="number" id="inputPin" placeholder="****" style="text-align:center; font-size:20px; letter-spacing:4px;" />
+                        <button class="btn btn-green" onclick="startTripWithPin()">بدء الرحلة الآن 🚗</button>
+                    </div>
+
+                    <hr style="border-color:#333; margin:15px 0;">
+
+                    <!-- الشات المباشر مع الراكب -->
+                    <h4 style="margin:5px 0;">💬 المحادثة مع الراكب</h4>
+                    <div class="chat-box" id="cChatBox">
+                        <div class="chat-msg other">تواصل مع الراكب فور الوصول</div>
+                    </div>
+                    <div style="display:flex; gap:6px; margin-top:8px;">
+                        <input type="text" id="cChatInput" placeholder="اكتب للراكب..." style="margin:0;">
+                        <button class="btn btn-green" style="width:70px; margin:0;" onclick="sendCaptainMessage()">إرسال</button>
+                    </div>
                 </div>
             `;
 
-            // تشغيل نفس الخريطة الدقيقة للشوارع للكابتن
             const map = L.map('captainMap').setView([30.0561, 31.3285], 14);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-            L.marker([30.0561, 31.3285]).addTo(map).bindPopup(`🟢 موقع الراكب في: ${start}`).openPopup();
+            L.marker([30.0561, 31.3285]).addTo(map).bindPopup(`🟢 موقع الراكب: ${start}`).openPopup();
+
+            listenToPassengerMessages();
+        }
+
+        async function arrivedAtPassenger() {
+            document.getElementById('btnArrived').style.display = 'none';
+            document.getElementById('timerContainer').style.display = 'block';
+
+            await supabaseClient.from('trips_data').update({ status: 'arrived' }).eq('id', activeTrip.id);
+
+            waitTimer = setInterval(() => {
+                timeLeft--;
+                let min = Math.floor(timeLeft / 60);
+                let sec = timeLeft % 60;
+                document.getElementById('timerBox').innerText = `⏱️ وقت الانتظار: 0${min}:${sec < 10 ? '0' : ''}${sec}`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(waitTimer);
+                    document.getElementById('timerBox').innerText = "⚠️ انتهت مهلة الانتظار (3 دقائق)";
+                    document.getElementById('timerBox').style.color = "#ff5252";
+                    document.getElementById('btnCancelFine').style.display = 'block';
+                }
+            }, 1000);
+        }
+
+        async function cancelWithFine() {
+            await supabaseClient.from('trips_data').update({ status: 'cancelled' }).eq('id', activeTrip.id);
+            alert('تم إلغاء الرحلة وتنسيق غرامة 20 ج.م على الراكب (10 للكابتن + 10 للسيستم)');
+            window.location.reload();
+        }
+
+        async function startTripWithPin() {
+            const enteredPin = document.getElementById('inputPin').value.trim();
+            if (enteredPin !== activeTrip.pin) {
+                alert('كود الـ PIN غير صحيح! اطلبه من الراكب لبدء الرحلة.');
+                return;
+            }
+
+            clearInterval(waitTimer);
+            await supabaseClient.from('trips_data').update({ status: 'started' }).eq('id', activeTrip.id);
+            alert('تم تأكيد الكود وبدء الرحلة بنجاح! اتجه نحو الوجهة 🚀');
+        }
+
+        function listenToPassengerMessages() {
+            setInterval(async () => {
+                const { data } = await supabaseClient.from('trips_data').select('notes').eq('id', activeTrip.id).single();
+                if (data && data.notes && data.notes !== window.lastChat) {
+                    window.lastChat = data.notes;
+                    const chatBox = document.getElementById('cChatBox');
+                    chatBox.innerHTML = `<div class="chat-msg other">${data.notes}</div>`;
+                }
+            }, 2500);
+        }
+
+        async function sendCaptainMessage() {
+            const txt = document.getElementById('cChatInput').value.trim();
+            if (!txt) return;
+            const chatBox = document.getElementById('cChatBox');
+            chatBox.innerHTML += `<div class="chat-msg me">كابتن: ${txt}</div>`;
+            document.getElementById('cChatInput').value = '';
+
+            await supabaseClient.from('trips_data').update({ notes: `كابتن: ${txt}` }).eq('id', activeTrip.id);
         }
     </script>
 </body>
