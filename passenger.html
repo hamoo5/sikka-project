@@ -75,7 +75,6 @@
     let pickupMarker = null, dropoffMarker = null, captainMarker = null;
     let activeBookingId = null;
 
-    // أيقونات مخصصة للدبابيس (أخضر للانطلاق، أحمر للوصول)
     const greenIcon = L.icon({
       iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
@@ -136,24 +135,34 @@
         if (!pickupCoords) {
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
-          if (pickupMarker) map.removeLayer(pickupMarker);
-          pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
+          if (pickupMarker) {
+            pickupMarker.setLatLng(coords);
+          } else {
+            pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
+          }
           map.setView(coords, 14);
         } else if (!dropoffCoords) {
           dropoffCoords = coords;
           document.getElementById('dropoff_loc').value = address;
-          if (dropoffMarker) map.removeLayer(dropoffMarker);
-          dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map);
+          if (dropoffMarker) {
+            dropoffMarker.setLatLng(coords);
+          } else {
+            dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map);
+          }
           map.setView(coords, 14);
           drawRoute();
         } else {
+          // لو تم الضغط مرة ثالثة، نحدث الانطلاق ونعيد التعيين
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
-          if (pickupMarker) map.removeLayer(pickupMarker);
-          pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
+          if (pickupMarker) {
+            pickupMarker.setLatLng(coords);
+          } else {
+            pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
+          }
           dropoffCoords = null;
           document.getElementById('dropoff_loc').value = '';
-          if (dropoffMarker) map.removeLayer(dropoffMarker);
+          if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
           if (routingControl) map.removeControl(routingControl);
           map.setView(coords, 14);
         }
@@ -180,18 +189,31 @@
         const results = await res.json();
         if (results && results.length > 0) {
           const coords = L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon));
+          
           if (type === 'pickup') {
             pickupCoords = coords;
-            if (pickupMarker) map.removeLayer(pickupMarker);
-            pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
+            document.getElementById(inputId).value = results[0].display_name.split(',').slice(0, 3).join(',');
+            if (pickupMarker) {
+              pickupMarker.setLatLng(coords);
+            } else {
+              pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
+            }
           } else {
             dropoffCoords = coords;
-            if (dropoffMarker) map.removeLayer(dropoffMarker);
-            dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map);
+            document.getElementById(inputId).value = results[0].display_name.split(',').slice(0, 3).join(',');
+            if (dropoffMarker) {
+              dropoffMarker.setLatLng(coords);
+            } else {
+              dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map);
+            }
           }
-          document.getElementById(inputId).value = results[0].display_name.split(',').slice(0, 3).join(',');
+
+          // تحريك الخريطة وتوجيهها مباشرة للمكان الجديد
           map.setView(coords, 15);
-          if (pickupCoords && dropoffCoords) drawRoute();
+
+          if (pickupCoords && dropoffCoords) {
+            drawRoute();
+          }
         } else {
           alert('لم يتم العثور على المكان');
         }
@@ -217,8 +239,12 @@
           pickupCoords = L.latLng(lat, lng);
           const address = await getAddressName(lat, lng);
           document.getElementById('pickup_loc').value = address;
-          if (pickupMarker) map.removeLayer(pickupMarker);
-          pickupMarker = L.marker(pickupCoords, {icon: greenIcon}).addTo(map);
+          
+          if (pickupMarker) {
+            pickupMarker.setLatLng(pickupCoords);
+          } else {
+            pickupMarker = L.marker(pickupCoords, {icon: greenIcon}).addTo(map);
+          }
           map.setView(pickupCoords, 16);
         }, () => { alert('تعذر تحديد موقعك بالـ GPS.'); });
       }
