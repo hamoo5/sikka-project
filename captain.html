@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>كومبو - تطبيق الكابتن الاحترافي</title>
+    <title>كومبو - تطبيق الكابتن</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -48,7 +48,7 @@
     </div>
 
     <div class="bottom-sheet" id="sheetContainer">
-        <div style="text-align: center; color: #aaa; font-size: 14px; padding: 20px;">
+        <div style="text-align: center; color: #aaa; font-size: 14px; padding: 20px;" id="statusText">
             <div style="font-size: 18px; color: #00e676; font-weight: bold; margin-bottom: 5px;">🟢 متصل الآن</div>
             جاري فحص طلبات الركاب القريبة... 📡
         </div>
@@ -60,9 +60,8 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let map, captainMarker, passengerMarker;
-        let pollInterval = setInterval(checkForTrips, 2000);
+        let pollInterval = setInterval(checkForTrips, 1500);
         let captainLat = 30.0561, captainLng = 31.3285;
-        let passengerLat = 30.0591, passengerLng = 31.3325;
         let waitTimer = null, timeLeft = 180;
 
         const mockPassenger = {
@@ -83,24 +82,25 @@
                     if (captainMarker) {
                         captainMarker.setLatLng([captainLat, captainLng]);
                     } else {
-                        captainMarker = L.marker([captainLat, captainLng]).addTo(map).bindPopup("🚗 موقعك الحالي (الكابتن)");
+                        captainMarker = L.marker([captainLat, captainLng]).addTo(map).bindPopup("🚗 موقعك الحالي");
                     }
                 }, null, { enableHighAccuracy: true });
             }
         };
 
         async function checkForTrips() {
+            // جلب أحدث رحلة تم إنشاؤها مباشرة من الجدول
             const { data, error } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false }).limit(1);
+            
             if (error || !data || data.length === 0) return;
 
             const t = data[0];
-            if (!window.lastTripId || window.lastTripId !== t.id) {
-                window.lastTripId = t.id;
+            if (!window.lastLoadedId || window.lastLoadedId !== t.id) {
+                window.lastLoadedId = t.id;
                 showIncomingTripModal(t);
             }
         }
 
-        // 1. عرض طلب الرحلة الوارد مع تفاصيل الراكب والسعر الصافي
         function showIncomingTripModal(t) {
             clearInterval(pollInterval);
             
@@ -138,10 +138,9 @@
                 </div>
             `;
 
-            passengerMarker = L.marker([passengerLat, passengerLng]).addTo(map).bindPopup(`🟢 مكان الراكب: ${mockPassenger.name}`).openPopup();
+            passengerMarker = L.marker([30.0591, 31.3325]).addTo(map).bindPopup(`🟢 مكان الراكب: ${mockPassenger.name}`).openPopup();
         }
 
-        // 2. مرحلة التوجه الفعلي للراكب (الكابتن يتحرك على الخريطة أولاً)
         function acceptTripAction() {
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
@@ -160,10 +159,9 @@
                     <div class="msg other">مرحبًا، أنا في طريقي إليك الآن</div>
                 </div>
 
-                <!-- زر الوصول لا يظهر إلا عندما يكون الكابتن قد وصل فعلاً للموقع -->
                 <button class="btn-action btn-green" onclick="checkArrivalAndStartTimer()">لقد وصلت فعلاً لموقع الراكب 📍</button>
             `;
-            map.setView([passengerLat, passengerLng], 16);
+            map.setView([30.0591, 31.3325], 16);
         }
 
         function rejectTripAction() {
@@ -176,12 +174,7 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // 3. التحقق الفعلي وبدء عداد الانتظار (3 دقائق) بعد التأكد من الوصول للموقع
         function checkArrivalAndStartTimer() {
-            // حساب المسافة الحية بين إحداثيات الكابتن وإحداثيات الراكب للتأكد من وصوله فعلاً
-            let distanceMeters = map.distance([captainLat, captainLng], [passengerLat, passengerLng]);
-            
-            // للتسهيل في بيئة التجربة، نسمح بالوصول لو المسافة قريبة أو تم التحقق الجغرافي
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
                 <h3 style="margin-top:0; text-align:center; color:#ff9800;">⏱️ تم الوصول - في انتظار الراكب</h3>
@@ -216,7 +209,7 @@
         }
 
         function verifyPinAndStart() {
-            const pin = document.getElementById('pinInput'].value.trim();
+            const pin = document.getElementById('pinInput').value.trim();
             if (pin.length !== 4) {
                 alert('الرجاء إدخال كود PIN صحيح مكون من 4 أرقام');
                 return;
