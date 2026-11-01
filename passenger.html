@@ -27,6 +27,7 @@
     <div class="container">
         <div class="card" id="formCard">
             <h3>📍 طلب رحلة جديدة</h3>
+            <p style="color:#aaa; font-size:13px;">نقطة الاستلام: طريق النصر | الوجهة: شارع صلاح الدين</p>
             <button class="btn" onclick="requestTrip()">طلب الكابتن الأقرب 🚀</button>
         </div>
 
@@ -34,7 +35,7 @@
             <div id="statusBadge" style="background:#333; color:#ff9800; padding:8px; border-radius:6px; font-weight:bold;">⏳ في انتظار قبول الكابتن...</div>
             <div id="map" class="map-container" style="display:none;"></div>
             <div id="pinContainer" style="display:none;">
-                <label style="font-size:12px; color:#aaa;">كود الـ PIN الخاص بك (أعطه للكابتن):</label>
+                <label style="font-size:12px; color:#aaa;">كود الـ PIN الخاص بك (أعطه للكابتن عند ركوب السيارة):</label>
                 <div class="pin-box">4480</div>
             </div>
         </div>
@@ -74,14 +75,14 @@
 
                 const badge = document.getElementById('statusBadge');
                 if (data.notes === 'accepted') {
-                    badge.innerText = "🚗 الكابتن قبل الرحلة وهو في الطريق إليك!";
+                    badge.innerText = "🚗 الكابتن قبل الرحلة وهو في الطريق إليك (النقطة الأولى)!";
                     badge.style.color = "#00e676";
                     showMap();
                 } else if (data.notes === 'arrived') {
                     badge.innerText = "📍 الكابتن وصل موقعك، أعطه كود PIN (4480)";
                     badge.style.color = "#ff9800";
                 } else if (data.notes === 'started') {
-                    badge.innerText = "🎯 الرحلة جارية الآن نحو الوجهة!";
+                    badge.innerText = "🎯 الرحلة جارية الآن نحو نقطة النزول النهائية!";
                     badge.style.color = "#00e676";
                 } else if (data.notes === 'completed') {
                     alert('تم إنهاء الرحلة بنجاح! شكراً لاستخدامك كومبو.');
@@ -96,7 +97,7 @@
             if (!map) {
                 map = L.map('map').setView([30.0561, 31.3285], 14);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 موقعك").openPopup();
+                L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 موقع الاستلام (الراكب)").openPopup();
             }
         }
     </script>
