@@ -18,23 +18,40 @@
     .btn-secondary { background: #007bff; }
     .btn-gps { background: #17a2b8; }
     .btn-fav { background: #ffc107; color: #222; }
-    #map { height: 320px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
+    #map { height: 320px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; position: relative; }
     .hidden { display: none; }
     .toggle-link { color: #007bff; text-align: center; cursor: pointer; margin-top: 10px; display: block; font-weight: bold; }
     
-    /* تنسيق صندوق البحث فوق الخريطة يشبه خرائط جوجل */
+    /* تنسيق صندوق البحث فوق الخريطة ليطابق خرائط جوجل تماماً */
     .leaflet-control-geosearch {
-      width: 90% !important;
+      width: 94% !important;
       margin: 10px auto !important;
       left: 0 !important;
       right: 0 !important;
+      background: white !important;
+      border-radius: 8px !important;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
+      z-index: 1000;
+    }
+    .leaflet-control-geosearch form {
+      background: white !important;
+      border-radius: 8px !important;
+      border: 2px solid #007bff !important;
+      display: flex !important;
     }
     .leaflet-control-geosearch input {
-      padding: 10px !important;
+      width: 100% !important;
+      padding: 10px 12px !important;
       font-size: 15px !important;
-      border-radius: 8px !important;
-      border: 1px solid #007bff !important;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border: none !important;
+      outline: none !important;
+      background: transparent !important;
+      color: #333 !important;
+    }
+    .leaflet-control-geosearch a.reset {
+      background: transparent !important;
+      color: #666 !important;
+      font-weight: bold;
     }
     .leaflet-bar { border: none !important; }
   </style>
@@ -64,7 +81,7 @@
     <div id="map"></div>
 
     <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب:</label>
-    <input type="text" id="pickup_loc" placeholder="اضغط على الخريطة أو استخدم البحث">
+    <input type="text" id="pickup_loc" placeholder="اضغط على الخريطة أو استخدم البحث بالأعلى">
     
     <label style="font-weight:bold; font-size:13px; color:#555;">وجهة النزول:</label>
     <input type="text" id="dropoff_loc" placeholder="اكتب الوجهة أو اخترها">
@@ -150,7 +167,7 @@
         autoComplete: true,
         autoCompleteDelay: 250,
         showMarker: false,
-        searchLabel: 'ابحث عن شارع أو منطقة...',
+        searchLabel: 'ابحث عن شارع أو منطقة (مثلاً: المعادي)...',
         keepResult: true
       });
       map.addControl(searchControl);
