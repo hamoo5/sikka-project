@@ -41,43 +41,40 @@
         const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let fetchInterval = setInterval(fetchAvailableTrips, 2500);
-        let activeTrip = null, waitTimer = null, timeLeft = 180;
+        let fetchInterval = setInterval(checkForNewTrips, 2000);
+        let waitTimer = null, timeLeft = 180;
 
-        async function fetchAvailableTrips() {
+        async function checkForNewTrips() {
             const container = document.getElementById('captainContent');
             
-            // جلب أحدث الطلبات المسجلة في الجدول
+            // جلب أحدث أوردر تم تسجيله في الجدول
             const { data, error } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false }).limit(1);
 
-            if (error || !data || data.length === 0) {
-                return; // الاستمرار في الانتظار بهدوء
-            }
+            if (error || !data || data.length === 0) return;
 
-            const t = data[0];
-            
-            // إذا كان الطلب موجود ولم يتم قبوله بعد، نعرضه للكابتن
-            if (!window.currentDisplayedTripId || window.currentDisplayedTripId !== t.id) {
-                window.currentDisplayedTripId = t.id;
+            const trip = data[0];
+
+            // إذا ظهر أوردر جديد برقم ID مختلف عن المحفوظ، اعرضه فوراً للكابتن
+            if (!window.lastLoadedTripId || window.lastLoadedTripId !== trip.id) {
+                window.lastLoadedTripId = trip.id;
 
                 container.innerHTML = `
                     <div class="card">
                         <h3 style="margin-top:0; color:#ff9800;">🚗 طلب رحلة جديد وارد إليك!</h3>
                         <div style="background:#2a2a2a; padding:14px; border-radius:10px; margin-bottom:12px; border-right:4px solid #00e676;">
-                            <div>📍 مكان الاستلام: <b style="color:#00e676;">${t.start_station}</b></div>
-                            <div>🎯 الوجهة: <b>${t.end_station}</b></div>
-                            <div>💰 السعر: <b style="color:#00e676;">${t.trip_price}</b></div>
-                            <div>📱 هاتف الراكب: ${t.user_mobile}</div>
-                            <button class="btn btn-green" onclick="acceptTrip(${t.id}, '${t.start_station}', '${t.end_station}', '${t.trip_price}')">قبول الرحلة والتوجه للراكب ✅</button>
+                            <div>📍 مكان الاستلام: <b style="color:#00e676;">${trip.start_station}</b></div>
+                            <div>🎯 الوجهة: <b>${trip.end_station}</b></div>
+                            <div>💰 السعر: <b style="color:#00e676;">${trip.trip_price}</b></div>
+                            <div>📱 هاتف الراكب: ${trip.user_mobile}</div>
+                            <button class="btn btn-green" onclick="acceptTrip('${trip.start_station}', '${trip.end_station}', '${trip.trip_price}')">قبول الرحلة والتوجه للراكب ✅</button>
                         </div>
                     </div>
                 `;
             }
         }
 
-        function acceptTrip(id, start, end, price) {
-            clearInterval(fetchInterval);
-            activeTrip = { id, start, end, price };
+        function acceptTrip(start, end, price) {
+            clearInterval(fetchInterval); // إيقاف البحث عن طلبات جديدة لأن الكابتن قبل الأوردر
 
             const container = document.getElementById('captainContent');
             container.innerHTML = `
@@ -121,7 +118,7 @@
                 if (timeLeft <= 0) {
                     clearInterval(waitTimer);
                     document.getElementById('timerBox').innerText = "⚠️ انتهت مهلة الانتظار (3 دقائق)";
-                    document.getElementById('timerBox'].style.color = "#ff5252";
+                    document.getElementById('timerBox').style.color = "#ff5252";
                     document.getElementById('btnCancelFine').style.display = 'block';
                 }
             }, 1000);
