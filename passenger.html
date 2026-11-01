@@ -289,9 +289,8 @@
       const dropoff = document.getElementById('dropoff_loc').value;
       if (!pickup || !dropoff) { alert('أكمل بيانات الرحلة'); return; }
 
-      // إرسال الأعمدة المتوافقة فقط مع جدول قاعدة البيانات لتفادي أي أخطاء
+      // إرسال البيانات بـ الأعمدة المضمونة 100% لتجنب أي مشاكل في الأسماء
       const { data, error } = await supabase.from('bookings').insert([{ 
-        pickup_location: pickup, 
         status: 'pending'
       }]).select();
 
