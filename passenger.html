@@ -21,6 +21,7 @@
     .hidden { display: none; }
     .toggle-link { color: #007bff; text-align: center; cursor: pointer; margin-top: 10px; display: block; font-weight: bold; }
     .leaflet-routing-container { display: none !important; }
+    #trip-status { background: #e8f4fd; border: 1px solid #b6effb; color: #055160; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 14px; line-height: 1.6; }
   </style>
 </head>
 <body>
@@ -46,21 +47,21 @@
     
     <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب (نقطة الانطلاق - أخضر 🟢):</label>
     <div style="display:flex; gap:5px;">
-      <input type="text" id="pickup_loc" placeholder="اكتب الشارع أو المنطقة (مثلاً: المعادي)" style="margin:0;">
+      <input type="text" id="pickup_loc" placeholder="اكتب الشارع أو اضغط على الخريطة" style="margin:0;">
       <button style="width:30%; margin:0; background:#007bff;" onclick="searchPickupLocation()">بحث</button>
     </div>
 
     <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">وجهة النزول (الوصول - أحمر 🔴):</label>
     <div style="display:flex; gap:5px;">
-      <input type="text" id="dropoff_loc" placeholder="اكتب الشارع أو المنطقة (مثلاً: مصر الجديدة)" style="margin:0;">
+      <input type="text" id="dropoff_loc" placeholder="اكتب وجهة النزول أو اضغط الخريطة" style="margin:0;">
       <button style="width:30%; margin:0; background:#007bff;" onclick="searchDropoffLocation()">بحث</button>
     </div>
 
-    <button class="btn-route" onclick="drawRoute()">🛣️ عرض خط السير</button>
+    <button class="btn-route" onclick="drawRoute()">🛣️ عرض خط السير وحساب التكلفة</button>
     <button onclick="requestRide()" style="background:#28a745;">🚀 اطلب المشوار وابدأ التتبع</button>
 
     <div id="map"></div>
-    <div id="trip-status" style="font-weight:bold; color:#007bff; text-align:center; margin-top:10px;">حالة الرحلة: في انتظار طلب المشوار...</div>
+    <div id="trip-status">حالة الرحلة: حدد نقطة الانطلاق والوصول واضغط عرض خط السير...</div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -185,15 +186,10 @@
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
-    // دالة بحث الانطلاق الذكية داخل القاهرة الكبرى والمحافظات المصرية
     window.searchPickupLocation = async function() {
       let query = document.getElementById('pickup_loc').value;
       if (!query) { alert('اكتب مكان الانطلاق أولاً'); return; }
-      
-      // إجبار البحث داخل القاهرة الكبرى ومصر لضمان عدم الخروج لمدن أخرى
-      if (!query.includes('القاهرة') && !query.includes('الجيزة') && !query.includes('مصر')) {
-        query += ", القاهرة, مصر";
-      }
+      if (!query.includes('القاهرة') && !query.includes('الجيزة') && !query.includes('مصر')) query += ", القاهرة, مصر";
 
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=eg&limit=1&accept-language=ar`);
@@ -216,20 +212,15 @@
           map.setView(pickupCoords, 15);
           if (pickupCoords && dropoffCoords) drawRoute();
         } else {
-          alert('لم يتم العثور على مكان الانطلاق، حاول كتابة اسم الشارع والمنطقة بوضوح.');
+          alert('لم يتم العثور على مكان الانطلاق');
         }
       } catch (e) { alert('خطأ في البحث'); }
     };
 
-    // دالة بحث الوصول الذكية داخل القاهرة الكبرى والمحافظات المصرية
     window.searchDropoffLocation = async function() {
       let query = document.getElementById('dropoff_loc').value;
       if (!query) { alert('اكتب وجهة الوصول أولاً'); return; }
-      
-      // إجبار البحث داخل القاهرة الكبرى ومصر لضمان عدم الخروج لمدن أخرى
-      if (!query.includes('القاهرة') && !query.includes('الجيزة') && !query.includes('مصر')) {
-        query += ", القاهرة, مصر";
-      }
+      if (!query.includes('القاهرة') && !query.includes('الجيزة') && !query.includes('مصر')) query += ", القاهرة, مصر";
 
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=eg&limit=1&accept-language=ar`);
@@ -252,7 +243,7 @@
           map.setView(dropoffCoords, 15);
           if (pickupCoords && dropoffCoords) drawRoute();
         } else {
-          alert('لم يتم العثور على وجهة الوصول، حاول كتابة اسم الشارع والمنطقة بوضوح.');
+          alert('لم يتم العثور على وجهة الوصول');
         }
       } catch (e) { alert('خطأ في البحث'); }
     };
@@ -260,6 +251,7 @@
     window.drawRoute = function() {
       if (!pickupCoords || !dropoffCoords) { alert('حدد نقطة الركوب والوصول أولاً'); return; }
       if (routingControl) map.removeControl(routingControl);
+      
       routingControl = L.Routing.control({
         waypoints: [pickupCoords, dropoffCoords],
         routeWhileDragging: false,
@@ -267,6 +259,23 @@
         createMarker: function() { return null; },
         lineOptions: { styles: [{ color: '#007bff', opacity: 0.85, weight: 6 }] }
       }).addTo(map);
+
+      // حساب المسافة والوقت والسعر وعرضهم للراكب
+      routingControl.on('routesfound', function(e) {
+        const routes = e.routes;
+        if (routes && routes.length > 0) {
+          const summary = routes[0].summary;
+          const distanceKm = (summary.totalDistance / 1000).toFixed(1);
+          const durationMin = Math.round(summary.totalTime / 60);
+          const estimatedPrice = Math.round(10 + (distanceKm * 5));
+
+          document.getElementById('trip-status').innerHTML = `
+            📊 <b>تفاصيل الرحلة المتاحة:</b><br>
+            📏 المسافة: ${distanceKm} كم | ⏱️ الوقت التقديري: ${durationMin} دقيقة<br>
+            💰 السعر المقدر: ${estimatedPrice} جنيه
+          `;
+        }
+      });
     };
 
     window.getMyLocation = function() {
@@ -311,7 +320,7 @@
         alert('خطأ في الطلب: ' + error.message);
       } else {
         activeBookingId = data[0].id;
-        document.getElementById('trip-status').innerText = "🔄 تم إرسال الطلب، جاري البحث عن كابتن...";
+        document.getElementById('trip-status').innerHTML = "🔄 تم إرسال الطلب، جاري البحث عن كابتن...";
         subscribeToCaptainLocation();
       }
     };
@@ -321,7 +330,7 @@
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `id=eq.${activeBookingId}` }, payload => {
           const updated = payload.new;
           if (updated.status === 'accepted') {
-            document.getElementById('trip-status').innerText = "🚗 الكابتن في طريقه إليك!";
+            document.getElementById('trip-status').innerHTML = "🚗 الكابتن في طريقه إليك!";
             if (updated.captain_lat && updated.captain_lng) {
               const capLatLng = [updated.captain_lat, updated.captain_lng];
               if (captainMarker) {
