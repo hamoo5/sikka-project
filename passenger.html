@@ -126,7 +126,7 @@
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // الضغط المباشر: أول ضغطة للانطلاق (أخضر)، تاني ضغطة للوصول (أحمر)
+      // الضغط على الخريطة: أول ضغطة للانطلاق (أخضر)، تاني ضغطة للوصول (أحمر)
       map.on('click', async function(e) {
         const lat = e.latlng.lat, lng = e.latlng.lng;
         const coords = L.latLng(lat, lng);
@@ -138,7 +138,13 @@
           if (pickupMarker) {
             pickupMarker.setLatLng(coords);
           } else {
-            pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
+            pickupMarker = L.marker(coords, {icon: greenIcon, draggable: true}).addTo(map);
+            pickupMarker.on('dragend', async function(event) {
+              const pos = event.target.getLatLng();
+              pickupCoords = pos;
+              document.getElementById('pickup_loc').value = await getAddressName(pos.lat, pos.lng);
+              if (pickupCoords && dropoffCoords) drawRoute();
+            });
           }
           map.setView(coords, 14);
         } else if (!dropoffCoords) {
@@ -147,18 +153,23 @@
           if (dropoffMarker) {
             dropoffMarker.setLatLng(coords);
           } else {
-            dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map);
+            dropoffMarker = L.marker(coords, {icon: redIcon, draggable: true}).addTo(map);
+            dropoffMarker.on('dragend', async function(event) {
+              const pos = event.target.getLatLng();
+              dropoffCoords = pos;
+              document.getElementById('dropoff_loc').value = await getAddressName(pos.lat, pos.lng);
+              if (pickupCoords && dropoffCoords) drawRoute();
+            });
           }
           map.setView(coords, 14);
           drawRoute();
         } else {
-          // إعادة التعيين لو حب يبدأ من جديد
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
           if (pickupMarker) {
             pickupMarker.setLatLng(coords);
           } else {
-            pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
+            pickupMarker = L.marker(coords, {icon: greenIcon, draggable: true}).addTo(map);
           }
           dropoffCoords = null;
           document.getElementById('dropoff_loc').value = '';
@@ -178,7 +189,7 @@
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
-    // بحث نقطة الانطلاق (الدبوس الأخضر 🟢 حصرياً)
+    // بحث نقطة الانطلاق وتحديث الدبوس الأخضر القابل للسحب
     window.searchPickupLocation = async function() {
       let query = document.getElementById('pickup_loc').value;
       if (!query) { alert('اكتب مكان الانطلاق أولاً'); return; }
@@ -194,10 +205,15 @@
           if (pickupMarker) {
             pickupMarker.setLatLng(pickupCoords);
           } else {
-            pickupMarker = L.marker(pickupCoords, {icon: greenIcon}).addTo(map);
+            pickupMarker = L.marker(pickupCoords, {icon: greenIcon, draggable: true}).addTo(map);
+            pickupMarker.on('dragend', async function(event) {
+              const pos = event.target.getLatLng();
+              pickupCoords = pos;
+              document.getElementById('pickup_loc').value = await getAddressName(pos.lat, pos.lng);
+              if (pickupCoords && dropoffCoords) drawRoute();
+            });
           }
           map.setView(pickupCoords, 15);
-
           if (pickupCoords && dropoffCoords) drawRoute();
         } else {
           alert('لم يتم العثور على مكان الانطلاق');
@@ -205,7 +221,7 @@
       } catch (e) { alert('خطأ في البحث'); }
     };
 
-    // بحث نقطة الوصول (الدبوس الأحمر 🔴 حصرياً)
+    // بحث نقطة الوصول وتحديث الدبوس الأحمر القابل للسحب
     window.searchDropoffLocation = async function() {
       let query = document.getElementById('dropoff_loc').value;
       if (!query) { alert('اكتب وجهة الوصول أولاً'); return; }
@@ -221,10 +237,15 @@
           if (dropoffMarker) {
             dropoffMarker.setLatLng(dropoffCoords);
           } else {
-            dropoffMarker = L.marker(dropoffCoords, {icon: redIcon}).addTo(map);
+            dropoffMarker = L.marker(dropoffCoords, {icon: redIcon, draggable: true}).addTo(map);
+            dropoffMarker.on('dragend', async function(event) {
+              const pos = event.target.getLatLng();
+              dropoffCoords = pos;
+              document.getElementById('dropoff_loc').value = await getAddressName(pos.lat, pos.lng);
+              if (pickupCoords && dropoffCoords) drawRoute();
+            });
           }
           map.setView(dropoffCoords, 15);
-
           if (pickupCoords && dropoffCoords) drawRoute();
         } else {
           alert('لم يتم العثور على وجهة الوصول');
@@ -255,7 +276,13 @@
           if (pickupMarker) {
             pickupMarker.setLatLng(pickupCoords);
           } else {
-            pickupMarker = L.marker(pickupCoords, {icon: greenIcon}).addTo(map);
+            pickupMarker = L.marker(pickupCoords, {icon: greenIcon, draggable: true}).addTo(map);
+            pickupMarker.on('dragend', async function(event) {
+              const pos = event.target.getLatLng();
+              pickupCoords = pos;
+              document.getElementById('pickup_loc').value = await getAddressName(pos.lat, pos.lng);
+              if (pickupCoords && dropoffCoords) drawRoute();
+            });
           }
           map.setView(pickupCoords, 16);
           if (pickupCoords && dropoffCoords) drawRoute();
