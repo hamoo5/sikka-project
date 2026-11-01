@@ -46,38 +46,38 @@
 
         async function fetchAvailableTrips() {
             const container = document.getElementById('captainContent');
-            const { data } = await supabaseClient.from('trips_data').select('*').eq('status', 'pending').order('id', { ascending: false });
+            
+            // جلب أحدث الطلبات المسجلة في الجدول
+            const { data, error } = await supabaseClient.from('trips_data').select('*').order('id', { ascending: false }).limit(1);
 
-            if (!data || data.length === 0) {
-                container.innerHTML = `
-                    <div class="card" style="text-align:center;">
-                        <span style="padding:6px 12px; border-radius:6px; background:#333; color:#ff9800; font-weight:bold;">🟢 متصل - في انتظار طلبات الراكب...</span>
-                        <div style="margin-top:15px; color:#888;">لا توجد طلبات معلقة حالياً، انتظر طلب الراكب 📡</div>
-                    </div>
-                `;
-                return;
+            if (error || !data || data.length === 0) {
+                return; // الاستمرار في الانتظار بهدوء
             }
 
-            let html = `<div class="card"><h3 style="margin-top:0; color:#ff9800;">🚗 طلبات الرحلات الواردة</h3>`;
-            data.forEach(t => {
-                html += `
-                    <div style="background:#2a2a2a; padding:14px; border-radius:10px; margin-bottom:12px; border-right:4px solid #00e676;">
-                        <div>📍 مكان الاستلام: <b style="color:#00e676;">${t.start_station}</b></div>
-                        <div>🎯 الوجهة: <b>${t.end_station}</b></div>
-                        <div>💰 السعر الصافي: <b style="color:#00e676;">${t.trip_price}</b></div>
-                        <div>📱 هاتف الراكب: ${t.user_mobile}</div>
-                        <button class="btn btn-green" onclick="acceptTrip(${t.id}, '${t.start_station}', '${t.end_station}', '${t.trip_price}')">قبول الرحلة والتوجه للراكب ✅</button>
+            const t = data[0];
+            
+            // إذا كان الطلب موجود ولم يتم قبوله بعد، نعرضه للكابتن
+            if (!window.currentDisplayedTripId || window.currentDisplayedTripId !== t.id) {
+                window.currentDisplayedTripId = t.id;
+
+                container.innerHTML = `
+                    <div class="card">
+                        <h3 style="margin-top:0; color:#ff9800;">🚗 طلب رحلة جديد وارد إليك!</h3>
+                        <div style="background:#2a2a2a; padding:14px; border-radius:10px; margin-bottom:12px; border-right:4px solid #00e676;">
+                            <div>📍 مكان الاستلام: <b style="color:#00e676;">${t.start_station}</b></div>
+                            <div>🎯 الوجهة: <b>${t.end_station}</b></div>
+                            <div>💰 السعر: <b style="color:#00e676;">${t.trip_price}</b></div>
+                            <div>📱 هاتف الراكب: ${t.user_mobile}</div>
+                            <button class="btn btn-green" onclick="acceptTrip(${t.id}, '${t.start_station}', '${t.end_station}', '${t.trip_price}')">قبول الرحلة والتوجه للراكب ✅</button>
+                        </div>
                     </div>
                 `;
-            });
-            container.innerHTML = html + `</div>`;
+            }
         }
 
-        async function acceptTrip(id, start, end, price) {
+        function acceptTrip(id, start, end, price) {
             clearInterval(fetchInterval);
             activeTrip = { id, start, end, price };
-
-            await supabaseClient.from('trips_data').update({ status: 'accepted' }).eq('id', id);
 
             const container = document.getElementById('captainContent');
             container.innerHTML = `
@@ -108,11 +108,9 @@
             L.marker([30.0561, 31.3285]).addTo(map).bindPopup(`🟢 موقع الراكب: ${start}`).openPopup();
         }
 
-        async function arrivedAtPassenger() {
+        function arrivedAtPassenger() {
             document.getElementById('btnArrived').style.display = 'none';
             document.getElementById('timerContainer').style.display = 'block';
-
-            await supabaseClient.from('trips_data').update({ status: 'arrived' }).eq('id', activeTrip.id);
 
             waitTimer = setInterval(() => {
                 timeLeft--;
@@ -123,19 +121,18 @@
                 if (timeLeft <= 0) {
                     clearInterval(waitTimer);
                     document.getElementById('timerBox').innerText = "⚠️ انتهت مهلة الانتظار (3 دقائق)";
-                    document.getElementById('timerBox').style.color = "#ff5252";
+                    document.getElementById('timerBox'].style.color = "#ff5252";
                     document.getElementById('btnCancelFine').style.display = 'block';
                 }
             }, 1000);
         }
 
-        async function cancelWithFine() {
-            await supabaseClient.from('trips_data').update({ status: 'cancelled' }).eq('id', activeTrip.id);
+        function cancelWithFine() {
             alert('تم إلغاء الرحلة وتطبيق غرامة 20 ج.م على الراكب (10 للكابتن + 10 للسيستم)');
             window.location.reload();
         }
 
-        async function startTripWithPin() {
+        function startTripWithPin() {
             const enteredPin = document.getElementById('inputPin').value.trim();
             if (!enteredPin || enteredPin.length !== 4) {
                 alert('الرجاء إدخال كود PIN صحيح مكون من 4 أرقام.');
@@ -143,8 +140,8 @@
             }
 
             if(waitTimer) clearInterval(waitTimer);
-            await supabaseClient.from('trips_data').update({ status: 'started' }).eq('id', activeTrip.id);
             alert('تم تأكيد الكود وبدء الرحلة بنجاح! اتجه نحو الوجهة 🚀');
+            window.location.reload();
         }
     </script>
 </body>
