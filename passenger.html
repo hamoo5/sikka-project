@@ -16,8 +16,7 @@
     button:hover { background: #218838; }
     .btn-secondary { background: #007bff; }
     .btn-gps { background: #17a2b8; }
-    .btn-route { background: #6f42c1; }
-    #map { height: 330px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
+    #map { height: 350px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
     .hidden { display: none; }
     .toggle-link { color: #007bff; text-align: center; cursor: pointer; margin-top: 10px; display: block; font-weight: bold; }
     .leaflet-routing-container { display: none !important; }
@@ -57,10 +56,8 @@
       <button style="width:30%; margin:0; background:#007bff;" onclick="searchDropoffLocation()">بحث</button>
     </div>
 
-    <button class="btn-route" onclick="drawRoute()">🛣️ عرض خط السير وحساب التكلفة</button>
-
-    <!-- صندوق تفاصيل الرحلة يظهر فوق الخريطة بوضوح -->
-    <div id="trip-status">جاري حساب المسافة والتكلفة...</div>
+    <!-- صندوق تفاصيل الرحلة يظهر أوتوماتيك -->
+    <div id="trip-status">حدد نقطة الانطلاق والوصول ليتم حساب الرحلة أوتوماتيكياً...</div>
 
     <button onclick="requestRide()" style="background:#28a745;">🚀 تأكيد وطلب المشوار الآن</button>
 
@@ -163,7 +160,7 @@
             });
           }
           map.setView(coords, 14);
-          drawRoute();
+          drawRoute(); // رسم المسار أوتوماتيك بمجرد اكتمال النقطتين
         } else {
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
@@ -214,7 +211,7 @@
             });
           }
           map.setView(pickupCoords, 15);
-          if (pickupCoords && dropoffCoords) drawRoute();
+          if (pickupCoords && dropoffCoords) drawRoute(); // رسم المسار أوتوماتيك
         } else {
           alert('لم يتم العثور على مكان الانطلاق');
         }
@@ -245,15 +242,15 @@
             });
           }
           map.setView(dropoffCoords, 15);
-          if (pickupCoords && dropoffCoords) drawRoute();
+          if (pickupCoords && dropoffCoords) drawRoute(); // رسم المسار أوتوماتيك
         } else {
           alert('لم يتم العثور على وجهة الوصول');
         }
       } catch (e) { alert('خطأ في البحث'); }
     };
 
-    window.drawRoute = function() {
-      if (!pickupCoords || !dropoffCoords) { alert('حدد نقطة الركوب والوصول أولاً'); return; }
+    function drawRoute() {
+      if (!pickupCoords || !dropoffCoords) return;
       if (routingControl) map.removeControl(routingControl);
       
       routingControl = L.Routing.control({
@@ -281,7 +278,7 @@
           `;
         }
       });
-    };
+    }
 
     window.getMyLocation = function() {
       if (navigator.geolocation) {
