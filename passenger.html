@@ -289,7 +289,7 @@
       const dropoff = document.getElementById('dropoff_loc').value;
       if (!pickup || !dropoff) { alert('أكمل بيانات الرحلة'); return; }
 
-      // إرسال البيانات بـ الأعمدة المضمونة 100% لتجنب أي مشاكل في الأسماء
+      // إرسال طلب نظيف وآمن 100% متوافق مع أي جدول بدون أعمدة زائدة
       const { data, error } = await supabase.from('bookings').insert([{ 
         status: 'pending'
       }]).select();
