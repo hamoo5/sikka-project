@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>كومبو - واجهة الراكب والتتبع</title>
+  <title>كومبو - واجهة الراكب</title>
   
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
@@ -17,11 +17,11 @@
     .btn-secondary { background: #007bff; }
     .btn-gps { background: #17a2b8; }
     .btn-route { background: #6f42c1; }
-    #map { height: 350px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
+    #map { height: 330px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
     .hidden { display: none; }
     .toggle-link { color: #007bff; text-align: center; cursor: pointer; margin-top: 10px; display: block; font-weight: bold; }
     .leaflet-routing-container { display: none !important; }
-    #trip-status { background: #e8f4fd; border: 1px solid #b6effb; color: #055160; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 14px; line-height: 1.6; }
+    #trip-status { background: #e8f4fd; border: 1px solid #b6effb; color: #055160; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px; line-height: 1.6; display: none; }
   </style>
 </head>
 <body>
@@ -39,9 +39,9 @@
     <span class="toggle-link" id="toggle-auth-mode" onclick="toggleAuthMode()">ليس لديك حساب؟ سجل حساب جديد</span>
   </div>
 
-  <!-- 2. الخريطة والطلب الحي -->
+  <!-- 2. الخريطة والطلب -->
   <div id="app-section" class="card hidden">
-    <h3 style="margin-top:0;">🗺️ تحديد الرحلة والتتبع المباشر</h3>
+    <h3 style="margin-top:0;">🗺️ حجز وتحديد الرحلة</h3>
     
     <button class="btn-gps" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
     
@@ -58,10 +58,13 @@
     </div>
 
     <button class="btn-route" onclick="drawRoute()">🛣️ عرض خط السير وحساب التكلفة</button>
-    <button onclick="requestRide()" style="background:#28a745;">🚀 اطلب المشوار وابدأ التتبع</button>
+
+    <!-- صندوق تفاصيل الرحلة يظهر فوق الخريطة بوضوح -->
+    <div id="trip-status">جاري حساب المسافة والتكلفة...</div>
+
+    <button onclick="requestRide()" style="background:#28a745;">🚀 تأكيد وطلب المشوار الآن</button>
 
     <div id="map"></div>
-    <div id="trip-status">حالة الرحلة: حدد نقطة الانطلاق والوصول واضغط عرض خط السير...</div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -172,6 +175,7 @@
           document.getElementById('dropoff_loc').value = '';
           if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
           if (routingControl) map.removeControl(routingControl);
+          document.getElementById('trip-status').style.display = 'none';
           map.setView(coords, 14);
         }
       });
@@ -260,7 +264,6 @@
         lineOptions: { styles: [{ color: '#007bff', opacity: 0.85, weight: 6 }] }
       }).addTo(map);
 
-      // حساب المسافة والوقت والسعر وعرضهم للراكب
       routingControl.on('routesfound', function(e) {
         const routes = e.routes;
         if (routes && routes.length > 0) {
@@ -269,7 +272,9 @@
           const durationMin = Math.round(summary.totalTime / 60);
           const estimatedPrice = Math.round(10 + (distanceKm * 5));
 
-          document.getElementById('trip-status').innerHTML = `
+          const statusDiv = document.getElementById('trip-status');
+          statusDiv.style.display = 'block';
+          statusDiv.innerHTML = `
             📊 <b>تفاصيل الرحلة المتاحة:</b><br>
             📏 المسافة: ${distanceKm} كم | ⏱️ الوقت التقديري: ${durationMin} دقيقة<br>
             💰 السعر المقدر: ${estimatedPrice} جنيه
@@ -320,32 +325,11 @@
         alert('خطأ في الطلب: ' + error.message);
       } else {
         activeBookingId = data[0].id;
-        document.getElementById('trip-status').innerHTML = "🔄 تم إرسال الطلب، جاري البحث عن كابتن...";
-        subscribeToCaptainLocation();
+        const statusDiv = document.getElementById('trip-status');
+        statusDiv.style.display = 'block';
+        statusDiv.innerHTML = "🔄 تم إرسال طلبك بنجاح، جاري البحث عن كابتن قريب منك...";
       }
     };
-
-    function subscribeToCaptainLocation() {
-      supabase.channel('public:bookings')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `id=eq.${activeBookingId}` }, payload => {
-          const updated = payload.new;
-          if (updated.status === 'accepted') {
-            document.getElementById('trip-status').innerHTML = "🚗 الكابتن في طريقه إليك!";
-            if (updated.captain_lat && updated.captain_lng) {
-              const capLatLng = [updated.captain_lat, updated.captain_lng];
-              if (captainMarker) {
-                captainMarker.setLatLng(capLatLng);
-              } else {
-                captainMarker = L.marker(capLatLng, {
-                  icon: L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png', iconSize: [35, 35] })
-                }).addTo(map);
-              }
-              map.setView(capLatLng, 15);
-            }
-          }
-        })
-        .subscribe();
-    }
   </script>
 </body>
 </html>
