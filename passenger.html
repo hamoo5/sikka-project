@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>كومبو - واجهة الراكب</title>
+    <title>كومبو - واجهة الراكب الاحترافية</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -13,7 +13,7 @@
         * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
         body { background: #121212; color: #fff; margin: 0; padding: 10px; direction: rtl; }
         .top-bar { background: #000; padding: 12px; display: flex; justify-content: space-between; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333; }
-        .card { background: #181818; padding: 14px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; }
+        .card { background: #181818; padding: 14px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #333; position: relative; }
         
         .btn-blue { background: #0066cc; color: #fff; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-bottom: 10px; font-size: 14px; }
         .btn-green { background: #00875a; color: #fff; border: none; padding: 16px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; font-size: 16px; }
@@ -21,11 +21,12 @@
         .input-box { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; margin-top: 6px; margin-bottom: 6px; font-size: 14px; outline: none; }
         label { font-size: 12px; color: #aaa; display: block; }
         
-        .suggestions-list { background: #222; border: 1px solid #444; border-radius: 8px; max-height: 150px; overflow-y: auto; margin-bottom: 10px; display: none; }
-        .suggestion-item { padding: 10px; font-size: 13px; border-bottom: 1px solid #333; cursor: pointer; }
+        /* قائمة نتائج البحث المنضبطة زي جوجل ماب */
+        .suggestions-list { position: absolute; width: calc(100% - 28px); background: #222; border: 1px solid #00e676; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.8); }
+        .suggestion-item { padding: 12px; font-size: 13px; border-bottom: 1px solid #333; cursor: pointer; color: #fff; }
         .suggestion-item:hover { background: #333; color: #00e676; }
 
-        .map-container { width: 100%; height: 280px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; background: #222; }
+        .map-container { width: 100%; height: 260px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; background: #222; }
         .hint-text { font-size: 11px; color: #00e676; text-align: center; margin-bottom: 5px; }
         
         .info-box { background: #1e1e1e; padding: 12px; border-radius: 8px; border: 1px dashed #00e676; margin-bottom: 12px; text-align: center; font-size: 13px; color: #00e676; font-weight: bold; }
@@ -46,7 +47,7 @@
         <input type="text" id="startInput" class="input-box" value="شارع مصطفي ابو زهره، مدينة نصر" />
         
         <label>الوجهة (إلى - بحث مثل جوجل ماب):</label>
-        <input type="text" id="endInput" class="input-box" placeholder="اكتب اسم الشارع أو المنطقة للبحث..." oninput="searchPlaces(this.value, 'endSuggestions')" />
+        <input type="text" id="endInput" class="input-box" placeholder="اكتب اسم الشارع أو المنطقة للبحث..." oninput="searchPlaces(this.value)" autocomplete="off" />
         <div id="endSuggestions" class="suggestions-list"></div>
 
         <div class="hint-text">💡 اسحب الدبوس الأزرق على الخريطة لتحديد مكانك بدقة!</div>
@@ -77,16 +78,15 @@
         const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let map = null, statusMap = null, activeTripId = null, mainMarker = null;
+        let map = null, statusMap = null, activeTripId = null, mainMarker = null, destMarker = null;
 
         window.onload = function() {
-            // ضمان تحميل الخريطة فوراً بدون تأخير
             setTimeout(() => {
                 map = L.map('map').setView([30.0561, 31.3285], 15);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
                 
                 mainMarker = L.marker([30.0561, 31.3285], { draggable: true }).addTo(map)
-                    .bindPopup("🟢 موقعك الحالي").openPopup();
+                    .bindPopup("🟢 موقع الاستلام").openPopup();
 
                 mainMarker.on('dragend', async function(e) {
                     const pos = mainMarker.getLatLng();
@@ -95,28 +95,31 @@
             }, 300);
         };
 
+        // دالة جلب اسم الشارع بدقة وتجنب الأرقام العشوائية
         async function getStreetName(lat, lng, elementId) {
             try {
                 let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
                 let data = await res.json();
-                if (data && data.display_name) {
-                    let shortName = data.display_name.split(',')[0] + '، القاهرة';
-                    document.getElementById(elementId).value = shortName;
+                if (data && data.address) {
+                    let road = data.address.road || data.address.suburb || data.address.neighbourhood || 'منطقة غير محددة؛';
+                    let city = data.address.city || data.address.town || 'القاهرة';
+                    document.getElementById(elementId).value = `${road}, ${city}`;
                 }
             } catch (err) {
-                document.getElementById(elementId).value = `خط عرض: ${lat.toFixed(4)}, خط طول: ${lng.toFixed(4)}`;
+                document.getElementById(elementId).value = `موقع محدد على الخريطة`;
             }
         }
 
-        async function searchPlaces(query, containerId) {
-            const listContainer = document.getElementById(containerId);
-            if (query.length < 3) {
+        // دالة البحث المباشر في الشوارع وإظهار القائمة المنسدلة مثل جوجل ماب
+        async function searchPlaces(query) {
+            const listContainer = document.getElementById('endSuggestions');
+            if (query.length < 2) {
                 listContainer.style.display = 'none';
                 return;
             }
 
             try {
-                let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' Cairo')}&limit=5`);
+                let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' Cairo Egypt')}&limit=5`);
                 let results = await res.json();
                 
                 listContainer.innerHTML = '';
@@ -129,8 +132,13 @@
                         div.onclick = function() {
                             document.getElementById('endInput').value = place.display_name.split(',')[0];
                             listContainer.style.display = 'none';
-                            map.setView([parseFloat(place.lat), parseFloat(place.lon)], 16);
-                            L.marker([parseFloat(place.lat), parseFloat(place.lon)]).addTo(map).bindPopup("🎯 الوجهة").openPopup();
+                            
+                            let lat = parseFloat(place.lat);
+                            let lon = parseFloat(place.lon);
+                            map.setView([lat, lon], 16);
+                            
+                            if (destMarker) map.removeLayer(destMarker);
+                            destMarker = L.marker([lat, lon]).addTo(map).bindPopup("🎯 الوجهة").openPopup();
                         };
                         listContainer.appendChild(div);
                     });
@@ -138,7 +146,7 @@
                     listContainer.style.display = 'none';
                 }
             } catch (err) {
-                console.log('خطأ في البحث');
+                listContainer.style.display = 'none';
             }
         }
 
