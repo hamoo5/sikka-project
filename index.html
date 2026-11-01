@@ -3,35 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>كومبو - تسجيل الدخول</title>
+    <title>كومبو - تسجيل دخول الراكب</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
         body { background: #121212; color: #fff; margin: 0; padding: 0; direction: rtl; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .login-card { background: #1e1e1e; padding: 24px; border-radius: 16px; width: 90%; max-width: 400px; border: 1px solid #333; text-align: center; }
-        .role-selector { display: flex; gap: 10px; margin-bottom: 20px; }
-        .role-btn { flex: 1; padding: 12px; background: #2a2a2a; border: 2px solid #444; color: #aaa; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; }
-        .role-btn.active { border-color: #00e676; background: #1a332c; color: #fff; }
-        input { width: 100%; padding: 14px; margin-bottom: 15px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 15px; text-align: center; }
-        label { font-size: 13px; color: #bbb; display: block; margin-bottom: 8px; text-align: right; }
-        .btn { background: #00875a; color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; }
+        .card { background: #1e1e1e; padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid #333; text-align: center; }
+        .btn { background: #00875a; color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; }
+        input { width: 100%; padding: 14px; margin-top: 10px; margin-bottom: 15px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 16px; text-align: center; letter-spacing: 2px; }
+        label { font-size: 14px; color: #bbb; display: block; text-align: right; }
+        .pin-display { font-size: 22px; color: #00e676; font-weight: bold; background: #111; padding: 10px; border-radius: 8px; margin: 10px 0; border: 1px dashed #00e676; display: none; }
     </style>
 </head>
 <body>
 
-    <div class="login-card">
-        <h2>🚗 تطبيق كومبو</h2>
-        <p style="color: #aaa; font-size: 13px; margin-bottom: 20px;">اختر نوع الحساب لتسجيل الدخول</p>
-        
-        <div class="role-selector">
-            <button class="role-btn active" id="btnPassenger" onclick="setRole('passenger')">راكب</button>
-            <button class="role-btn" id="btnCaptain" onclick="setRole('captain')">كابتن</button>
+    <div class="card">
+        <h2 style="margin-top:0; color:#00e676;">🚗 تسجيل دخول الراكب</h2>
+        <p style="color:#aaa; font-size:13px; margin-bottom:20px;">أدخل رقم هاتفك للبدء في طلب الرحلات</p>
+
+        <!-- خطوة 1: إدخال الهاتف -->
+        <div id="stepPhone">
+            <label>رقم الهاتف المحمول:</label>
+            <input type="tel" id="userPhone" placeholder="01xxxxxxxx" maxlength="11" />
+            <button class="btn" onclick="sendOtpCode()">إرسال كود التحقق 📨</button>
         </div>
 
-        <label>رقم الهاتف المحمول:</label>
-        <input type="tel" id="userPhone" placeholder="01xxxxxxxxx" maxlength="11" />
-
-        <button class="btn" onclick="handleLogin()">دخول المنظومة ➔</button>
+        <!-- خطوة 2: إدخال كود التحقق OTP -->
+        <div id="stepOtp" style="display:none;">
+            <label>أدخل كود التحقق المكون من 4 أرقام:</label>
+            <div class="pin-display" id="generatedOtpShow">----</div>
+            <input type="number" id="enteredOtp" placeholder="----" maxlength="4" />
+            <button class="btn" onclick="verifyOtpCode()">تأكيد وتسجيل الدخول ✅</button>
+        </div>
     </div>
 
     <script>
@@ -39,35 +43,38 @@
         const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let selectedRole = 'passenger';
+        let currentPhone = "";
+        let expectedOtp = "";
 
-        function setRole(role) {
-            selectedRole = role;
-            if (role === 'passenger') {
-                document.getElementById('btnPassenger').classList.add('active');
-                document.getElementById('btnCaptain').classList.remove('active');
-            } else {
-                document.getElementById('btnCaptain').classList.add('active');
-                document.getElementById('btnPassenger').classList.remove('active');
-            }
-        }
-
-        async function handleLogin() {
+        async function sendOtpCode() {
             const phone = document.getElementById('userPhone').value.trim();
             if (!phone || phone.length < 11) {
                 alert('الرجاء إدخال رقم هاتف صحيح مكون من 11 رقماً');
                 return;
             }
 
-            if (selectedRole === 'passenger') {
-                // حفظ رقم الراكب محلياً والانتقال لصفحة الراكب
-                localStorage.setItem('passenger_phone', phone);
-                window.location.href = 'passenger.html';
-            } else {
-                // التحقق من جدول الكباتن أو حفظه والانتقال لصفحة الكابتن
-                localStorage.setItem('captain_phone', phone);
-                window.location.href = 'captain.html';
+            currentPhone = phone;
+            expectedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+
+            // إظهار الكود مؤقتاً للمحاكاة (أو إرساله عبر SMS مستقبلاً)
+            document.getElementById('generatedOtpShow').innerText = expectedOtp;
+            document.getElementById('generatedOtpShow').style.display = 'block';
+
+            document.getElementById('stepPhone').style.display = 'none';
+            document.getElementById('stepOtp').style.display = 'block';
+        }
+
+        async function verifyOtpCode() {
+            const userEntered = document.getElementById('enteredOtp').value.trim();
+            if (userEntered !== expectedOtp) {
+                alert('كود التحقق غير صحيح، حاول مرة أخرى.');
+                return;
             }
+
+            // حفظ رقم الراكب في التخزين المحلي للمتصفح (Session) والانتقال لخريطة الطلب
+            localStorage.setItem('passenger_phone', currentPhone);
+            alert('تم تسجيل الدخول بنجاح! جاري تحويلك لطلب الرحلة...');
+            window.location.href = 'passenger.html';
         }
     </script>
 </body>
