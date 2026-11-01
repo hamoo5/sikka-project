@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>كومبو - واجهة الراكب الاحترافية</title>
+    <title>كومبو - واجهة الراكب</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -39,12 +39,12 @@
         <button class="btn-blue" onclick="useCurrentLocation()">📍 استخدام موقعي الحالي على الخريطة</button>
         
         <label>مكان الاستلام (من):</label>
-        <input type="text" id="startInput" class="input-box" value="شارع مصطفي ابو زهره" />
+        <input type="text" id="startInput" class="input-box" value="شارع مصطفي ابو زهره، مدينة نصر" />
         
-        <label>الوجهة (إلى - ابحث أو حدد على الخريطة):</label>
-        <input type="text" id="endInput" class="input-box" placeholder="اكتب اسم الشارع أو الوجهة هنا..." oninput="searchLocation(this.value)" />
+        <label>الوجهة (إلى):</label>
+        <input type="text" id="endInput" class="input-box" value="شارع الاتحاد" />
 
-        <div class="hint-text">💡 يمكنك سحب الدبوس الأزرق على الخريطة لتحديد مكانك بدقة!</div>
+        <div class="hint-text">💡 اسحب الدبوس الأزرق على الخريطة لتحديد مكانك بدقة!</div>
         <div id="map" class="map-container"></div>
 
         <div class="info-box">
@@ -75,17 +75,15 @@
         let map = null, statusMap = null, activeTripId = null, mainMarker = null;
 
         window.onload = function() {
-            // الخريطة الأساسية مع دبوس قابل للسحب (Draggable) لتحديد الموقع بدقة
-            map = L.map('map').setView([30.0561, 31.3285], 14);
+            map = L.map('map').setView([30.0561, 31.3285], 15);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
             
             mainMarker = L.marker([30.0561, 31.3285], { draggable: true }).addTo(map)
-                .bindPopup("🟢 اسحبني لمكانك بدقة").openPopup();
+                .bindPopup("🟢 موقعك الحالي").openPopup();
 
-            // تحديث اسم الشارع تلقائياً عند سحب الدبوس
             mainMarker.on('dragend', function(e) {
                 const pos = mainMarker.getLatLng();
-                document.getElementById('startInput').value = `إحداثيات: ${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}`;
+                document.getElementById('startInput').value = `موقع محدد (خط عرض: ${pos.lat.toFixed(4)}, خط طول: ${pos.lng.toFixed(4)})`;
             });
         };
 
@@ -100,23 +98,6 @@
                 });
             } else {
                 alert('الخواص الجغرافية غير مدعومة في متصفحك');
-            }
-        }
-
-        // خاصية البحث السريع في الشوارع باستخدام Nominatim (مجاني ومدمج مع OpenStreetMap)
-        async function searchLocation(query) {
-            if (query.length < 3) return;
-            try {
-                let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' Cairo')}`);
-                let data = await res.json();
-                if (data && data.length > 0) {
-                    let lat = parseFloat(data[0].lat);
-                    let lon = parseFloat(data[0].lon);
-                    map.setView([lat, lon], 15);
-                    L.marker([lat, lon]).addTo(map).bindPopup(`🎯 ${data[0].display_name.split(',')[0]}`).openPopup();
-                }
-            } catch (err) {
-                console.log('بحث الشوارع جارٍ...');
             }
         }
 
@@ -149,7 +130,7 @@
 
         function initStatusMap() {
             if (!statusMap) {
-                statusMap = L.map('statusMap').setView([30.0561, 31.3285], 13);
+                statusMap = L.map('statusMap').setView([30.0561, 31.3285], 14);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(statusMap);
                 L.marker([30.0561, 31.3285]).addTo(statusMap).bindPopup("🟢 نقطة الاستلام").openPopup();
             }
