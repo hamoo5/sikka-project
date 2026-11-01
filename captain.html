@@ -81,9 +81,8 @@
             L.marker([30.0561, 31.3285]).addTo(map).bindPopup("🟢 موقع الراكب (النقطة الأولى)").openPopup();
         }
 
-        async function acceptTrip() {
-            await supabaseClient.from('trips_data').update({ notes: 'accepted' }).eq('id', activeTrip.id);
-
+        function acceptTrip() {
+            window.tripStatus = 'accepted';
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
                 <b>🚗 جاري التوجه نحو موقع الراكب (النقطة الأولى)</b>
@@ -91,9 +90,8 @@
             `;
         }
 
-        async function markArrived() {
-            await supabaseClient.from('trips_data').update({ notes: 'arrived' }).eq('id', activeTrip.id);
-
+        function markArrived() {
+            window.tripStatus = 'arrived';
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
                 <h3 style="margin:0; text-align:center; color:#ff9800;">⏱️ تم الوصول - في انتظار الراكب</h3>
@@ -115,16 +113,15 @@
             }, 1000);
         }
 
-        async function startTrip() {
+        function startTrip() {
             const pin = document.getElementById('pinInput').value.trim();
             if (pin !== "4480") {
                 alert('كود PIN غير صحيح! تأكد من رقم الراكب.');
                 return;
             }
             if (waitTimer) clearInterval(waitTimer);
-            await supabaseClient.from('trips_data').update({ notes: 'started' }).eq('id', activeTrip.id);
+            window.tripStatus = 'started';
 
-            // الانتقال للنقطة الثانية (موقع النزول)
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
                 <h3 style="color:#00e676; margin:0;">🎯 الرحلة جارية نحو وجهة النزول</h3>
@@ -135,9 +132,7 @@
             L.marker([30.0602, 31.2569]).addTo(map).bindPopup("🎯 نقطة النزول النهائية").openPopup();
         }
 
-        async function completeTrip() {
-            await supabaseClient.from('trips_data').update({ notes: 'completed' }).eq('id', activeTrip.id);
-            
+        function completeTrip() {
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
                 <h3 style="color:#00e676; margin:0; text-align:center;">🏁 تم إنهاء الرحلة بنجاح</h3>
