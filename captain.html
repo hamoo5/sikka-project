@@ -13,21 +13,29 @@
         * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
         body { background: #121212; color: #fff; margin: 0; padding: 0; direction: rtl; overflow: hidden; }
         #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-        .top-nav { position: absolute; top: 15px; right: 15px; left: 15px; z-index: 10; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.8); padding: 10px 15px; border-radius: 8px; }
-        .bottom-sheet { position: absolute; bottom: 0; left: 0; width: 100%; background: #181818; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 20px; z-index: 10; box-shadow: 0 -5px 25px rgba(0,0,0,0.8); border-top: 1px solid #333; max-height: 85vh; overflow-y: auto; }
-        .btn-uber { background: #fff; color: #000; border: none; padding: 16px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 12px; }
+        .top-nav { position: absolute; top: 15px; right: 15px; left: 15px; z-index: 10; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.85); padding: 10px 15px; border-radius: 10px; border: 1px solid #333; }
+        .bottom-sheet { position: absolute; bottom: 0; left: 0; width: 100%; background: #181818; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 18px; z-index: 10; box-shadow: 0 -5px 25px rgba(0,0,0,0.9); border-top: 1px solid #333; max-height: 85vh; overflow-y: auto; }
+        
+        .passenger-header { display: flex; align-items: center; gap: 12px; background: #222; padding: 12px; border-radius: 10px; margin-bottom: 12px; border: 1px solid #333; }
+        .passenger-avatar { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid #00e676; }
+        .passenger-info { flex-grow: 1; }
+        
+        .price-box { background: #111; padding: 12px; border-radius: 10px; border: 1px dashed #00e676; margin-bottom: 12px; text-align: center; }
+        .net-price { font-size: 24px; font-weight: bold; color: #00e676; }
+        .total-price { font-size: 13px; color: #aaa; text-decoration: line-through; }
+        
+        .btn-action { border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; text-align: center; margin-top: 8px; }
         .btn-green { background: #00875a; color: #fff; }
         .btn-red { background: #d32f2f; color: #fff; }
-        .trip-info-row { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #333; font-size: 14px; }
-        .price-tag { font-size: 22px; font-weight: bold; color: #00e676; }
-        .chat-container { background: #111; border-radius: 10px; padding: 10px; height: 100px; overflow-y: auto; margin: 10px 0; border: 1px solid #333; display: flex; flex-direction: column; gap: 6px; }
+        
+        .quick-replies { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 5px; margin: 8px 0; }
+        .chip { background: #2a2a2a; border: 1px solid #444; color: #fff; padding: 6px 12px; border-radius: 16px; font-size: 11px; white-space: nowrap; cursor: pointer; }
+        .chat-container { background: #111; border-radius: 10px; padding: 10px; height: 90px; overflow-y: auto; margin: 8px 0; border: 1px solid #333; display: flex; flex-direction: column; gap: 6px; }
         .msg { padding: 6px 10px; border-radius: 6px; font-size: 12px; max-width: 80%; }
         .msg.me { background: #0288d1; align-self: flex-end; }
         .msg.other { background: #333; align-self: flex-start; }
-        .quick-replies { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 5px; margin-bottom: 10px; }
-        .chip { background: #2a2a2a; border: 1px solid #444; color: #fff; padding: 6px 12px; border-radius: 16px; font-size: 11px; white-space: nowrap; cursor: pointer; }
-        input { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 18px; text-align: center; letter-spacing: 6px; margin: 8px 0; }
-        .timer-box { font-size: 20px; font-weight: bold; color: #ff9800; background: #2a2a2a; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; }
+        input { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 20px; text-align: center; letter-spacing: 6px; margin: 8px 0; }
+        .timer-box { font-size: 22px; font-weight: bold; color: #ff9800; background: #2a2a2a; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -42,7 +50,7 @@
     <div class="bottom-sheet" id="sheetContainer">
         <div style="text-align: center; color: #aaa; font-size: 14px; padding: 20px;">
             <div style="font-size: 18px; color: #00e676; font-weight: bold; margin-bottom: 5px;">🟢 متصل الآن</div>
-            جاري البحث عن رحلات قريبة منك... 📡
+            جاري فحص طلبات الركاب القريبة... 📡
         </div>
     </div>
 
@@ -51,17 +59,23 @@
         const SUPABASE_KEY = "sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let map, captainMarker, passengerMarker, watchId;
-        let currentTrip = null, pollInterval = setInterval(checkForTrips, 2000);
+        let map, captainMarker, passengerMarker;
+        let pollInterval = setInterval(checkForTrips, 2000);
         let captainLat = 30.0561, captainLng = 31.3285;
-        let passengerLat = 30.0591, passengerLng = 31.3325;
         let waitTimer = null, timeLeft = 180;
 
+        // بيانات راكب افتراضية للعرض الاحترافي
+        const mockPassenger = {
+            name: "أحمد علي",
+            rating: "4.9 ⭐",
+            tripsCount: "28 رحلة ناجحة",
+            avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
+        };
+
         window.onload = function() {
-            map = L.map('map', {zoomControl: false}).setView([captainLat, captainLng], 15);
+            map = L.map('map', {zoomControl: false}).setView([captainLat, captainLng], 14);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-            // تفعيل نظام تتبع موقع الكابتن الحقيقي عبر الـ GPS
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition((pos) => {
                     captainLat = pos.coords.latitude;
@@ -69,7 +83,7 @@
                     if (captainMarker) {
                         captainMarker.setLatLng([captainLat, captainLng]);
                     } else {
-                        captainMarker = L.marker([captainLat, captainLng]).addTo(map).bindPopup("🚗 موقعك الحالي (الكابتن)");
+                        captainMarker = L.marker([captainLat, captainLng]).addTo(map).bindPopup("🚗 موقعك الحالي");
                     }
                 }, null, { enableHighAccuracy: true });
             }
@@ -82,55 +96,62 @@
             const t = data[0];
             if (!window.lastTripId || window.lastTripId !== t.id) {
                 window.lastTripId = t.id;
-                currentTrip = t;
                 showIncomingTripModal(t);
             }
         }
 
-        // 1. عرض طلب الرحلة الوارد (شبه أوبر)
+        // 1. عرض بيانات الراكب كاملة + السعر الكلي والصافي + زر قبول/رفض
         function showIncomingTripModal(t) {
             clearInterval(pollInterval);
+            
+            // حساب السعر الإجمالي والربح الصافي للكابتن (خصم 15% عمولة السيستم)
+            const totalFare = parseFloat(t.trip_price) || 100;
+            const netEarnings = Math.round(totalFare * 0.85);
+
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <span style="background:#222; padding:4px 10px; border-radius:6px; font-size:12px; color:#ff9800;">UberX Saver حصري</span>
-                    <span style="font-size:12px; color:#aaa;">التقييم 4.58 ⭐</span>
-                </div>
-                
-                <div class="price-tag" style="margin-bottom:10px;">${t.trip_price}</div>
-                
-                <div class="trip-info-row">
-                    <div>
-                        <div style="color:#aaa; font-size:11px;">موقع الاستلام</div>
-                        <b>📍 ${t.start_station}</b>
+                <div style="font-size: 13px; color: #ff9800; font-weight: bold; margin-bottom: 8px;">🔔 طلب رحلة جديد وارد!</div>
+
+                <!-- كارت بيانات الراكب -->
+                <div class="passenger-header">
+                    <img src="${mockPassenger.avatar}" class="passenger-avatar" />
+                    <div class="passenger-info">
+                        <b style="font-size: 16px;">👤 ${mockPassenger.name}</b>
+                        <div style="font-size: 12px; color: #ffca28; margin-top: 2px;">${mockPassenger.rating} | 🛣️ ${mockPassenger.tripsCount}</div>
+                        <div style="font-size: 11px; color: #aaa; margin-top: 2px;">📱 ${t.user_mobile || '01000000000'}</div>
                     </div>
                 </div>
 
-                <div class="trip-info-row">
-                    <div>
-                        <div style="color:#aaa; font-size:11px;">الوجهة النهائية</div>
-                        <b>🎯 ${t.end_station}</b>
-                    </div>
+                <!-- حساب المسافة والربح الصافي -->
+                <div class="price-box">
+                    <div style="font-size: 12px; color: #aaa;">صافي ربحك من الرحلة (بعد خصم 15% عمولة):</div>
+                    <div class="net-price">${netEarnings} ج.م</div>
+                    <div class="total-price">إجمالي المبلغ من الراكب: ${totalFare} ج.م</div>
                 </div>
 
-                <div style="font-size:12px; color:#888; margin-bottom:15px;">
-                    📱 هاتف الراكب: ${t.user_mobile || '01112142750'}
+                <div style="background:#222; padding:10px; border-radius:8px; font-size:13px; margin-bottom:10px;">
+                    <div>📍 الاستلام: <b style="color:#00e676;">${t.start_station}</b></div>
+                    <div>🎯 الوجهة: <b>${t.end_station}</b></div>
+                    <div style="color:#ff9800; margin-top:4px;">⏱️ المسافة للوصول: 1.5 كم (4 دقائق)</div>
                 </div>
 
-                <button class="btn-uber btn-green" onclick="acceptTripAction()">اقبل الرحلة ✅</button>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-action btn-green" style="flex:2;" onclick="acceptTripAction('${t.start_station}')">قبول الرحلة ✅</button>
+                    <button class="btn-action btn-red" style="flex:1;" onclick="rejectTripAction()">رفض ❌</button>
+                </div>
             `;
+
+            passengerMarker = L.marker([30.0591, 31.3325]).addTo(map).bindPopup(`🟢 مكان الراكب: ${mockPassenger.name}`).openPopup();
         }
 
-        // 2. مرحلة التوجه للراكب وحركة الملاحة الحية
-        function acceptTripAction() {
+        // 2. التوجه للراكب والملاحة والشات
+        function acceptTripAction(startStation) {
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <b>التوجه إلى الراكب</b>
-                    <span style="color:#00e676; font-size:13px;" id="distanceTimeText">جاري حساب المسافة...</span>
+                    <b>🚗 التوجه نحو ${mockPassenger.name}</b>
+                    <span style="color:#00e676; font-size:13px;">1.5 كم (4 دقائق)</span>
                 </div>
-                
-                <div style="font-size:13px; color:#ccc; margin-bottom:10px;">انتظر من فضلك، الكابتن يتحرك في الطريق إليك 🚗</div>
 
                 <div class="quick-replies">
                     <div class="chip" onclick="sendQuickMsg('حسناً، لقد فهمت')">حسناً، لقد فهمت</div>
@@ -142,11 +163,12 @@
                     <div class="msg other">مرحبًا، أنا في طريقي إليك الآن</div>
                 </div>
 
-                <button class="btn-uber" style="background:#222; color:#fff; border:1px solid #444; margin-top:5px;" onclick="arrivedAtPassenger()">لقد وصلت 📍</button>
+                <button class="btn-action btn-green" onclick="arrivedAtPassenger()">لقد وصلت لمكان الراكب 📍</button>
             `;
+        }
 
-            passengerMarker = L.marker([passengerLat, passengerLng]).addTo(map).bindPopup("🟢 مكان الراكب").openPopup();
-            map.setView([captainLat, captainLng], 16);
+        function rejectTripAction() {
+            window.location.reload();
         }
 
         function sendQuickMsg(text) {
@@ -155,20 +177,20 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // 3. مرحلة الوصول وبدء عداد الانتظار (3 دقائق) والغرامة
+        // 3. عداد الـ 3 دقائق والـ PIN
         function arrivedAtPassenger() {
             const sheet = document.getElementById('sheetContainer');
             sheet.innerHTML = `
-                <h3 style="margin-top:0; text-align:center; color:#ff9800;">⏱️ في انتظار الراكب</h3>
+                <h3 style="margin-top:0; text-align:center; color:#ff9800;">⏱️ جارٍ انتظار الراكب</h3>
                 <div class="timer-box" id="timerBox">03:00</div>
                 
                 <div style="background:#222; padding:12px; border-radius:8px; text-align:center; margin-top:10px;">
                     <label style="font-size:12px; color:#aaa;">🔑 أدخل رقم الـ PIN المأخوذ من الراكب لبدء الرحلة:</label>
                     <input type="number" id="pinInput" placeholder="****" maxlength="4" />
-                    <button class="btn-uber btn-green" onclick="verifyPinAndStart()">تأكيد وبدء الرحلة 🚀</button>
+                    <button class="btn-action btn-green" onclick="verifyPinAndStart()">تأكيد وبدء الرحلة 🚀</button>
                 </div>
 
-                <button class="btn-uber btn-red" id="btnCancelFine" style="display:none; margin-top:10px;" onclick="cancelWithFine()">❌ إلغاء وتطبيق غرامة (20 ج.م)</button>
+                <button class="btn-action btn-red" id="btnCancelFine" style="display:none; margin-top:8px;" onclick="cancelWithFine()">❌ إلغاء وتطبيق غرامة (20 ج.م)</button>
             `;
 
             waitTimer = setInterval(() => {
@@ -186,11 +208,10 @@
         }
 
         function cancelWithFine() {
-            alert('تم إلغاء الرحلة وتطبيق غرامة 20 ج.م (10 للكابتن + 10 للسيستم)');
+            alert('تم إلغاء الرحلة وتطبيق غرامة 20 ج.م على الراكب (10 للكابتن + 10 للسيستم)');
             window.location.reload();
         }
 
-        // 4. التحقق من كود الـ PIN وبدء الرحلة الفعلية
         function verifyPinAndStart() {
             const pin = document.getElementById('pinInput').value.trim();
             if (pin.length !== 4) {
