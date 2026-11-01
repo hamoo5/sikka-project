@@ -47,13 +47,13 @@
     <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب (نقطة الانطلاق - أخضر 🟢):</label>
     <div style="display:flex; gap:5px;">
       <input type="text" id="pickup_loc" placeholder="اكتب الشارع أو اضغط على الخريطة" style="margin:0;">
-      <button style="width:30%; margin:0; background:#007bff;" onclick="searchLocation('pickup')">بحث</button>
+      <button style="width:30%; margin:0; background:#007bff;" onclick="searchPickupLocation()">بحث</button>
     </div>
 
     <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">وجهة النزول (الوصول - أحمر 🔴):</label>
     <div style="display:flex; gap:5px;">
       <input type="text" id="dropoff_loc" placeholder="اكتب وجهة النزول أو اضغط الخريطة" style="margin:0;">
-      <button style="width:30%; margin:0; background:#007bff;" onclick="searchLocation('dropoff')">بحث</button>
+      <button style="width:30%; margin:0; background:#007bff;" onclick="searchDropoffLocation()">بحث</button>
     </div>
 
     <button class="btn-route" onclick="drawRoute()">🛣️ عرض خط السير</button>
@@ -126,7 +126,7 @@
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // الضغط المباشر لتحديد الانطلاق (أخضر) ثم الوصول (أحمر)
+      // الضغط المباشر: أول ضغطة للانطلاق (أخضر)، تاني ضغطة للوصول (أحمر)
       map.on('click', async function(e) {
         const lat = e.latlng.lat, lng = e.latlng.lng;
         const coords = L.latLng(lat, lng);
@@ -135,21 +135,31 @@
         if (!pickupCoords) {
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
-          if (pickupMarker) { pickupMarker.setLatLng(coords); } 
-          else { pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map); }
+          if (pickupMarker) {
+            pickupMarker.setLatLng(coords);
+          } else {
+            pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
+          }
           map.setView(coords, 14);
         } else if (!dropoffCoords) {
           dropoffCoords = coords;
           document.getElementById('dropoff_loc').value = address;
-          if (dropoffMarker) { dropoffMarker.setLatLng(coords); } 
-          else { dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map); }
+          if (dropoffMarker) {
+            dropoffMarker.setLatLng(coords);
+          } else {
+            dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map);
+          }
           map.setView(coords, 14);
           drawRoute();
         } else {
+          // إعادة التعيين لو حب يبدأ من جديد
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
-          if (pickupMarker) { pickupMarker.setLatLng(coords); } 
-          else { pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map); }
+          if (pickupMarker) {
+            pickupMarker.setLatLng(coords);
+          } else {
+            pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
+          }
           dropoffCoords = null;
           document.getElementById('dropoff_loc').value = '';
           if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
@@ -168,43 +178,56 @@
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
-    window.searchLocation = async function(type) {
-      const inputId = type === 'pickup' ? 'pickup_loc' : 'dropoff_loc';
-      let query = document.getElementById(inputId).value;
-      if (!query) { alert('اكتب المكان للبحث'); return; }
+    // بحث نقطة الانطلاق (الدبوس الأخضر 🟢 حصرياً)
+    window.searchPickupLocation = async function() {
+      let query = document.getElementById('pickup_loc').value;
+      if (!query) { alert('اكتب مكان الانطلاق أولاً'); return; }
       if (!query.includes('القاهرة') && !query.includes('مصر')) query += ", القاهرة, مصر";
 
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=eg&limit=1&accept-language=ar`);
         const results = await res.json();
         if (results && results.length > 0) {
-          const coords = L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon));
+          pickupCoords = L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon));
+          document.getElementById('pickup_loc').value = results[0].display_name.split(',').slice(0, 3).join(',');
           
-          if (type === 'pickup') {
-            pickupCoords = coords;
-            document.getElementById(inputId).value = results[0].display_name.split(',').slice(0, 3).join(',');
-            if (pickupMarker) {
-              pickupMarker.setLatLng(coords);
-            } else {
-              pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
-            }
+          if (pickupMarker) {
+            pickupMarker.setLatLng(pickupCoords);
           } else {
-            dropoffCoords = coords;
-            document.getElementById(inputId).value = results[0].display_name.split(',').slice(0, 3).join(',');
-            if (dropoffMarker) {
-              dropoffMarker.setLatLng(coords);
-            } else {
-              dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map);
-            }
+            pickupMarker = L.marker(pickupCoords, {icon: greenIcon}).addTo(map);
           }
+          map.setView(pickupCoords, 15);
 
-          map.setView(coords, 15);
-
-          if (pickupCoords && dropoffCoords) {
-            drawRoute();
-          }
+          if (pickupCoords && dropoffCoords) drawRoute();
         } else {
-          alert('لم يتم العثور على المكان');
+          alert('لم يتم العثور على مكان الانطلاق');
+        }
+      } catch (e) { alert('خطأ في البحث'); }
+    };
+
+    // بحث نقطة الوصول (الدبوس الأحمر 🔴 حصرياً)
+    window.searchDropoffLocation = async function() {
+      let query = document.getElementById('dropoff_loc').value;
+      if (!query) { alert('اكتب وجهة الوصول أولاً'); return; }
+      if (!query.includes('القاهرة') && !query.includes('مصر')) query += ", القاهرة, مصر";
+
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=eg&limit=1&accept-language=ar`);
+        const results = await res.json();
+        if (results && results.length > 0) {
+          dropoffCoords = L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon));
+          document.getElementById('dropoff_loc').value = results[0].display_name.split(',').slice(0, 3).join(',');
+          
+          if (dropoffMarker) {
+            dropoffMarker.setLatLng(dropoffCoords);
+          } else {
+            dropoffMarker = L.marker(dropoffCoords, {icon: redIcon}).addTo(map);
+          }
+          map.setView(dropoffCoords, 15);
+
+          if (pickupCoords && dropoffCoords) drawRoute();
+        } else {
+          alert('لم يتم العثور على وجهة الوصول');
         }
       } catch (e) { alert('خطأ في البحث'); }
     };
@@ -235,6 +258,7 @@
             pickupMarker = L.marker(pickupCoords, {icon: greenIcon}).addTo(map);
           }
           map.setView(pickupCoords, 16);
+          if (pickupCoords && dropoffCoords) drawRoute();
         }, () => { alert('تعذر تحديد موقعك بالـ GPS.'); });
       }
     };
