@@ -4,56 +4,164 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>كومبو - واجهة الراكب</title>
+  <!-- مكتبة الخرائط المجانية Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f4f4f9; direction: rtl; text-align: right; }
+    body { font-family: sans-serif; padding: 15px; background: #f4f4f9; direction: rtl; text-align: right; margin: 0; }
     .card { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    input, select, button { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+    input, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
     button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
     button:hover { background: #218838; }
+    .btn-secondary { background: #007bff; }
+    .btn-secondary:hover { background: #0056b3; }
+    #map { height: 250px; width: 100%; border-radius: 8px; margin-bottom: 10px; }
+    .hidden { display: none; }
+    .toggle-link { color: #007bff; text-align: center; cursor: pointer; margin-top: 10px; display: block; font-weight: bold; }
   </style>
 </head>
 <body>
 
-  <h1>🚗 واجهة الراكب</h1>
-
-  <!-- اقتراح خط سير جديد -->
-  <div class="card">
-    <h3>💡 اقترح خط سير جديد</h3>
-    <input type="text" id="start_point" placeholder="محطة البداية (مثلاً: البساتين)">
-    <input type="text" id="end_point" placeholder="محطة النهاية (مثلاً: التجمع)">
-    <input type="text" id="stops" placeholder="محطات وسيطة (اختياري)">
-    <button onclick="proposeRoute()" style="background: #007bff;">إرسال الاقتراح للإدارة</button>
+  <!-- 1. قسم تسجيل الدخول / إنشاء حساب -->
+  <div id="auth-section" class="card">
+    <h2 id="auth-title">تسجيل دخول الراكب</h2>
+    <div id="name-field" class="hidden">
+      <input type="text" id="user_name" placeholder="الاسم الكامل">
+    </div>
+    <input type="text" id="user_phone" placeholder="رقم الموبايل">
+    <input type="password" id="user_password" placeholder="كلمة المرور">
+    
+    <button id="auth-btn" class="btn-secondary" onclick="handleAuth()">دخول</button>
+    <span class="toggle-link" id="toggle-auth-mode" onclick="toggleAuthMode()">ليس لديك حساب؟ سجل حساب جديد</span>
   </div>
+
+  <!-- 2. قسم طلب الرحلة والخريطة (يظهر بعد تسجيل الدخول) -->
+  <div id="app-section" class="card hidden">
+    <h2>🚗 حجز وتحديد موقع الرحلة</h2>
+    <p>حدد موقعك الحالي أو اختر نقطة على الخريطة:</p>
+    
+    <button class="btn-secondary" onclick="getMyLocation()" style="margin-bottom: 10px;">📍 تحديد موقعي الحالي تلقائياً (GPS)</button>
+    
+    <!-- الخريطة التفاعلية -->
+    <div id="map"></div>
+
+    <input type="text" id="pickup_loc" placeholder="مكان الركوب (مثلاً: التجمع الخامس)" readonly>
+    <input type="text" id="dropoff_loc" placeholder="وجهة النزول (مثلاً: رمسيس)">
+    
+    <button onclick="saveFavoriteTrip()" style="background: #ffc107; color: #333;">⭐ حفظ هذه الرحلة في المفضلة</button>
+    <button onclick="requestRide()">طلب المشوار الآن</button>
+  </div>
+
+  <!-- مكتبة الخرائط Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script type="module">
     import { supabase } from './supabase.js';
 
-    window.proposeRoute = async function() {
-      const start = document.getElementById('start_point').value;
-      const end = document.getElementById('end_point').value;
-      const stops = document.getElementById('stops').value;
+    let isRegistering = false;
+    let map, marker;
 
-      if (!start || !end) {
-        alert('من فضلك اكتب محطة البداية والنهاية');
+    // تبديل بين تسجيل الدخول وتسجيل حساب جديد
+    window.toggleAuthMode = function() {
+      isRegistering = !isRegistering;
+      document.getElementById('auth-title').innerText = isRegistering ? 'إنشاء حساب جديد' : 'تسجيل دخول الراكب';
+      document.getElementById('name-field').classList.toggle('hidden', !isRegistering);
+      document.getElementById('auth-btn').innerText = isRegistering ? 'إنشاء الحساب' : 'دخول';
+      document.getElementById('toggle-auth-mode').innerText = isRegistering ? 'لديك حساب بالفعل؟ سجل دخولك' : 'ليس لديك حساب؟ سجل حساب جديد';
+    };
+
+    // دالة التعامل مع الدخول أو التسجيل
+    window.handleAuth = async function() {
+      const phone = document.getElementById('user_phone').value;
+      const password = document.getElementById('user_password').value;
+      const name = document.getElementById('user_name').value;
+
+      if (!phone || !password) {
+        alert('من فضلك أدخل رقم الموبايل وكلمة المرور');
         return;
       }
 
-      const { data, error } = await supabase
-        .from('shuttle_routes')
-        .insert([
-          { start_point: start, end_point: end, stops: stops, status: 'pending' }
-        ]);
-
-      if (error) {
-        alert('حدث خطأ: ' + error.message);
+      if (isRegistering) {
+        if (!name) { alert('من فضلك ادخل الاسم'); return; }
+        // تسجيل حساب جديد في جدول users
+        const { error } = await supabase.from('users').insert([{ name, phone, password, role: 'passenger' }]);
+        if (error) { alert('خطأ في التسجيل: ' + error.message); } 
+        else { alert('تم إنشاء الحساب بنجاح! يمكنك الدخول الآن.'); toggleAuthMode(); }
       } else {
-        alert('تم إرسال اقتراح الخط بنجاح للإدارة! 🟢');
-        document.getElementById('start_point').value = '';
-        document.getElementById('end_point').value = '';
-        document.getElementById('stops').value = '';
+        // التحقق من تسجيل الدخول
+        const { data, error } = await supabase.from('users').select('*').eq('phone', phone).eq('password', password).single();
+        if (error || !data) {
+          alert('رقم الموبايل أو كلمة المرور غير صحيحة');
+        } else {
+          alert('مرحباً بك يا ' + data.name + ' 🚗');
+          document.getElementById('auth-section').classList.add('hidden');
+          document.getElementById('app-section').classList.remove('hidden');
+          initMap(); // تفعيل الخريطة فور تسجيل الدخول
+        }
       }
     };
-  </script>
 
+    // تهيئة الخريطة
+    function initMap() {
+      if (map) return;
+      // مركز الخريطة الافتراضي (القاهرة)
+      map = L.map('map').setView([30.0444, 31.2357], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      map.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        if (marker) map.removeLayer(marker);
+        marker = L.marker([lat, lng]).addTo(map);
+        document.getElementById('pickup_loc').value = `إحداثيات: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      });
+    }
+
+    // تحديد الموقع الحالي للراكب عبر GPS
+    window.getMyLocation = function() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          map.setView([lat, lng], 15);
+          if (marker) map.removeLayer(marker);
+          marker = L.marker([lat, lng]).addTo(map);
+          document.getElementById('pickup_loc').value = `موقعي الحالي (GPS): ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+          alert('تم تحديد موقعك بنجاح!');
+        }, () => {
+          alert('تعذر تحديد موقعك، تأكد من تفعيل GPS.');
+        });
+      } else {
+        alert('متصفحك لا يدعم تحديد الموقع الجغرافي.');
+      }
+    };
+
+    // حفظ الرحلة في المفضلة
+    window.saveFavoriteTrip = function() {
+      const pickup = document.getElementById('pickup_loc').value;
+      const dropoff = document.getElementById('dropoff_loc').value;
+      if (!pickup || !dropoff) {
+        alert('من فضلك حدد نقطة الركوب والوجهة أولاً');
+        return;
+      }
+      localStorage.setItem('fav_pickup', pickup);
+      localStorage.setItem('fav_dropoff', dropoff);
+      alert('⭐ تم حفظ الرحلة في المفضلة بنجاح!');
+    };
+
+    // طلب المشوار
+    window.requestRide = async function() {
+      const pickup = document.getElementById('pickup_loc').value;
+      const dropoff = document.getElementById('dropoff_loc').value;
+      if (!pickup || !dropoff) {
+        alert('أكمل بيانات الركوب والوجهة');
+        return;
+      }
+      const { error } = await supabase.from('bookings').insert([{ pickup_location: pickup, dropoff_location: dropoff, trip_type: 'private', status: 'pending' }]);
+      if (error) alert('خطأ: ' + error.message);
+      else alert('تم إرسال طلب رحلتك بنجاح! جاري البحث عن كابتن.');
+    };
+  </script>
 </body>
 </html>
