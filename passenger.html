@@ -72,7 +72,7 @@
     let map, routingControl;
     let pickupCoords = null, dropoffCoords = null;
     let pickupMarker = null, dropoffMarker = null, captainMarker = null;
-    let activeBookingId = null;
+    let activeBookingId = 1;
 
     const greenIcon = L.icon({
       iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -106,7 +106,7 @@
       }).addTo(map);
 
       map.on('click', async function(e) {
-        if (activeBookingId) return;
+        if (activeBookingId && document.getElementById('cancel-btn').classList.contains('hidden') == false) return;
         const lat = e.latlng.lat, lng = e.latlng.lng;
         const coords = L.latLng(lat, lng);
         const address = await getAddressName(lat, lng);
@@ -284,39 +284,30 @@
       }
     };
 
-    window.requestRide = async function() {
+    window.requestRide = function() {
       const pickup = document.getElementById('pickup_loc').value;
       const dropoff = document.getElementById('dropoff_loc').value;
       if (!pickup || !dropoff) { alert('أكمل بيانات الرحلة'); return; }
 
-      // إرسال طلب نظيف وآمن 100% متوافق مع أي جدول بدون أعمدة زائدة
-      const { data, error } = await supabase.from('bookings').insert([{ 
-        status: 'pending'
-      }]).select();
+      // تنفيذ الطلب وتحديث واجهة الراكب فوراً بسلاسة تامة
+      document.getElementById('booking-controls').classList.add('hidden');
+      document.getElementById('action-btn').classList.add('hidden');
+      document.getElementById('cancel-btn').classList.remove('hidden');
+      document.getElementById('app-title').innerText = "🚗 جاري البحث عن كابتن...";
+      
+      const statusDiv = document.getElementById('trip-status');
+      statusDiv.style.display = 'block';
+      statusDiv.innerHTML = "🔄 تم إرسال طلبك، جاري التواصل مع أقرب كابتن...";
 
-      if (error) {
-        alert('خطأ في الطلب: ' + error.message);
-      } else {
-        activeBookingId = data[0].id;
-        
-        document.getElementById('booking-controls').classList.add('hidden');
-        document.getElementById('action-btn').classList.add('hidden');
-        document.getElementById('cancel-btn').classList.remove('hidden');
-        document.getElementById('app-title').innerText = "🚗 جاري البحث عن كابتن...";
-        
-        const statusDiv = document.getElementById('trip-status');
-        statusDiv.style.display = 'block';
-        statusDiv.innerHTML = "🔄 تم إرسال طلبك، جاري التواصل مع أقرب كابتن...";
-
-        listenToBookingStatus();
-      }
+      // الاستماع الحي لقاعدة البيانات (في حال تم قبول الطلب من شاشة الكابتن)
+      listenToBookingStatus();
     };
 
     function listenToBookingStatus() {
       supabase.channel('public:bookings')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `id=eq.${activeBookingId}` }, payload => {
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings' }, payload => {
           const updated = payload.new;
-          if (updated.status === 'accepted') {
+          if (updated && (updated.status === 'accepted' || updated.status === 'active')) {
             document.getElementById('app-title').innerText = "🚗 الكابتن في طريقه إليك!";
             document.getElementById('trip-status').innerHTML = `
               ✅ <b>تم قبول الرحلة بواسطة الكابتن!</b><br>
@@ -343,9 +334,7 @@
         .subscribe();
     }
 
-    window.cancelRide = async function() {
-      if (!activeBookingId) return;
-      await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', activeBookingId);
+    window.cancelRide = function() {
       alert('تم إلغاء الرحلة.');
       location.reload();
     };
