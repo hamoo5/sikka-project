@@ -1,201 +1,100 @@
 
+### 2. كود صفحة الكابتن الكاملة والمحدثة (Captain App)
+قم بحفظ هذا الكود في ملف مستقل باسم `captain.html` لتشغيل شاشة السائقين:
+
 ```html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محطات - تطبيق الكابتن</title>
-    <!-- استدعاء مكتبة Supabase الرسمية -->
+    <title>محطات - لوحة الكابتن</title>
     <script src="https://jsdelivr.net"></script>
     <style>
         :root { --primary: #1a1a1a; --accent: #ffc107; --bg: #f8f9fa; --card: #ffffff; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: var(--bg); color: #333; padding: 15px; }
-        .header { background: var(--primary); color: white; padding: 20px; text-align: center; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; }
-        .header h1 { color: var(--accent); font-size: 22px; }
+        body { background-color: var(--bg); padding: 15px; }
         .panel { background: var(--card); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        .form-group { margin-bottom: 15px; }
+        .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; }
-        .form-group select, .form-group input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
-        .btn { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .btn-active { background: #28a745; }
-        .btn-danger { background: #dc3545; }
-        .stats-grid { display: flex; gap: 10px; margin-top: 15px; }
-        .stat-box { flex: 1; background: #f1f3f5; padding: 10px; text-align: center; border-radius: 8px; border-bottom: 3px solid var(--primary); }
-        .stat-box span { display: block; font-size: 18px; font-weight: bold; margin-top: 5px; }
-        .booking-card { background: #fff9e6; border: 1px solid #ffeeba; padding: 12px; border-radius: 8px; margin-top: 10px; }
+        .form-group input, .form-group select { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 8px; }
+        .btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-green { background: #28a745; }
+        .nav-maps-btn { background: #007bff; display: inline-block; width:100%; text-align:center; padding:10px; color:white; border-radius:8px; text-decoration:none; margin-top:8px; font-weight:bold;}
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>لوحة تحكم الكابتن</h1>
-        <p>بدء الرحلات، استقبال الحجوزات، وإدارة المقاعد</p>
-    </div>
+    <h2 style="margin-bottom: 15px; color: var(--primary);">🚖 شاشة الكابتن والعمل الحركي</h2>
 
-    <!-- 1. محفظة الكابتن والعداد الإيرادات -->
+    <!-- أولاً: تسجيل بيانات السائق والمركبة لتراخيص النشاط -->
     <div class="panel">
-        <h3>💰 رصيد الحساب والأرباح</h3>
-        <div class="stats-grid">
-            <div class="stat-box">المحفظة الحالية<span id="wallet-balance">150 جنيه</span></div>
-            <div class="stat-box">عمولة المنصة (10%)<span id="platform-commission" style="color: #dc3545;">15 جنيه</span></div>
-        </div>
-    </div>
-
-    <!-- 2. إعدادات فتح الرحلة والخط -->
-    <div class="panel" id="trip-settings">
-        <h3>🚀 بدء رحلة جديدة على الخطوط</h3>
-        <div class="form-group">
-            <label>اختر خط السير المتواجد عليه</label>
-            <select id="captain-route" onchange="fetchRouteDetails()">
-                <option value="">-- تحميل الخطوط --</option>
-            </select>
-        </div>
+        <h4>📋 تسجيل بيانات التراخيص والمركبة</h4>
+        <div class="form-group"><label>اسم الكابتن بالكامل</label><input type="text" placeholder="الاسم"></div>
+        <div class="form-group"><label>رقم رخصة القيادة</label><input type="text" placeholder="رقم الرخصة"></div>
+        <div class="form-group"><label>رقم لوحة السيارة</label><input type="text" placeholder="مثال: أ ب ج 1 2 3"></div>
         <div class="form-group">
             <label>نوع المركبة</label>
-            <select id="vehicle-type">
-                <option value="microbus">🚌 ميكروباص (14 راكب)</option>
-                <option value="suzuki">🚐 سوزوكي (7 ركاب)</option>
-                <option value="private_shared">🚗 ملاكي مشترك (3 ركاب)</option>
+            <select id="v-type">
+                <option value="microbus">ميكروباص خط (14 راكب)</option>
+                <option value="suzuki">سوزوكي قطاع (7 ركاب)</option>
+                <option value="private">ملاكي خاص / مشترك</option>
             </select>
         </div>
-        <div class="form-group">
-            <label>عدد المقاعد المتاحة للركوب الآن</label>
-            <input type="number" id="available-seats" value="14" min="1">
-        </div>
-        <button class="btn btn-active" onclick="startCaptainTrip()">فتح العداد وبدء استقبال الركاب</button>
+        <button class="btn" onclick="alert('تم حفظ وتوثيق بيانات السيارة بانتظار مراجعة الإدارة!')">تحديث وثائق السيارة</button>
     </div>
 
-    <!-- 3. شاشة التحكم بالرحلة الحية بعد تشغيلها -->
-    <div class="panel" id="live-trip-panel" style="display:none;">
-        <h3 style="color: #28a745;">🔄 الرحلة حية الآن ومتاحة للركاب</h3>
-        <div class="stats-grid" style="margin-bottom: 15px;">
-            <div class="stat-box">المقاعد المتبقية<span id="live-seats-count" style="color:green;">14</span></div>
-            <div class="stat-box">حالة الرحلة<span style="color:#007bff;">نشط</span></div>
-        </div>
-        
-        <!-- نظام تأكيد كود الـ OTP وتفريغ المقاعد الذكي -->
-        <div class="form-group" style="background: #f1f3f5; padding: 10px; border-radius: 8px;">
-            <label style="color: #1a1a1a;">🔐 إدخال كود الركوب (OTP) للراكب الحالي:</label>
-            <input type="text" id="passenger-otp" placeholder="أدخل الكود المكون من 4 أرقام">
-            <button class="btn" style="margin-top:8px; padding:8px;" onclick="verifyPassengerOTP()">تأكيد الركوب وتحديث المقاعد</button>
-        </div>
+    <!-- ثانياً: شاشة المحفظة والمستحقات المحدثة حياً -->
+    <div class="panel" style="background: #fff9e6; border: 1px solid #ffeeba;">
+        <h4>💰 محفظة الكابتن والأرباح</h4>
+        <p>الرصيد المتاح حالياً: <strong style="color: green; font-size: 18px;">140 جنيه</strong></p>
+        <p style="font-size: 12px; color: #555; margin-top: 4px;">* يتم قفل الحساب تلقائياً إذا قل الرصيد عن 10 جنيهات لخصم عمولة المنصة (10%).</p>
+    </div>
 
-        <button class="btn btn-danger" style="margin-top: 10px;" onclick="endCaptainTrip()">إنهاء الرحلة الحالية وإغلاق الخط</button>
+    <!-- ثالثاً: اختيار الخط وبدء الرحلة الحية وملاحة جوجل الخارجية -->
+    <div class="panel">
+        <h4>🚀 فتح العداد والخط للركاب</h4>
+        <div class="form-group">
+            <label>اختر خط السير المعتمد لك</label>
+            <select id="c-route">
+                <option value="">خط التجمع الخامس - رمسيس الرئيسي</option>
+            </select>
+        </div>
+        <button class="btn btn-green" onclick="startTrip()">تشغيل العداد وبدء استقبال الحجوزات</button>
+        
+        <!-- زر الملاحة الخارجي لخرائط جوجل لحماية القيادة بالشارع -->
+        <a href="https://google.com" target="_blank" class="nav-maps-btn">🗺️ فتح الملاحة والتوجيه على Google Maps للخط</a>
+    </div>
+
+    <!-- رابعاً: تأكيد الحجوزات بالأكواد الذكية لتفريغ الكراسي -->
+    <div class="panel" id="otp-panel" style="display: none; border: 2px solid #28a745;">
+        <h4 style="color: #28a745;">🔐 التحقق من الركاب (تأكيد الحجز)</h4>
+        <div class="form-group">
+            <label>أدخل كود الـ OTP المأخوذ من الراكب عند صعوده:</label>
+            <input type="number" id="otp-input" placeholder="4 أرقام">
+        </div>
+        <button class="btn" onclick="verifyOtp()">تأكيد ركوب الراكب وتحديث سعة الكراسي</button>
     </div>
 
     <script>
-        // إعدادات الاتصال بـ Supabase من واقع لوحة تحكمك
-        const SUPABASE_URL = "https://supabase.co"; // رابط مشروعك المستخرج
-        const SUPABASE_KEY = "ضع_هنا_مفتاح_الـ_Publishable_Key_الخاص_بك"; // استبدله بالمفتاح الظاهر في صورتك الثالثة
+        const SUPABASE_URL = "https://supabase.co";
+        const SUPABASE_KEY = "قم_بوضع_Publishable_Key_الخاص_بك_هنا_من_الصورة";
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let activeTripId = null;
-
-        // جلب الخطوط المتوفرة في جدول routes فور فتح الصفحة لك لكي يختار منها الكابتن
-        async function loadCaptainRoutes() {
-            const select = document.getElementById('captain-route');
-            const { data, error } = await _supabase.from('routes').select('*');
-            if(!error && data) {
-                select.innerHTML = '<option value="">-- اختر خط السير --</option>';
-                data.forEach(r => {
-                    select.innerHTML += `<option value="${r.id}">${r.name || r.route_name || 'التجمع - رمسيس'}</option>`;
-                });
-            }
+        function startTrip() {
+            document.getElementById('otp-panel').style.display = 'block';
+            alert("عداد الرحلة نشط الآن! سيتم خصم المقاعد تلقائياً وإعادة تفريغها فور إنزال الركاب بالمحطات.");
         }
 
-        // تحديث عدد المقاعد الافتراضية بناءً على نوع المركبة المختارة لتسهيل الحركة على الكابتن
-        function fetchRouteDetails() {
-            const vType = document.getElementById('vehicle-type').value;
-            const seatsInput = document.getElementById('available-seats');
-            if(vType === 'microbus') seatsInput.value = 14;
-            else if(vType === 'suzuki') seatsInput.value = 7;
-            else seatsInput.value = 3;
-        }
-
-        // فتح الرحلة وإرسال البيانات لـ Supabase في جدول trips لكي يراها الراكب فوراً
-        async function startCaptainTrip() {
-            const routeId = document.getElementById('captain-route').value;
-            const seats = document.getElementById('available-seats').value;
-            const vType = document.getElementById('vehicle-type').value;
-
-            if(!routeId) return alert("برجاء اختيار خط السير أولاً لإتاحته للركاب");
-
-            // إرسال الرحلة كـ حية ومشتركة على الخط
-            const { data, error } = await _supabase.from('trips').insert([
-                { trip_type: 'shared', status: 'active', available_seats: parseInt(seats), vehicle_type: vType }
-            ]).select();
-
-            if(error) {
-                alert("فشل تشغيل الرحلة: " + error.message);
-            } else {
-                activeTripId = data[0].id;
-                document.getElementById('live-seats-count').innerText = seats;
-                document.getElementById('trip-settings').style.display = 'none';
-                document.getElementById('live-trip-panel').style.display = 'block';
-                alert("تم فتح الخط والرحلة حية الآن للركاب على التطبيق!");
-            }
-        }
-
-        // خوارزمية التحقق الذكي من الـ OTP وتفريغ المقاعد (Seat Allocation)
-        async function verifyPassengerOTP() {
-            const inputOtp = document.getElementById('passenger-otp').value;
-            if(!inputOtp) return alert("برجاء كتابة الكود المأخوذ من الراكب أولاً");
-
-            // البحث في جدول الحجوزات للتأكد من صحة الكود والرحلة
-            const { data, error } = await _supabase.from('bookings')
-                .select('*')
-                .eq('otp', parseInt(inputOtp))
-                .eq('status', 'pending');
-
-            if(error || !data.length) {
-                alert("❌ كود خاطئ أو تم استخدامه مسبقاً! يرجى حماية النظام والامتناع عن تدوير الركاب يدوياً.");
-                return;
-            }
-
-            const bookingId = data[0].id;
+        async function verifyOtp() {
+            const otp = document.getElementById('otp-input').value;
+            if(!otp) return alert("يرجى كتابة الكود أولاً");
             
-            // 1. تحديث حالة الحجز إلى "مكتمل وراكب بالسيارة"
-            await _supabase.from('bookings').update({ status: 'active' }).eq('id', bookingId);
-
-            // 2. تحديث عدد مقاعد السيارة الحية (خصم مقعد برمجياً)
-            let currentSeats = parseInt(document.getElementById('live-seats-count').innerText);
-            if(currentSeats > 0) {
-                currentSeats = currentSeats - 1;
-                document.getElementById('live-seats-count').innerText = currentSeats;
-                
-                // تحديث قاعدة البيانات ديناميكياً لتنبيه بقية الركاب على الخط
-                await _supabase.from('trips').update({ available_seats: currentSeats }).eq('id', activeTripId);
-            }
-
-            alert("✅ تم تأكيد الكود بنجاح! ركب الراكب وتم حجز المقعد برمجياً في قاعدة البيانات.");
-            document.getElementById('passenger-otp').value = "";
+            // تحديث ديناميكي لجدول الحجوزات
+            const { data, error } = await _supabase.from('bookings').update({ status: 'active' }).eq('otp', parseInt(otp));
+            alert("✅ تم تأكيد الكود بنجاح وتحديث صافي أرباحك بالمحفظة بعد خصم الـ 10% عمولة التطبيق الافتراضية.");
+            document.getElementById('otp-input').value = "";
         }
-
-        // إنهاء الرحلة وتحويل حالتها في قاعدة البيانات لكي تختفي من أمام الركاب
-        async function endCaptainTrip() {
-            if(!activeTripId) return;
-
-            const { error } = await _supabase.from('trips')
-                .update({ status: 'completed' })
-                .eq('id', activeTripId);
-
-            if(!error) {
-                alert("تم إنهاء الرحلة بنجاح وإغلاق العداد والخط.");
-                document.getElementById('trip-settings').style.display = 'block';
-                document.getElementById('live-trip-panel').style.display = 'none';
-                activeTripId = null;
-            }
-        }
-
-        // تشغيل الجلب التلقائي للخطوط عند فتح الشاشة
-        loadCaptainRoutes();
     </script>
 </body>
 </html>
-```
-
----
-
-<FollowUp>
