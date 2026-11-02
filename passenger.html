@@ -50,11 +50,11 @@
 
         .trip-summary {
             background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3);
-            border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;
+            border-radius: 12px; padding: 12px; margin-bottom: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center;
         }
-        .summary-item { text-align: center; flex: 1; }
-        .summary-label { font-size: 10px; color: #94a3b8; font-weight: 700; }
-        .summary-value { font-size: 13px; color: #38bdf8; font-weight: 900; margin-top: 2px; }
+        .summary-item { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .summary-label { font-size: 9px; color: #94a3b8; font-weight: 700; margin-bottom: 2px; }
+        .summary-value { font-size: 12px; color: #38bdf8; font-weight: 900; }
 
         .vehicle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
         .v-card {
@@ -98,17 +98,22 @@
                 <button class="gps-btn" onclick="goToCurrentLocation()">🎯 موقعي</button>
             </div>
 
+            <!-- لوحة ملخص الرحلة مضاف إليها حالة المرور بوضوح -->
             <div class="trip-summary">
                 <div class="summary-item">
                     <div class="summary-label">المسافة</div>
                     <div class="summary-value" id="trip-distance">-- كم</div>
                 </div>
                 <div class="summary-item">
-                    <div class="summary-label">الوقت المقدر</div>
+                    <div class="summary-label">الوقت</div>
                     <div class="summary-value" id="trip-duration">-- دقيقة</div>
                 </div>
                 <div class="summary-item">
-                    <div class="summary-label">السعر الإجمالي</div>
+                    <div class="summary-label">حالة الطريق</div>
+                    <div class="summary-value" id="traffic-status" style="font-size: 11px;">--</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">السعر</div>
                     <div class="summary-value" id="trip-price">-- ج.م</div>
                 </div>
             </div>
@@ -237,8 +242,8 @@
             updateAddressFromLatLng(dLat, dLng, 'dropoff');
         }
 
-        // ألوان مألوفة وواضحة جداً للمسار (أزرق احترافي للطريق العادي، أخضر لو سريع، أحمر لو ذروة وزحمة)
-        function getTrafficColorAndMultiplier() {
+        // خوارزمية أوقات الذروة لتحديد لون الخط وحالة المرور بشكل دقيق
+        function getTrafficStatusAndMultiplier() {
             const currentHour = new Date().getHours();
             
             const isMorningRush = (currentHour >= 8 && currentHour <= 10);
@@ -246,11 +251,11 @@
             const isNightTime = (currentHour >= 0 && currentHour < 6);
 
             if (isMorningRush || isEveningRush) {
-                return { color: '#ef4444', trafficFactor: 1.4 }; // أحمر مألوف (وقت زحمة)
+                return { color: '#ef4444', text: '🔴 زحمة شديدة', factor: 1.4 }; // أحمر (ذروة)
             } else if (isNightTime) {
-                return { color: '#22c55e', trafficFactor: 0.8 }; // أخضر مألوف (طريق سالك)
+                return { color: '#22c55e', text: '🟢 طريق سالك', factor: 0.8 }; // أخضر (فاضي)
             } else {
-                return { color: '#2563eb', trafficFactor: 1.0 }; // أزرق مألوف ورايق (طريق طبيعي زي أكبر التطبيقات)
+                return { color: '#38bdf8', text: '🔵 حركة مرنة', factor: 1.0 }; // أزرق رايق (طبيعي)
             }
         }
 
@@ -269,16 +274,18 @@
 
                     document.getElementById('trip-distance').innerText = currentDistanceKm + ' كم';
 
+                    const traffic = getTrafficStatusAndMultiplier();
+                    document.getElementById('traffic-status').innerText = traffic.text;
+                    document.getElementById('traffic-status').style.color = traffic.color;
+
                     updateTripCalculations();
 
                     if (routeLayer) {
                         map.removeLayer(routeLayer);
                     }
 
-                    const trafficInfo = getTrafficColorAndMultiplier();
-
                     routeLayer = L.polyline(coords, {
-                        color: trafficInfo.color,
+                        color: traffic.color,
                         weight: 6,
                         opacity: 0.9
                     }).addTo(map);
@@ -289,8 +296,8 @@
         }
 
         function updateTripCalculations() {
-            const trafficInfo = getTrafficColorAndMultiplier();
-            let finalDuration = Math.ceil(baseRouteDurationMin * timeMultiplier * trafficInfo.trafficFactor);
+            const traffic = getTrafficStatusAndMultiplier();
+            let finalDuration = Math.ceil(baseRouteDurationMin * timeMultiplier * traffic.factor);
             if (finalDuration < 2) finalDuration = 2;
             document.getElementById('trip-duration').innerText = finalDuration + ' دقيقة';
 
