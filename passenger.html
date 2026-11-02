@@ -48,13 +48,14 @@
         }
         .search-btn:hover { background: #334155; }
 
+        /* صندوق ملخص الرحلة مقسم على 3 خانات فقط (المسافة، الوقت، السعر) */
         .trip-summary {
             background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3);
             border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;
         }
-        .summary-item { text-align: center; }
+        .summary-item { text-align: center; flex: 1; }
         .summary-label { font-size: 10px; color: #94a3b8; font-weight: 700; }
-        .summary-value { font-size: 12px; color: #38bdf8; font-weight: 900; margin-top: 2px; }
+        .summary-value { font-size: 13px; color: #38bdf8; font-weight: 900; margin-top: 2px; }
 
         .vehicle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
         .v-card {
@@ -98,6 +99,7 @@
                 <button class="gps-btn" onclick="goToCurrentLocation()">🎯 موقعي</button>
             </div>
 
+            <!-- ملخص الرحلة (مسافة، وقت، سعر) بدون كلمات زيادة -->
             <div class="trip-summary">
                 <div class="summary-item">
                     <div class="summary-label">المسافة</div>
@@ -108,11 +110,7 @@
                     <div class="summary-value" id="trip-duration">-- دقيقة</div>
                 </div>
                 <div class="summary-item">
-                    <div class="summary-label">حالة الطريق</div>
-                    <div class="summary-value" id="traffic-status">--</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">السعر</div>
+                    <div class="summary-label">السعر الإجمالي</div>
                     <div class="summary-value" id="trip-price">-- ج.م</div>
                 </div>
             </div>
@@ -182,7 +180,7 @@
         let baseRouteDurationMin = 0;
         let currentDistanceKm = 0;
 
-        // دبابيس حقيقية احترافية (أخضر للانطلاق، أحمر للوصول)
+        // دبابيس حقيقية (أخضر للانطلاق، أحمر للوصول)
         const greenPinIcon = L.divIcon({
             className: 'custom-pin',
             html: '<div style="background-color: #22c55e; width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.4); border: 2px solid #fff;"><div style="width: 6px; height: 6px; background: #fff; border-radius: 50%; transform: rotate(45deg);"></div></div>',
@@ -263,20 +261,15 @@
                         map.removeLayer(routeLayer);
                     }
 
-                    // تلوين خط السير حسب حالة المرور (أخضر للسالك، برتقالي للمتوسط، أحمر للمزدحم)
-                    let routeColor = '#22c55e'; 
-                    let trafficText = '🟢 سالك';
-
+                    // تلوين خط السير على الخريطة حسب حالة المرور (أخضر للطريق السالك، برتقالي للحركة المتوسطة، أحمر للمزدحم)
+                    let routeColor = '#22c55e'; // أخضر (سالك)
                     let avgSpeed = currentDistanceKm / (baseRouteDurationMin / 60);
-                    if (avgSpeed < 15) {
-                        routeColor = '#ef4444'; 
-                        trafficText = '🔴 مزدحم جداً';
-                    } else if (avgSpeed < 25) {
-                        routeColor = '#f59e0b'; 
-                        trafficText = '🟠 حركة متوسطة';
-                    }
 
-                    document.getElementById('traffic-status').innerText = trafficText;
+                    if (avgSpeed < 15) {
+                        routeColor = '#ef4444'; // أحمر (مزدحم)
+                    } else if (avgSpeed < 25) {
+                        routeColor = '#f59e0b'; // برتقالي (حركة متوسطة)
+                    }
 
                     routeLayer = L.polyline(coords, {
                         color: routeColor,
