@@ -36,7 +36,7 @@
       <option value="private_shared">🚗 ملاكي تشاركي (حجز مقاعد)</option>
       <option value="private_special">🚗 رحلة خاصة (ملاكي من الباب للباب)</option>
     </select>
-    <button class="btn-secondary" type="button" onclick="loginCaptain()">فتح لوحة التحكم ورادار الخط 🚀</button>
+    <button class="btn-secondary" id="captain-login-btn" type="button">فتح لوحة التحكم ورادار الخط 🚀</button>
   </div>
 
   <!-- 2. لوحة تحكم الكابتن -->
@@ -88,6 +88,9 @@
       fetchPendingTrips(vehicle);
       subscribeToNewTrips(vehicle);
     }
+
+    // ربط الحدث مباشرة لزرار دخول الكابتن
+    document.getElementById('captain-login-btn').addEventListener('click', loginCaptain);
 
     function initMap() {
       if (map) return;
