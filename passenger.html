@@ -67,21 +67,21 @@
         </select>
       </div>
       
-      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">موقف/نقطة الانطلاق (أخضر 🟢):</label>
+      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">موقف/نقطة الانطلاق (اسحب الدبوس الأخضر 🟢):</label>
       <div style="display:flex; gap:5px;">
-        <input type="text" id="pickup_loc" placeholder="اكتب الموقف أو اختر من الخريطة" style="margin:0;">
+        <input type="text" id="pickup_loc" placeholder="اسحب الدبوس على الخريطة أو ابحث" style="margin:0;">
         <button style="width:30%; margin:0; background:#007bff;" onclick="searchPickupLocation()">بحث</button>
       </div>
 
-      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">موقف/وجهة الوصول (أحمر 🔴):</label>
+      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">موقف/وجهة الوصول (اسحب الدبوس الأحمر 🔴):</label>
       <div style="display:flex; gap:5px;">
-        <input type="text" id="dropoff_loc" placeholder="اكتب موقف الوصول أو اضغط الخريطة" style="margin:0;">
+        <input type="text" id="dropoff_loc" placeholder="اسحب الدبوس الأحمر أو ابحث" style="margin:0;">
         <button style="width:30%; margin:0; background:#007bff;" onclick="searchDropoffLocation()">بحث</button>
       </div>
     </div>
 
     <!-- تفاصيل التكلفة والتتبع -->
-    <div id="trip-status">حدد نقاط الحركة لحساب تفاصيل خط السير...</div>
+    <div id="trip-status">اسحب الدبابيس على الخريطة لتحديد خط السير بدقة...</div>
 
     <button id="action-btn" onclick="requestRide()" style="background:#28a745;">🚀 تأكيد حجز المقاعد والرحلة</button>
     <button id="cancel-btn" class="btn-danger hidden" onclick="cancelRide()">❌ إلغاء الطلب</button>
@@ -132,45 +132,56 @@
       if (map) return;
       map = L.map('map').setView([30.0444, 31.2357], 13);
       
-      // تصحيح رابط الخريطة
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
         attribution: '&copy; OpenStreetMap' 
       }).addTo(map);
 
-      map.on('click', async function(e) {
-        if (!document.getElementById('cancel-btn').classList.contains('hidden')) return;
-        const coords = L.latLng(e.latlng.lat, e.latlng.lng);
-        const address = await getAddressName(coords.lat, coords.lng);
+      // مركز الخريطة الافتراضي في القاهرة كبداية لو مفيش إحداثيات
+      const center = map.getCenter();
+      
+      // إنشاء الدبوس الأخضر قابل للسحب (Draggable)
+      pickupCoords = center;
+      pickupMarker = L.marker(center, {icon: greenIcon, draggable: true}).addTo(map);
+      updatePickupAddress(center.lat, center.lng);
 
-        if (!pickupCoords) {
-          pickupCoords = coords;
-          document.getElementById('pickup_loc').value = address;
-          if (pickupMarker) { pickupMarker.setLatLng(coords); } 
-          else { pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map); }
-          map.setView(coords, 14);
-        } else if (!dropoffCoords) {
-          dropoffCoords = coords;
-          document.getElementById('dropoff_loc').value = address;
-          if (dropoffMarker) { dropoffMarker.setLatLng(coords); } 
-          else { dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map); }
-          drawRoute();
-        } else {
-          pickupCoords = coords;
-          document.getElementById('pickup_loc').value = address;
-          if (pickupMarker) pickupMarker.setLatLng(coords);
-          dropoffCoords = null;
-          document.getElementById('dropoff_loc').value = '';
-          if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
-          if (routingControl) map.removeControl(routingControl);
-          document.getElementById('trip-status').style.display = 'none';
-        }
+      pickupMarker.on('dragend', async function(e) {
+        const pos = e.target.getLatLng();
+        pickupCoords = pos;
+        await updatePickupAddress(pos.lat, pos.lng);
+        if (dropoffCoords) drawRoute();
       });
+
+      // إنشاء الدبوس الأحمر قابل للسحب بعيد عنه قليلاً
+      const dropoffDefault = L.latLng(center.lat + 0.02, center.lng + 0.02);
+      dropoffCoords = dropoffDefault;
+      dropoffMarker = L.marker(dropoffDefault, {icon: redIcon, draggable: true}).addTo(map);
+      updateDropoffAddress(dropoffDefault.lat, dropoffDefault.lng);
+
+      dropoffMarker.on('dragend', async function(e) {
+        const pos = e.target.getLatLng();
+        dropoffCoords = pos;
+        await updateDropoffAddress(pos.lat, pos.lng);
+        if (pickupCoords) drawRoute();
+      });
+
+      drawRoute();
+    }
+
+    async function updatePickupAddress(lat, lng) {
+      const address = await getAddressName(lat, lng);
+      document.getElementById('pickup_loc').value = address;
+    }
+
+    async function updateDropoffAddress(lat, lng) {
+      const address = await getAddressName(lat, lng);
+      document.getElementById('dropoff_loc').value = address;
     }
 
     async function getAddressName(lat, lng) {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`);
-        const data = await res.json();
+        const res = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`;
+        const response = await fetch(res);
+        const data = await response.json();
         if (data && data.display_name) return data.display_name.split(',').slice(0, 3).join(',');
       } catch (e) {}
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
@@ -184,10 +195,9 @@
         const results = await res.json();
         if (results.length > 0) {
           pickupCoords = L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon));
-          if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
-          else pickupMarker = L.marker(pickupCoords, {icon: greenIcon}).addTo(map);
+          pickupMarker.setLatLng(pickupCoords);
           map.setView(pickupCoords, 15);
-          if (pickupCoords && dropoffCoords) drawRoute();
+          if (dropoffCoords) drawRoute();
         }
       } catch (e) {}
     };
@@ -200,10 +210,9 @@
         const results = await res.json();
         if (results.length > 0) {
           dropoffCoords = L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon));
-          if (dropoffMarker) dropoffMarker.setLatLng(dropoffCoords);
-          else dropoffMarker = L.marker(dropoffCoords, {icon: redIcon}).addTo(map);
+          dropoffMarker.setLatLng(dropoffCoords);
           map.setView(dropoffCoords, 15);
-          if (pickupCoords && dropoffCoords) drawRoute();
+          if (pickupCoords) drawRoute();
         }
       } catch (e) {}
     };
@@ -250,11 +259,10 @@
         navigator.geolocation.getCurrentPosition(async position => {
           const coords = L.latLng(position.coords.latitude, position.coords.longitude);
           pickupCoords = coords;
+          pickupMarker.setLatLng(coords);
           document.getElementById('pickup_loc').value = await getAddressName(coords.lat, coords.lng);
-          if (pickupMarker) pickupMarker.setLatLng(coords);
-          else pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
           map.setView(coords, 16);
-          if (pickupCoords && dropoffCoords) drawRoute();
+          if (dropoffCoords) drawRoute();
         });
       }
     };
