@@ -1,37 +1,166 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>مشروع كومبو - الرئيسية</title>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; background: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; direction: rtl; text-align: center; }
-    .card { background: #fff; padding: 30px; border-radius: 16px; box-shadow: 0 6px 15px rgba(0,0,0,0.08); width: 90%; max-width: 380px; }
-    h2 { color: #333; margin-bottom: 25px; font-size: 22px; }
-    .btn { display: block; width: 100%; padding: 14px; margin: 12px 0; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; color: white; text-decoration: none; text-align: center; box-sizing: border-box; cursor: pointer; transition: 0.2s; }
-    .btn-passenger { background: #007bff; }
-    .btn-passenger:hover { background: #0056b3; }
-    .btn-captain { background: #28a745; }
-    .btn-captain:hover { background: #218838; }
-    .btn-admin { background: #dc3545; }
-    .btn-admin:hover { background: #c82333; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق كومبو - نظام السعر الثابت</title>
+    <!-- مكتبة Leaflet للخرائط -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- مكتبة Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: Tahoma, sans-serif; background: #0f172a; color: #fff; }
+        #map { height: 100vh; width: 100vw; position: absolute; top: 0; left: 0; z-index: 1; }
+        .top-bar { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(15, 23, 42, 0.9); padding: 8px 15px; border-radius: 30px; display: flex; gap: 10px; border: 1px solid rgba(255,255,255,0.1); }
+        .tab-btn { background: transparent; border: none; color: #fff; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .tab-btn.active { background: #2563eb; color: #fff; }
+        .panel { position: absolute; bottom: 20px; left: 20px; right: 20px; z-index: 10; background: rgba(15, 23, 42, 0.95); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); max-width: 500px; margin: 0 auto; }
+        .btn { background: #2563eb; color: #white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; }
+        .btn:hover { background: #1d4ed8; }
+        input { width: 100%; padding: 10px; margin-top: 8px; background: #1e293b; border: 1px solid #334155; color: white; border-radius: 6px; box-sizing: border-box; }
+    </style>
 </head>
 <body>
 
-  <div class="card">
-    <h2>مرحباً بك في مشروع «كومبو»</h2>
-    <p style="color: #666; font-size: 14px; margin-bottom: 20px;">اختر واجهة الاستخدام:</p>
-    
-    <!-- زر واجهة الراكب -->
-    <a href="passenger.html" class="btn btn-passenger">واجهة الراكب 🚗</a>
-    
-    <!-- زر واجهة الكابتن -->
-    <a href="captain.html" class="btn btn-captain">واجهة الكابتن 🚐</a>
-    
-    <!-- زر لوحة الإدارة -->
-    <a href="admin.html" class="btn btn-admin">لوحة الإدارة ⚙️</a>
-  </div>
+    <div class="top-bar">
+        <button class="tab-btn active" onclick="switchView('rider')" id="btn-rider">واجهة الراكب</button>
+        <button class="tab-btn" onclick="switchView('driver')" id="btn-driver">واجهة السائق</button>
+    </div>
 
+    <div id="map"></div>
+
+    <div class="panel" id="control-panel">
+        <h3 id="panel-title">جاري تحميل الخريطة...</h3>
+        <div id="panel-content">يرجى الانتظار</div>
+    </div>
+
+    <script>
+        // إعدادات الاتصال المباشرة بقاعدة بيانات Supabase الخاصة بك
+        const SUPABASE_URL = 'https://pmpzilqpcomoodaksbhw.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentView = 'rider';
+        let map, pickupMarker, dropoffMarker;
+        let pickupCoords = { lat: 30.0444, lng: 31.2357 }; // القاهرة
+        let dropoffCoords = null;
+        let activeTripId = null;
+
+        function initMap() {
+            map = L.map('map').setView([pickupCoords.lat, pickupCoords.lng], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+            }).addTo(map);
+
+            map.on('click', function(e) {
+                if (currentView === 'rider') {
+                    if (!pickupCoords) {
+                        pickupCoords = e.latlng;
+                        pickupMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map).bindPopup('الانطلاق').openPopup();
+                    } else {
+                        dropoffCoords = e.latlng;
+                        if(dropoffMarker) map.removeLayer(dropoffMarker);
+                        dropoffMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map).bindPopup('الوصول').openPopup();
+                        showRideConfirmation();
+                    }
+                }
+            });
+            renderRiderPanel();
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('btn-rider').classList.toggle('active', view === 'rider');
+            document.getElementById('btn-driver').classList.toggle('active', view === 'driver');
+            if (view === 'rider') {
+                renderRiderPanel();
+            } else {
+                renderDriverPanel();
+            }
+        }
+
+        function renderRiderPanel() {
+            const panelTitle = document.getElementById('panel-title');
+            const panelContent = document.getElementById('panel-content');
+            panelTitle.innerText = "طلب رحلة جديدة (سعر ثابت)";
+            panelContent.innerHTML = `
+                <p>انقر على الخريطة لتحديد مكان الوصول</p>
+                <button class="btn" onclick="requestRide()" id="req-btn" style="display:none;">تأكيد وطلب الرحلة (25 جنيه)</button>
+            `;
+        }
+
+        function showRideConfirmation() {
+            const btn = document.getElementById('req-btn');
+            if(btn) btn.style.display = 'block';
+        }
+
+        async function requestRide() {
+            const otp = Math.floor(1000 + Math.random() * 9000).toString();
+            const { data, error } = await supabase.from('trips').insert([
+                {
+                    pickup_lat: pickupCoords.lat,
+                    pickup_lng: pickupCoords.lng,
+                    dropoff_lat: dropoffCoords.lat,
+                    dropoff_lng: dropoffCoords.lng,
+                    fixed_price: 25.00,
+                    otp_code: otp,
+                    status: 'SEARCHING'
+                }
+            ]).select();
+
+            if (error) {
+                alert('خطأ في إرسال الطلب: ' + error.message);
+            } else {
+                activeTripId = data[0].id;
+                document.getElementById('panel-content').innerHTML = `<p>جاري البحث عن سائق قريب... كود التأكيد الخاص بك: <b>${otp}</b></p>`;
+                listenToTrip(activeTripId);
+            }
+        }
+
+        function listenToTrip(tripId) {
+            supabase.channel('trip-changes')
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, payload => {
+                    const trip = payload.new;
+                    if (trip.status === 'ACCEPTED') {
+                        document.getElementById('panel-content').innerHTML = `<p style="color:#22c55e;">تم قبول رحلتك! السائق في الطريق إليك.</p><p>كود التأكيد: <b>${trip.otp_code}</b></p>`;
+                    }
+                })
+                .subscribe();
+        }
+
+        function renderDriverPanel() {
+            const panelTitle = document.getElementById('panel-title');
+            const panelContent = document.getElementById('panel-content');
+            panelTitle.innerText = "واجهة السائق - الطلبات المتاحة";
+            panelContent.innerHTML = `<p>جاري البحث عن طلبات قريبة...</p><button class="btn" onclick="fetchAvailableTrips()">تحديث الطلبات</button><div id="trips-list"></div>`;
+            fetchAvailableTrips();
+        }
+
+        async function fetchAvailableTrips() {
+            const { data, error } = await supabase.from('trips').select('*').eq('status', 'SEARCHING');
+            const listDiv = document.getElementById('trips-list');
+            if (error || !data.length) {
+                listDiv.innerHTML = "<p>لا توجد طلبات متاحة حالياً.</p>";
+                return;
+            }
+            listDiv.innerHTML = data.map(trip => `
+                <div style="background:#1e293b; padding:10px; margin-top:10px; border-radius:6px;">
+                    <p>السعر الثابت: <b>${trip.fixed_price} جنيه</b></p>
+                    <button class="btn" onclick="acceptTrip('${trip.id}')">قبول الرحلة</button>
+                </div>
+            `).join('');
+        }
+
+        async function acceptTrip(tripId) {
+            const { error } = await supabase.from('trips').update({ status: 'ACCEPTED' }).eq('id', tripId);
+            if (!error) {
+                alert('تم قبول الرحلة بنجاح!');
+                fetchAvailableTrips();
+            }
+        }
+
+        window.onload = initMap;
+    </script>
 </body>
 </html>
