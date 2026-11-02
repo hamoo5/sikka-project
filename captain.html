@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منصة كومبو - لوحة الكابتن</title>
+    <!-- استدعاء مكتبة Supabase بشكل صحيح -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { margin: 0; padding: 20px; font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: #fff; box-sizing: border-box; }
-        .card { background: #1e293b; padding: 20px; border-radius: 12px; max-width: 450px; margin: auto; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .card { background: #1e293b; padding: 20px; border-radius: 12px; max-width: 450px; margin: 40px auto; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         .input-field { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; background: #0f172a; border: 1px solid #334155; color: #fff; font-size: 14px; box-sizing: border-box; }
         .btn { background: #2563eb; color: #fff; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; }
         .btn:hover { background: #1d4ed8; }
@@ -16,15 +18,17 @@
 </head>
 <body>
 
+    <!-- لوحة التحكم الرئيسية للكابتن (تظهر لو البيانات مكتملة) -->
     <div class="card" id="welcome-section" style="display:none; text-align: center;">
         <h2>لوحة الكابتن - كومبو 🚗</h2>
         <div id="driver-img-container"></div>
         <h3 id="driver-name" style="color: #38bdf8; margin: 5px 0;"></h3>
         <p id="driver-phone" style="color: #94a3b8; font-size: 14px;"></p>
-        <p style="background: #0f172a; padding: 10px; border-radius: 8px; font-size: 14px;">رصيد المحفظة: <span id="driver-wallet" style="color: #22c55e; font-weight: bold;"></span> جنيه</p>
+        <p style="background: #0f172a; padding: 10px; border-radius: 8px; font-size: 14px;">رصيد المحفظة: <span id="driver-wallet" style="color: #22c55e; font-weight: bold;">0.00</span> جنيه</p>
         <button class="btn" style="background: #dc2626;" onclick="logout()">تسجيل الخروج</button>
     </div>
 
+    <!-- نموذج استكمال البيانات الإجبارية (يظهر لو البيانات ناقصة) -->
     <div class="card" id="complete-profile-section" style="display:none;">
         <h2 style="text-align: center; color: #38bdf8; margin-top: 0;">استكمال بيانات الكابتن 📝</h2>
         <p style="font-size: 13px; color: #94a3b8; text-align: center; margin-bottom: 15px;">يجب رفع الصورة الشخصية وبيانات السيارة للبدء</p>
@@ -44,36 +48,43 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
         let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const userData = JSON.parse(localStorage.getItem('combo_user'));
+        const storedUser = localStorage.getItem('combo_user');
 
-        if (!userData || userData.user_type !== 'driver') {
-            alert('يرجى تسجيل الدخول ككابتن أولاً!');
+        if (!storedUser) {
+            alert('يرجى تسجيل الدخول أولاً!');
             window.location.href = 'index.html';
         } else {
-            checkDriverProfile();
+            const userData = JSON.parse(storedUser);
+            checkDriverProfile(userData);
         }
 
-        async function checkDriverProfile() {
-            // جلب أحدث بيانات الكابتن من قاعدة البيانات للتأكد هل أكمل بياناته أم لا
-            let { data, error } = await supabaseClient.from('profiles').select('*').eq('id', userData.id).single();
-            
-            if (data) {
-                // تحديث الذاكرة المحلية بالبيانات المحدثة
-                localStorage.setItem('combo_user', JSON.stringify(data));
+        async function checkDriverProfile(userData) {
+            try {
+                let { data, error } = await supabaseClient.from('profiles').select('*').eq('id', userData.id).single();
                 
-                if (!data.profile_image || !data.car_model || !data.plate_number) {
-                    // لو البيانات ناقصة، اظهر شاشة استكمال البيانات الإجبارية
-                    document.getElementById('complete-profile-section').style.display = 'block';
-                } else {
-                    // لو البيانات مكتملة، اظهر لوحة تحكم الكابتن
-                    document.getElementById('welcome-section').style.display = 'block';
-                    document.getElementById('driver-name').innerText = data.full_name;
-                    document.getElementById('driver-phone').innerText = data.phone;
-                    document.getElementById('driver-wallet').innerText = data.wallet_balance || '0.00';
-                    if (data.profile_image) {
-                        document.getElementById('driver-img-container').innerHTML = `<img src="${data.profile_image}" class="user-img" alt="صورة الكابتن">`;
+                if (data) {
+                    localStorage.setItem('combo_user', JSON.stringify(data));
+                    
+                    if (!data.profile_image || !data.car_model || !data.plate_number) {
+                        // إظهار نموذج إدخال البيانات لو ناقصة
+                        document.getElementById('complete-profile-section').style.display = 'block';
+                    } else {
+                        // إظهار لوحة التحكم لو البيانات كاملة
+                        document.getElementById('welcome-section').style.display = 'block';
+                        document.getElementById('driver-name').innerText = data.full_name || 'كابتن كومبو';
+                        document.getElementById('driver-phone').innerText = data.phone || '';
+                        document.getElementById('driver-wallet').innerText = data.wallet_balance || '0.00';
+                        if (data.profile_image) {
+                            document.getElementById('driver-img-container').innerHTML = `<img src="${data.profile_image}" class="user-img" alt="صورة الكابتن">`;
+                        }
                     }
+                } else {
+                    // لو الحساب مش موجود في القاعدة، يظهر نموذج الإكمال افتراضياً
+                    document.getElementById('complete-profile-section').style.display = 'block';
                 }
+            } catch (err) {
+                // في حال حصل أي خطأ، اعرض نموذج الإكمال مباشرة بدل الشاشة الفارغة
+                document.getElementById('complete-profile-section').style.display = 'block';
             }
         }
 
@@ -101,11 +112,12 @@
             try {
                 imageUrl = await convertImageToBase64(imageFile);
             } catch (e) {
-                alert('خطأ في قراءة الصورة، يجرب اختيار صوره أخرى.');
+                alert('خطأ في قراءة الصورة، يرجى اختيار صورة أخرى.');
                 return;
             }
 
-            // تحديث البيانات في جدول profiles في Supabase
+            const userData = JSON.parse(localStorage.getItem('combo_user'));
+
             const { error } = await supabaseClient
                 .from('profiles')
                 .update({
