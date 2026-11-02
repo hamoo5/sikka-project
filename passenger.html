@@ -21,7 +21,6 @@
         .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; padding: 18px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); margin-bottom: 16px; }
         .card-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
 
-        /* حاوية الخريطة والدبوس الثابت في المنتصف */
         .map-container { position: relative; width: 100%; height: 210px; margin-bottom: 10px; }
         #map { width: 100%; height: 100%; border-radius: 14px; border: 1px solid #334155; z-index: 1; }
         .center-pin {
@@ -30,7 +29,6 @@
             filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
         }
 
-        /* زر موقعي الحالي العائم على الخريطة */
         .gps-btn {
             position: absolute; bottom: 12px; left: 12px; z-index: 1000;
             background: #0f172a; color: #38bdf8; border: 1px solid #38bdf8;
@@ -42,12 +40,19 @@
         .form-group { margin-bottom: 12px; text-align: right; }
         .label { font-size: 11px; color: #94a3b8; margin-bottom: 4px; display: block; font-weight: 700; text-transform: uppercase; }
         
+        .input-row { display: flex; gap: 8px; }
         .input-box {
-            width: 100%; padding: 11px; border-radius: 12px;
+            flex: 1; padding: 11px; border-radius: 12px;
             background: #050b14; border: 1px solid #334155;
             color: #fff; font-size: 13px;
         }
         .input-box:focus { border-color: #38bdf8; outline: none; }
+        
+        .search-btn {
+            background: #1e293b; color: #38bdf8; border: 1px solid #334155;
+            padding: 0 14px; border-radius: 12px; font-weight: 700; font-size: 12px; cursor: pointer;
+        }
+        .search-btn:hover { background: #334155; }
 
         .vehicle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
         .v-card {
@@ -84,24 +89,31 @@
         </div>
 
         <div class="card-box" id="booking-card">
-            <div class="card-title">📍 حدد موقع الركوب والوصول بدقة</div>
+            <div class="card-title">📍 حدد تفاصيل الرحلة بدقة</div>
 
-            <!-- الخريطة مع زر موقعي الحالي والدبوس الثابت -->
             <div class="map-container">
                 <div id="map"></div>
                 <div class="center-pin" id="map-pin-icon">📍</div>
                 <button class="gps-btn" onclick="goToCurrentLocation()">🎯 موقعي الحالي</button>
             </div>
-            <div style="font-size: 11px; color: #38bdf8; text-align: center; margin-bottom: 10px;" id="map-instruction">حرك الخريطة وضع مكان الانطلاق تحت الدبوس أو اكتبه بالأعلى</div>
+            <div style="font-size: 11px; color: #38bdf8; text-align: center; margin-bottom: 10px;" id="map-instruction">حرك الخريطة وضع المكان تحت الدبوس أو ابحث بالاسم</div>
 
+            <!-- نقطة الانطلاق مع زر بحث جغرافى -->
             <div class="form-group">
-                <label class="label">1. نقطة الانطلاق (مكان ركوب السيارة)</label>
-                <input type="text" id="pickup-loc" class="input-box" placeholder="اكتب مكان الانطلاق أو حدده بالخريطة...">
+                <label class="label">1. نقطة الانطلاق</label>
+                <div class="input-row">
+                    <input type="text" id="pickup-loc" class="input-box" placeholder="اكتب مكان الانطلاق أو حرك الخريطة...">
+                    <button class="search-btn" onclick="searchLocation('pickup')">بحث 🔍</button>
+                </div>
             </div>
 
+            <!-- نقطة الوصول مع زر بحث جغرافي عشان يحدد المكان بدقة جوه المنطقة -->
             <div class="form-group">
-                <label class="label">2. نقطة الوصول (مكان النزول بدقة)</label>
-                <input type="text" id="dropoff-loc" class="input-box" placeholder="اكتب وجهتك (مثل: وسط البلد) أو حددها بالخريطة...">
+                <label class="label">2. نقطة الوصول (إلى أين؟)</label>
+                <div class="input-row">
+                    <input type="text" id="dropoff-loc" class="input-box" placeholder="مثال: مصدق الدقي، مكرم عبيد مدينة نصر...">
+                    <button class="search-btn" onclick="searchLocation('dropoff')">بحث 🔍</button>
+                </div>
             </div>
 
             <div class="form-group">
@@ -144,8 +156,7 @@
         let currentUser = null;
         let selectedVehicleType = 'ملاكي';
         let map;
-        let isUserTypingPickup = false;
-        let isUserTypingDropoff = false;
+        let isUserTyping = false;
 
         function initRiderPage() {
             const stored = localStorage.getItem('combo_user');
@@ -158,54 +169,70 @@
             document.getElementById('rider-name').innerText = name;
             document.getElementById('user-initial').innerText = name.charAt(0);
 
-            // تشغيل الخريطة على القاهرة كمثال افتراضي
             map = L.map('map', { zoomControl: false }).setView([30.0444, 31.2357], 15);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19
             }).addTo(map);
 
-            // تتبع الكتابة اليدوية في خانة الانطلاق
-            document.getElementById('pickup-loc').addEventListener('input', () => {
-                isUserTypingPickup = true;
-            });
-
-            // تتبع الكتابة اليدوية في خانة الوصول
-            document.getElementById('dropoff-loc').addEventListener('input', () => {
-                isUserTypingDropoff = true;
-            });
-
-            // تحديث العنوان أول ما الراكب يحرك الخريطة (لو مش بيكتب بنفسه)
+            // تحديث العنوان عند تحريك الخريطة
             map.on('moveend', async function() {
+                if (isUserTyping) return;
                 const center = map.getCenter();
                 try {
                     let response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${center.lat}&lon=${center.lng}&accept-language=ar`);
                     let data = await response.json();
-                    let addressName = data.display_name || 'موقع محدد على الخريطة';
-
-                    // لو الانطلاق فاضي أو المستخدم مش بيكتب يدوياً حالياً، نحدثه من الخريطة
-                    if (!isUserTypingPickup && !document.getElementById('pickup-loc').value) {
-                        document.getElementById('pickup-loc').value = addressName;
-                    } else if (!isUserTypingDropoff && document.getElementById('pickup-loc').value && !document.getElementById('dropoff-loc').value) {
-                        document.getElementById('dropoff-loc').value = addressName;
+                    if (data.display_name) {
+                        document.getElementById('pickup-loc').value = data.display_name;
                     }
-                } catch (err) {
-                    console.log('خطأ في جلب العنوان');
-                }
+                } catch (err) {}
             });
 
-            // جلب العنوان الافتراضي الأول للانطلاق لو الخانة فاضية
-            setTimeout(async () => {
-                if (!document.getElementById('pickup-loc').value) {
-                    const center = map.getCenter();
-                    let response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${center.lat}&lon=${center.lng}&accept-language=ar`);
-                    let data = await response.json();
-                    document.getElementById('pickup-loc').value = data.display_name || 'موقف المحطة الرئيسية';
-                }
-            }, 1000);
+            setTimeout(fetchCurrentCenterAddress, 1000);
         }
 
-        // زر موقعي الحالي (GPS)
+        async function fetchCurrentCenterAddress() {
+            const center = map.getCenter();
+            try {
+                let response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${center.lat}&lon=${center.lng}&accept-language=ar`);
+                let data = await response.json();
+                document.getElementById('pickup-loc').value = data.display_name || 'موقف المحطة الرئيسية';
+            } catch (e) {}
+        }
+
+        // دالة البحث بالاسم لتوجيه الخريطة للمكان المطلوب بدقة (زي مدينة نصر، شارع كذا...)
+        async function searchLocation(type) {
+            const inputId = type === 'pickup' ? 'pickup-loc' : 'dropoff-loc';
+            const query = document.getElementById(inputId).value.trim();
+            
+            if (!query) {
+                alert('يرجى كتابة اسم المكان أولاً للبحث عنه.');
+                return;
+            }
+
+            try {
+                isUserTyping = true;
+                let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&accept-language=ar&limit=1`);
+                let results = await response.json();
+
+                if (results && results.length > 0) {
+                    const lat = parseFloat(results[0].lat);
+                    const lon = parseFloat(results[0].lon);
+                    const displayName = results[0].display_name;
+
+                    map.setView([lat, lon], 16);
+                    document.getElementById(inputId).value = displayName;
+                    alert('تم تحديد الموقع على الخريطة بنجاح: ' + displayName);
+                } else {
+                    alert('لم يتم العثور على هذا المكان، يرجى كتابة اسم أضح أو تحريك الخريطة مباشرة إليه.');
+                }
+            } catch (e) {
+                alert('حدث خطأ أثناء البحث عن المكان.');
+            } finally {
+                setTimeout(() => { isUserTyping = false; }, 1000);
+            }
+        }
+
         function goToCurrentLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(position => {
@@ -213,14 +240,14 @@
                     const lon = position.coords.longitude;
                     map.setView([lat, lon], 16);
                 }, () => {
-                    alert('تعذر تحديد موقعك الحالي، يرجى التحقق من تفعيل الـ GPS.');
+                    alert('تعذر تحديد موقعك الحالي.');
                 });
             } else {
-                alert('متصفحك لا يدعم خاصية تحديد الموقع الجغرافي.');
+                alert('متصفحك لا يدعم تحديد الموقع.');
             }
         }
 
-        function selectVehicle(type, element) {
+5        function selectVehicle(type, element) {
             selectedVehicleType = type;
             document.querySelectorAll('.v-card').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
@@ -230,12 +257,8 @@
             const pickup = document.getElementById('pickup-loc').value.trim();
             const dropoff = document.getElementById('dropoff-loc').value.trim();
 
-            if (!pickup) {
-                alert('يرجى تحديد أو كتابة نقطة الانطلاق.');
-                return;
-            }
-            if (!dropoff) {
-                alert('يرجى تحديد أو كتابة وجهة الوصول (مثل وسط البلد).');
+            if (!pickup || !dropoff) {
+                alert('يرجى تحديد مكان الانطلاق ووجهة الوصول بدقة.');
                 return;
             }
 
