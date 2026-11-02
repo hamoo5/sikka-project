@@ -28,7 +28,6 @@
         .brand-logo span { color: #38bdf8; }
         .tagline { font-size: 13px; color: #94a3b8; margin-bottom: 30px; }
 
-        /* كروت الاختيار الثابتة والأنيقة */
         .choice-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 20px; }
         .choice-pill {
             background: #1e293b;
@@ -52,9 +51,7 @@
             color: #fff; font-size: 16px; text-align: center; letter-spacing: 1px;
             margin-bottom: 15px; 
         }
-        .input-mega:focus { 
-            border-color: #38bdf8; outline: none; 
-        }
+        .input-mega:focus { border-color: #38bdf8; outline: none; }
 
         .btn-epic { 
             background: #2563eb; 
@@ -65,7 +62,10 @@
         .btn-epic:hover { background: #1d4ed8; }
         .btn-epic:active { transform: scale(0.98); }
 
-        .back-action { margin-top: 20px; font-size: 13px; color: #38bdf8; cursor: pointer; display: inline-block; font-weight: 600; }
+        .link-text { margin-top: 15px; font-size: 13px; color: #38bdf8; cursor: pointer; display: inline-block; font-weight: 600; }
+        .link-text:hover { text-decoration: underline; }
+
+        .back-action { margin-top: 15px; font-size: 13px; color: #94a3b8; cursor: pointer; display: block; font-weight: 600; }
         .step-view { display: none; }
         .step-view.active { display: block; }
     </style>
@@ -113,6 +113,12 @@
                 </div>
 
                 <button class="btn-epic" id="action-btn" onclick="processAuthAction()">استمرار ⚡</button>
+                
+                <!-- زر نسيت كلمة المرور (يظهر عند تسجيل الدخول) -->
+                <div id="forgot-password-container" style="display:none;">
+                    <span class="link-text" onclick="enablePasswordReset()">نسيت كلمة المرور؟ 🔑</span>
+                </div>
+
                 <span class="back-action" onclick="resetToSelector()">← العودة للخيار الرئيسي</span>
             </div>
 
@@ -127,6 +133,7 @@
         let selectedRole = '';
         let foundUser = null;
         let isNewAccountFlow = false;
+        let isResettingPassword = false;
 
         function selectUserIntent(role) {
             selectedRole = role;
@@ -160,12 +167,14 @@
                     document.getElementById('login-pass-field').style.display = 'block';
                     document.getElementById('main-tagline').innerText = `مرحباً بعودتك، ${user.full_name || 'بطل كومبو'}`;
                     document.getElementById('action-btn').innerText = 'تسجيل الدخول 🔓';
+                    document.getElementById('forgot-password-container').style.display = 'block';
                 } else {
                     isNewAccountFlow = true;
                     document.getElementById('user-phone').style.display = 'none';
                     document.getElementById('extra-fields').style.display = 'block';
                     document.getElementById('main-tagline').innerText = 'أكمل بياناتك البسيطة للانطلاق';
                     document.getElementById('action-btn').innerText = 'إنشاء الحساب 🚀';
+                    document.getElementById('forgot-password-container').style.display = 'none';
                 }
                 return;
             }
@@ -173,11 +182,28 @@
             if (foundUser) {
                 const pass = document.getElementById('user-login-pass').value.trim();
                 if (!pass) { alert('أدخل كلمة المرور'); return; }
-                if (foundUser.password && foundUser.password !== pass) {
-                    alert('كلمة المرور غير صحيحة!');
-                    return;
+
+                if (isResettingPassword) {
+                    const { error } = await supabaseClient
+                        .from('profiles')
+                        .update({ password: pass })
+                        .eq('id', foundUser.id);
+
+                    if (error) {
+                        alert('خطأ أثناء تحديث كلمة المرور: ' + error.message);
+                        return;
+                    }
+
+                    alert('تم تحديث كلمة المرور بنجاح! جاري تسجيل الدخول...');
+                    foundUser.password = pass;
+                    redirectUser(foundUser);
+                } else {
+                    if (foundUser.password && foundUser.password !== pass) {
+                        alert('كلمة المرور غير صحيحة!');
+                        return;
+                    }
+                    redirectUser(foundUser);
                 }
-                redirectUser(foundUser);
             } else if (isNewAccountFlow) {
                 const name = document.getElementById('user-name').value.trim();
                 const pass = document.getElementById('user-pass').value.trim();
@@ -207,6 +233,15 @@
             }
         }
 
+        function enablePasswordReset() {
+            isResettingPassword = true;
+            document.getElementById('main-tagline').innerText = 'إعادة تعيين كلمة المرور الجديدة';
+            document.getElementById('user-login-pass').value = '';
+            document.getElementById('user-login-pass').placeholder = 'كلمة المرور الجديدة';
+            document.getElementById('action-btn').innerText = 'حفظ وتحديث الباسورد 🔒';
+            document.getElementById('forgot-password-container').style.display = 'none';
+        }
+
         function resetToSelector() {
             document.getElementById('step-auth').classList.remove('active');
             document.getElementById('step-selector').classList.add('active');
@@ -214,10 +249,12 @@
             document.getElementById('user-phone').value = '';
             document.getElementById('extra-fields').style.display = 'none';
             document.getElementById('login-pass-field').style.display = 'none';
+            document.getElementById('forgot-password-container').style.display = 'none';
             document.getElementById('main-tagline').innerText = 'اختر وجهتك وطريقتك في الانطلاق';
             document.getElementById('action-btn').innerText = 'استمرار ⚡';
             foundUser = null;
             isNewAccountFlow = false;
+            isResettingPassword = false;
         }
 
         function redirectUser(user) {
