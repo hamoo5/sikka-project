@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق كومبو - الإصدار التجاري</title>
+    <title>تطبيق كومبو - تسجيل برقم الموبايل</title>
     <!-- مكتبة Leaflet للخرائط -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -13,7 +13,6 @@
         body { margin: 0; padding: 0; font-family: Tahoma, sans-serif; background: #0f172a; color: #fff; overflow: hidden; }
         #map { height: 100vh; width: 100vw; position: absolute; top: 0; left: 0; z-index: 1; }
         
-        /* شاشة تسجيل الدخول */
         .auth-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.98); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
         .auth-card { background: #1e293b; padding: 25px; border-radius: 16px; width: 100%; max-width: 400px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
         .input-field { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; background: #0f172a; border: 1px solid #334155; color: #fff; font-size: 14px; box-sizing: border-box; }
@@ -30,34 +29,31 @@
 </head>
 <body>
 
-    <!-- شاشة الدخول / التسجيل -->
+    <!-- شاشة تسجيل الدخول برقم الموبايل -->
     <div class="auth-overlay" id="auth-screen">
         <div class="auth-card">
             <h2 style="margin-top:0; color:#38bdf8;">تطبيق كومبو 🚗</h2>
-            <p style="font-size:14px; color:#94a3b8;">سجل دخولك أو أنشئ حساباً جديداً للبدء</p>
+            <p style="font-size:14px; color:#94a3b8;">ادخل رقم الموبايل للبدء مباشرة</p>
             
-            <input type="email" id="auth-email" class="input-field" placeholder="البريد الإلكتروني">
-            <input type="password" id="auth-password" class="input-field" placeholder="كلمة السر">
+            <input type="text" id="auth-phone" class="input-field" placeholder="رقم الموبايل (مثال: 01012345678)">
+            <input type="text" id="auth-name" class="input-field" placeholder="الاسم بالكامل">
             
-            <div id="signup-extra-fields" style="display:none;">
-                <input type="text" id="auth-name" class="input-field" placeholder="الاسم بالكامل">
-                <select id="auth-role" class="select-box" onchange="toggleDriverFields()">
-                    <option value="rider">راكب</option>
-                    <option value="driver">كابتن</option>
-                </select>
-                <div id="driver-fields" style="display:none;">
-                    <input type="text" id="auth-car" class="input-field" placeholder="نوع ونموذج السيارة (مثال: فيرنا 2020)">
-                    <input type="text" id="auth-plate" class="input-field" placeholder="رقم اللوحة (مثال: أ ب ج 1234)">
-                </div>
+            <select id="auth-role" class="select-box" onchange="toggleDriverFields()">
+                <option value="rider">راكب</option>
+                <option value="driver">كابتن</option>
+            </select>
+            
+            <div id="driver-fields" style="display:none;">
+                <input type="text" id="auth-car" class="input-field" placeholder="نوع السيارة (مثال: سوزوكي / ملاكي)">
+                <input type="text" id="auth-plate" class="input-field" placeholder="رقم اللوحة">
             </div>
 
-            <button class="btn" id="main-auth-btn" onclick="handleAuth('login')">تسجيل الدخول</button>
-            <p style="font-size:13px; margin-top:15px; cursor:pointer; color:#38bdf8;" id="toggle-auth-text" onclick="switchAuthMode()">ليس لديك حساب؟ أنشئ حساباً الآن</p>
+            <button class="btn" onclick="loginWithPhone()">دخول / تسجيل</button>
         </div>
     </div>
 
     <div class="top-bar" id="app-top-bar" style="display:none;">
-        <span class="user-badge" id="user-display-badge">واجهة المستخدم</span>
+        <span class="user-badge" id="user-display-badge">مستخدم</span>
         <button class="logout-btn" onclick="logout()">خروج</button>
     </div>
 
@@ -78,74 +74,60 @@
         } catch (e) { console.error("خطأ في الاتصال بقاعدة البيانات:", e); }
 
         let currentUser = null;
-        let userProfile = null;
-        let isSignupMode = false;
-
         let map, pickupMarker, dropoffMarker, driverMarker;
         let pickupCoords = { lat: 30.0444, lng: 31.2357 };
         let dropoffCoords = null;
         let activeTripId = null;
-
-        function switchAuthMode() {
-            isSignupMode = !isSignupMode;
-            document.getElementById('signup-extra-fields').style.display = isSignupMode ? 'block' : 'none';
-            document.getElementById('main-auth-btn').innerText = isSignupMode ? 'إنشاء الحساب' : 'تسجيل الدخول';
-            document.getElementById('toggle-auth-text').innerText = isSignupMode ? 'لديك حساب بالفعل؟ سجل دخولك' : 'ليس لديك حساب؟ أنشئ حساباً الآن';
-        }
 
         function toggleDriverFields() {
             const role = document.getElementById('auth-role').value;
             document.getElementById('driver-fields').style.display = role === 'driver' ? 'block' : 'none';
         }
 
-        async function handleAuth(type) {
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
+        async function loginWithPhone() {
+            const phone = document.getElementById('auth-phone').value.trim();
+            const name = document.getElementById('auth-name').value.trim();
+            const role = document.getElementById('auth-role').value;
+            const car = document.getElementById('auth-car') ? document.getElementById('auth-car').value : '';
+            const plate = document.getElementById('auth-plate') ? document.getElementById('auth-plate').value : '';
 
-            if (!email || !password) return alert('برجاء كتابة البريد وكلمة السر');
-
-            if (isSignupMode) {
-                const name = document.getElementById('auth-name').value;
-                const role = document.getElementById('auth-role').value;
-                const car = document.getElementById('auth-car').value;
-                const plate = document.getElementById('auth-plate').value;
-
-                const { data, error } = await supabaseClient.auth.signUp({ email, password });
-                if (error) return alert('خطأ في التسجيل: ' + error.message);
-
-                if (data.user) {
-                    await supabaseClient.from('profiles').insert([{
-                        id: data.user.id,
-                        full_name: name,
-                        user_type: role,
-                        car_model: car,
-                        plate_number: plate
-                    }]);
-                    alert('تم إنشاء الحساب بنجاح! يتم الآن توجيهك...');
-                    loadUserProfile(data.user);
-                }
-            } else {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) return alert('خطأ في تسجيل الدخول: ' + error.message);
-                loadUserProfile(data.user);
+            if (!phone || !name) {
+                alert('يرجى ادخال رقم الموبايل والاسم بالكامل');
+                return;
             }
-        }
 
-        async function loadUserProfile(user) {
-            currentUser = user;
-            const { data } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
-            userProfile = data || { user_type: 'rider', full_name: 'مستخدم' };
+            // البحث أو إنشاء المستخدم برقم الهاتف مباشرة في جدول profiles
+            let { data: existingUser } = await supabaseClient.from('profiles').select('*').eq('phone', phone).single();
+
+            if (!existingUser) {
+                const newId = crypto.randomUUID();
+                const { error } = await supabaseClient.from('profiles').insert([{
+                    id: newId,
+                    full_name: name,
+                    phone: phone,
+                    user_type: role,
+                    car_model: car,
+                    plate_number: plate
+                }]);
+
+                if (error) {
+                    alert('خطأ في تسجيل الحساب: ' + error.message);
+                    return;
+                }
+                currentUser = { id: newId, full_name: name, user_type: role };
+            } else {
+                currentUser = existingUser;
+            }
 
             document.getElementById('auth-screen').style.display = 'none';
             document.getElementById('app-top-bar').style.display = 'flex';
             document.getElementById('control-panel').style.display = 'block';
-            document.getElementById('user-display-badge').innerText = userProfile.user_type === 'driver' ? `الكابتن: ${userProfile.full_name}` : `الراكب: ${userProfile.full_name}`;
+            document.getElementById('user-display-badge').innerText = currentUser.user_type === 'driver' ? `الكابتن: ${currentUser.full_name}` : `الراكب: ${currentUser.full_name}`;
 
             initMap();
         }
 
-        async function logout() {
-            await supabaseClient.auth.signOut();
+        function logout() {
             location.reload();
         }
 
@@ -156,7 +138,7 @@
 
             pickupMarker = L.marker([pickupCoords.lat, pickupCoords.lng]).addTo(map).bindPopup('موقع الانطلاق').openPopup();
 
-            if (userProfile.user_type === 'rider') {
+            if (currentUser.user_type === 'rider') {
                 map.on('click', function(e) {
                     dropoffCoords = e.latlng;
                     if (dropoffMarker) map.removeLayer(dropoffMarker);
@@ -223,7 +205,6 @@
                 .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, async payload => {
                     const trip = payload.new;
                     if (trip.status === 'ACCEPTED') {
-                        // جلب بيانات الكابتن الذي قبل الرحلة
                         const { data: driverData } = await supabaseClient.from('profiles').select('*').eq('id', trip.driver_id).single();
                         
                         document.getElementById('panel-content').innerHTML = `
