@@ -18,8 +18,8 @@
         .logout-btn { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 5px 10px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 11px; }
         .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; padding: 18px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); margin-bottom: 16px; }
         .card-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
-        .map-container { position: relative; width: 100%; height: 220px; margin-bottom: 14px; }
-        #map { width: 100%; height: 100%; border-radius: 14px; border: 1px solid #334155; z-index: 1; }
+        .map-container { position: relative; width: 100%; height: 230px; margin-bottom: 14px; border-radius: 14px; overflow: hidden; border: 1px solid #334155; }
+        #map { width: 100%; height: 100%; z-index: 1; }
         .request-card { background: #050b14; border: 1px solid #334155; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
         .req-info { font-size: 12px; color: #94a3b8; margin-bottom: 6px; font-weight: 600; }
         .req-loc { font-size: 13px; color: #fff; font-weight: 700; margin-bottom: 8px; }
@@ -38,7 +38,7 @@
         </div>
 
         <div class="card-box">
-            <div class="card-title">🟢 رادار الطلبات الحية</div>
+            <div class="card-title">🟢 رادار الطلبات ومقارنة المسافة</div>
             <div class="map-container"><div id="map"></div></div>
             <div id="trip-control-area">
                 <div class="request-card">
@@ -46,7 +46,7 @@
                     <div class="req-loc">من: البحث الجنائي 65، قسم المعادي</div>
                     <div class="req-loc" style="color: #ef4444;">إلى: Garden 8، القاهرة الجديدة</div>
                     <div style="font-size: 14px; color: #38bdf8; font-weight: 900; margin-bottom: 8px;">السعر: 68.67 ج.م</div>
-                    <button class="btn-action" onclick="acceptTrip()">اقبل الرحلة ⚡</button>
+                    <button class="btn-action" onclick="acceptTrip()">اقبل الرحلة وبدء التوجيه ⚡</button>
                 </div>
             </div>
         </div>
@@ -58,40 +58,47 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
         let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let map, captainMarker, riderPickupMarker, activeTripId = 1;
-        
-        const captainIcon = L.divIcon({ html: '<div style="background-color: #2563eb; width: 24px; height: 24px; border-radius: 50%; border: 3px solid #fff;"></div>', iconSize: [24,24], iconAnchor: [12,12] });
+        let map, captainMarker, riderMarker, activeTripId = 1;
+        let riderLat = 29.9602, riderLng = 31.2569; // موقع الراكب في المعادي
+
+        const captainIcon = L.divIcon({ html: '<div style="background-color: #2563eb; width: 24px; height: 24px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>', iconSize: [24,24], iconAnchor: [12,12] });
         const greenPinIcon = L.divIcon({ html: '<div style="background-color: #22c55e; width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid #fff;"></div>', iconSize: [22,22], iconAnchor: [11,22] });
 
         function initMap() {
-            // إحداثيات مبدئية في المعادي (نقطة انطلاق الراكب)
-            let riderLat = 29.9602, riderLng = 31.2569;
-            
             map = L.map('map').setView([riderLat, riderLng], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-            // وضع دبوس موقع الراكب الأخضر فوراً على خريطة الكابتن
-            riderPickupMarker = L.marker([riderLat, riderLng], {icon: greenPinIcon}).addTo(map)
-                .bindPopup('موقع الراكب: البحث الجنائي 65، المعادي').openPopup();
+            // وضع دبوس الراكب الأخضر
+            riderMarker = L.marker([riderLat, riderLng], {icon: greenPinIcon}).addTo(map)
+                .bindPopup('موقع الراكب: المعادي');
 
+            // تتبع موقع الكابتن الحي بالـ GPS وعرضه على الخريطة فوراً
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition(async position => {
-                    let lat = position.coords.latitude;
-                    let lng = position.coords.longitude;
+                    let capLat = position.coords.latitude;
+                    let capLng = position.coords.longitude;
 
                     if (!captainMarker) {
-                        captainMarker = L.marker([lat, lng], {icon: captainIcon}).addTo(map).bindPopup('موقعك (الكابتن)');
+                        captainMarker = L.marker([capLat, capLng], {icon: captainIcon}).addTo(map)
+                            .bindPopup('موقعك الحالي (الكابتن)').openPopup();
+                        
+                        // عمل زوم يجمع بين الكابتن والراكب عشان تعرف المسافة بينهم
+                        let bounds = L.latLngBounds([[capLat, capLng], [riderLat, riderLng]]);
+                        map.fitBounds(bounds, { padding: [40, 40] });
                     } else {
-                        captainMarker.setLatLng([lat, lng]);
+                        captainMarker.setLatLng([capLat, capLng]);
                     }
 
+                    // تحديث قاعدة البيانات
                     await supabaseClient
                         .from('trips')
-                        .update({ captain_lat: lat, captain_lng: lng })
+                        .update({ captain_lat: capLat, captain_lng: capLng })
                         .eq('id', activeTripId);
 
                 }, err => {}, { enableHighAccuracy: true });
             }
+
+            setTimeout(() => { map.invalidateSize(); }, 500);
         }
 
         function acceptTrip() {
@@ -126,7 +133,7 @@
         }
 
         function logout() { window.location.href = 'index.html'; }
-        initMap();
+        window.onload = initMap;
     </script>
 </body>
 </html>
