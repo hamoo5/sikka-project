@@ -18,8 +18,8 @@
         .logout-btn { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 5px 10px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 11px; }
         .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; padding: 18px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); margin-bottom: 16px; }
         .card-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
-        .map-container { position: relative; width: 100%; height: 210px; margin-bottom: 10px; }
-        #map { width: 100%; height: 100%; border-radius: 14px; border: 1px solid #334155; z-index: 1; }
+        .map-container { position: relative; width: 100%; height: 220px; margin-bottom: 10px; border-radius: 14px; overflow: hidden; border: 1px solid #334155; }
+        #map { width: 100%; height: 100%; z-index: 1; }
         .form-group { margin-bottom: 12px; text-align: right; }
         .label { font-size: 11px; color: #94a3b8; margin-bottom: 4px; display: block; font-weight: 700; text-transform: uppercase; }
         .input-box { width: 100%; padding: 11px; border-radius: 12px; background: #050b14; border: 1px solid #334155; color: #fff; font-size: 13px; }
@@ -37,7 +37,7 @@
         <div class="header">
             <div class="user-info">
                 <div class="avatar-circle">م</div>
-                <div class="user-welcome">أهلاً، <span id="rider-name">محمد عبد</span></div>
+                <div class="user-welcome">أهلاً، <span>محمد عبد</span></div>
             </div>
             <button class="logout-btn" onclick="logout()">خروج</button>
         </div>
@@ -47,74 +47,54 @@
             <div class="map-container"><div id="map"></div></div>
 
             <div class="trip-summary">
-                <div><div class="summary-label">المسافة</div><div class="summary-value" id="trip-distance">25.7 كم</div></div>
-                <div><div class="summary-label">الوقت المتوقع</div><div class="summary-value" id="trip-duration">27 دقيقة</div></div>
-                <div><div class="summary-label">السعر الإجمالي</div><div class="summary-value" id="trip-price">68.67 ج.م</div></div>
+                <div><div class="summary-label">المسافة</div><div class="summary-value">25.7 كم</div></div>
+                <div><div class="summary-label">الوقت المتوقع</div><div class="summary-value">27 دقيقة</div></div>
+                <div><div class="summary-label">السعر الإجمالي</div><div class="summary-value">68.67 ج.م</div></div>
             </div>
 
             <div class="form-group">
                 <label class="label" style="color: #22c55e;">🟢 نقطة الانطلاق</label>
-                <input type="text" id="pickup-loc" class="input-box" value="البحث الجنائي 65، قسم المعادي">
+                <input type="text" class="input-box" value="البحث الجنائي 65، قسم المعادي">
             </div>
 
             <div class="form-group">
                 <label class="label" style="color: #ef4444;">🔴 نقطة الوصول</label>
-                <input type="text" id="dropoff-loc" class="input-box" value="Garden 8، صلاح الدين عبد الكريم، القاهرة الجديدة">
+                <input type="text" class="input-box" value="Garden 8، صلاح الدين عبد الكريم، القاهرة الجديدة">
             </div>
 
             <button class="btn-request" onclick="requestRide()">تأكيد وطلب الرحلة ⚡</button>
         </div>
 
         <div class="active-trip-box" id="active-trip-card">
-            <span class="status-badge" id="trip-status">⏳ الكابتن في طريقه إليك...</span>
+            <span class="status-badge">⏳ الكابتن في طريقه إليك...</span>
             <div style="font-size: 12px; color: #94a3b8; margin-top: 14px; font-weight: 600;">رمز الأمان للرحلة (PIN):</div>
-            <div class="pin-display" id="trip-pin">4829</div>
+            <div class="pin-display">4829</div>
             <p style="font-size: 11px; color: #cbd5e1; margin: 0; line-height: 1.5;">أعطِ هذا الرقم للكابتن عند ركوب السيارة لتأكيد الرحلة.</p>
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const SUPABASE_URL = 'https://pmpzilqpcomoodaksbhw.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
-        let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        let map, captainLiveMarker;
-        const captainPin = L.divIcon({ html: '<div style="background-color: #2563eb; width: 24px; height: 24px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>', iconSize: [24,24], iconAnchor: [12,12] });
-
+        let map;
         function initMap() {
-            map = L.map('map').setView([30.0444, 31.2357], 13);
+            // إحداثيات المعادي و القاهرة الجديدة
+            let pickup = [29.9602, 31.2569];
+            let dropoff = [30.0333, 31.4333];
+
+            map = L.map('map').setView(pickup, 12);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
             
-            L.marker([29.9602, 31.2569], {icon: L.divIcon({html: '<div style="background:#22c55e;width:18px;height:18px;border-radius:50%;border:2px solid #fff"></div>', iconSize:[18,18]}}).addTo(map).bindPopup('الانطلاق');
-            L.marker([30.0333, 31.4333], {icon: L.divIcon({html: '<div style="background:#ef4444;width:18px;height:18px;border-radius:50%;border:2px solid #fff"></div>', iconSize:[18,18]}}).addTo(map).bindPopup('الوصول (Garden 8)');
+            L.marker(pickup, {icon: L.divIcon({html: '<div style="background:#22c55e;width:18px;height:18px;border-radius:50%;border:2px solid #fff"></div>', iconSize:[18,18]})}).addTo(map).bindPopup('الانطلاق');
+            L.marker(dropoff, {icon: L.divIcon({html: '<div style="background:#ef4444;width:18px;height:18px;border-radius:50%;border:2px solid #fff"></div>', iconSize:[18,18]})}).addTo(map).bindPopup('الوصول');
 
-            listenToCaptainLive();
+            setTimeout(() => { map.invalidateSize(); }, 500);
         }
-
-        function listenToCaptainLive() {
-            supabaseClient.channel('live-tracking')
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips' }, payload => {
-                    let lat = payload.new.captain_lat;
-                    let lng = payload.new.captain_lng;
-                    if(lat && lng) {
-                        if(!captainLiveMarker) {
-                            captainLiveMarker = L.marker([lat, lng], {icon: captainPin}).addTo(map).bindPopup('الكابتن يتحرك إليك لايف').openPopup();
-                        } else {
-                            captainLiveMarker.setLatLng([lat, lng]);
-                        }
-                    }
-                }).subscribe();
-        }
-
         function requestRide() {
             document.getElementById('booking-card').style.display = 'none';
             document.getElementById('active-trip-card').style.display = 'block';
         }
-
-        function logout() { localStorage.removeItem('combo_user'); window.location.href = 'rider-register.html'; }
-        initMap();
+        function logout() { window.location.href = 'index.html'; }
+        window.onload = initMap;
     </script>
 </body>
 </html>
