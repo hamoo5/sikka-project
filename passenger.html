@@ -21,13 +21,11 @@
         .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; padding: 18px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); margin-bottom: 16px; }
         .card-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
 
-        /* حاوية الخريطة الحية */
-        .map-container { position: relative; width: 100%; height: 230px; margin-bottom: 10px; }
+        .map-container { position: relative; width: 100%; height: 220px; margin-bottom: 10px; }
         #map { width: 100%; height: 100%; border-radius: 14px; border: 1px solid #334155; z-index: 1; }
 
-        /* أزرار التبديل لاختيار الدبوس المراد تحريكه */
         .pin-switcher { display: flex; gap: 6px; margin-bottom: 8px; }
-        .pin-switch-btn { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid #334155; background: #050b14; color: #94a3b8; font-size: 12px; font-weight: 700; cursor: pointer; text-align: center; }
+        .pin-switch-btn { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid #334155; background: #050b14; color: #94a3b8; font-size: 11px; font-weight: 700; cursor: pointer; text-align: center; }
         .pin-switch-btn.active-pickup { border-color: #22c55e; background: rgba(34, 197, 94, 0.15); color: #22c55e; }
         .pin-switch-btn.active-dropoff { border-color: #ef4444; background: rgba(239, 68, 68, 0.15); color: #ef4444; }
 
@@ -41,12 +39,19 @@
         .form-group { margin-bottom: 12px; text-align: right; }
         .label { font-size: 11px; color: #94a3b8; margin-bottom: 4px; display: block; font-weight: 700; text-transform: uppercase; }
         
+        .input-row { display: flex; gap: 6px; }
         .input-box {
-            width: 100%; padding: 11px; border-radius: 12px;
+            flex: 1; padding: 11px; border-radius: 12px;
             background: #050b14; border: 1px solid #334155;
             color: #fff; font-size: 13px;
         }
         .input-box:focus { border-color: #38bdf8; outline: none; }
+        
+        .search-btn {
+            background: #1e293b; color: #38bdf8; border: 1px solid #334155;
+            padding: 0 12px; border-radius: 12px; font-weight: 700; font-size: 12px; cursor: pointer;
+        }
+        .search-btn:hover { background: #334155; }
 
         .vehicle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
         .v-card {
@@ -85,7 +90,6 @@
         <div class="card-box" id="booking-card">
             <div class="card-title">🗺️ الخريطة الحية - حدد موقعك ووجهتك</div>
 
-            <!-- أزرار التبديل لاختيار الدبوس المراد تحريكه على الخريطة -->
             <div class="pin-switcher">
                 <div class="pin-switch-btn active-pickup" id="switch-pickup" onclick="setActivePin('pickup')">📍 تحريك دبوس الانطلاق</div>
                 <div class="pin-switch-btn" id="switch-dropoff" onclick="setActivePin('dropoff')">🏁 تحريك دبوس الوصول</div>
@@ -97,14 +101,22 @@
             </div>
             <div style="font-size: 11px; color: #38bdf8; text-align: center; margin-bottom: 10px;" id="map-hint">حرك الخريطة لتعديل مكان الانطلاق الأخضر</div>
 
+            <!-- نقطة الانطلاق مع زر البحث -->
             <div class="form-group">
                 <label class="label">1. نقطة الانطلاق (مكان الركوب)</label>
-                <input type="text" id="pickup-loc" class="input-box" placeholder="اختر من الخريطة أو اكتب هنا...">
+                <div class="input-row">
+                    <input type="text" id="pickup-loc" class="input-box" placeholder="اكتب مكان أو حرك الدبوس...">
+                    <button class="search-btn" onclick="searchLocation('pickup')">بحث 🔍</button>
+                </div>
             </div>
 
+            <!-- نقطة الوصول مع زر البحث -->
             <div class="form-group">
                 <label class="label">2. نقطة الوصول (مكان النزول)</label>
-                <input type="text" id="dropoff-loc" class="input-box" placeholder="اختر من الخريطة أو اكتب هنا...">
+                <div class="input-row">
+                    <input type="text" id="dropoff-loc" class="input-box" placeholder="مثال: مدينة نصر، وسط البلد...">
+                    <button class="search-btn" onclick="searchLocation('dropoff')">بحث 🔍</button>
+                </div>
             </div>
 
             <div class="form-group">
@@ -148,7 +160,7 @@
         let selectedVehicleType = 'ملاكي';
         let map;
         let pickupMarker, dropoffMarker;
-        let activePinType = 'pickup'; // 'pickup' أو 'dropoff'
+        let activePinType = 'pickup';
 
         function initRiderPage() {
             const stored = localStorage.getItem('combo_user');
@@ -161,7 +173,6 @@
             document.getElementById('rider-name').innerText = name;
             document.getElementById('user-initial').innerText = name.charAt(0);
 
-            // تشغيل الخريطة الحية على القاهرة
             map = L.map('map').setView([30.0444, 31.2357], 14);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -169,27 +180,22 @@
                 attribution: '&copy; OpenStreetMap'
             }).addTo(map);
 
-            // إنشاء الدبوس الأخضر للانطلاق في المنتصف
             pickupMarker = L.marker([30.0444, 31.2357], {draggable: true}).addTo(map)
-                .bindPopup('موقع الانطلاق (اختر أو حرك الدبوس)');
+                .bindPopup('موقع الانطلاق');
 
-            // إنشاء الدبوس الأحمر للوصول قريب منه
             dropoffMarker = L.marker([30.0500, 31.2500], {draggable: true}).addTo(map)
-                .bindPopup('موقع الوصول (اختر أو حرك الدبوس)');
+                .bindPopup('موقع الوصول');
 
-            // تحديث العنوان عند سحب وإفلات الدبوس الأخضر
             pickupMarker.on('dragend', async function(e) {
                 const pos = e.target.getLatLng();
                 updateAddressFromLatLng(pos.lat, pos.lng, 'pickup');
             });
 
-            // تحديث العنوان عند سحب وإفلات الدبوس الأحمر
             dropoffMarker.on('dragend', async function(e) {
                 const pos = e.target.getLatLng();
                 updateAddressFromLatLng(pos.lat, pos.lng, 'dropoff');
             });
 
-            // النقر على الخريطة لتحريك الدبوس النشط حالياً
             map.on('click', function(e) {
                 const lat = e.latlng.lat;
                 const lng = e.latlng.lng;
@@ -203,12 +209,10 @@
                 }
             });
 
-            // جلب العناوين الابتدائية للدبابيس
             updateAddressFromLatLng(30.0444, 31.2357, 'pickup');
             updateAddressFromLatLng(30.0500, 31.2500, 'dropoff');
         }
 
-        // تبديل الدبوس النشط (الانطلاق أو الوصول)
         function setActivePin(type) {
             activePinType = type;
             const pickupBtn = document.getElementById('switch-pickup');
@@ -228,7 +232,6 @@
             }
         }
 
-        // جلب اسم الشارع والموقع الجغرافي باللغة العربية
         async function updateAddressFromLatLng(lat, lng, type) {
             const inputId = type === 'pickup' ? 'pickup-loc' : 'dropoff-loc';
             try {
@@ -239,6 +242,42 @@
                 }
             } catch (err) {
                 document.getElementById(inputId).value = `خط عرض: ${lat.toFixed(4)}, طول: ${lng.toFixed(4)}`;
+            }
+        }
+
+        // دالة البحث بالاسم لتوجيه الدبوس والخريطة للمكان المطلوب
+        async function searchLocation(type) {
+            const inputId = type === 'pickup' ? 'pickup-loc' : 'dropoff-loc';
+            const query = document.getElementById(inputId).value.trim();
+
+            if (!query) {
+                alert('يرجى كتابة اسم المكان أولاً للبحث عنه.');
+                return;
+            }
+
+            try {
+                let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&accept-language=ar&limit=1`);
+                let results = await response.json();
+
+                if (results && results.length > 0) {
+                    const lat = parseFloat(results[0].lat);
+                    const lon = parseFloat(results[0].lon);
+                    const displayName = results[0].display_name;
+
+                    map.setView([lat, lon], 15);
+                    document.getElementById(inputId).value = displayName;
+
+                    if (type === 'pickup') {
+                        pickupMarker.setLatLng([lat, lon]);
+                    } else {
+                        dropoffMarker.setLatLng([lat, lon]);
+                    }
+                    alert('تم تحديد الموقع بنجاح: ' + displayName);
+                } else {
+                    alert('لم يتم العثور على هذا المكان، حاول كتابة اسم أوضح.');
+                }
+            } catch (e) {
+                alert('حدث خطأ أثناء البحث.');
             }
         }
 
@@ -265,7 +304,6 @@
 
         function selectVehicle(type, element) {
             selectedVehicleType = type;
-            document.querySelectorAll('.v-card').choice = type;
             document.querySelectorAll('.v-card').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
         }
