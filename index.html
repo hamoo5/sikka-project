@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق كومبو - الإصدار الشامل</title>
+    <title>تطبيق كومبو - الإصدار التجاري</title>
     <!-- مكتبة Leaflet للخرائط -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,9 +12,16 @@
     <style>
         body { margin: 0; padding: 0; font-family: Tahoma, sans-serif; background: #0f172a; color: #fff; overflow: hidden; }
         #map { height: 100vh; width: 100vw; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* شاشة تسجيل الدخول */
+        .auth-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.98); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+        .auth-card { background: #1e293b; padding: 25px; border-radius: 16px; width: 100%; max-width: 400px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        .input-field { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; background: #0f172a; border: 1px solid #334155; color: #fff; font-size: 14px; box-sizing: border-box; }
+        
         .top-bar { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(15, 23, 42, 0.9); padding: 8px 15px; border-radius: 30px; display: flex; gap: 10px; border: 1px solid rgba(255,255,255,0.1); }
-        .tab-btn { background: transparent; border: none; color: #fff; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .tab-btn.active { background: #2563eb; color: #fff; }
+        .user-badge { background: #2563eb; padding: 6px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; }
+        .logout-btn { background: #ef4444; border: none; color: #fff; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 12px; }
+
         .panel { position: absolute; bottom: 20px; left: 20px; right: 20px; z-index: 10; background: rgba(15, 23, 42, 0.95); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); max-width: 500px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         .btn { background: #2563eb; color: #fff; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; }
         .btn:hover { background: #1d4ed8; }
@@ -23,14 +30,40 @@
 </head>
 <body>
 
-    <div class="top-bar">
-        <button class="tab-btn active" onclick="switchView('rider')" id="btn-rider">واجهة الراكب</button>
-        <button class="tab-btn" onclick="switchView('driver')" id="btn-driver">واجهة الكابتن</button>
+    <!-- شاشة الدخول / التسجيل -->
+    <div class="auth-overlay" id="auth-screen">
+        <div class="auth-card">
+            <h2 style="margin-top:0; color:#38bdf8;">تطبيق كومبو 🚗</h2>
+            <p style="font-size:14px; color:#94a3b8;">سجل دخولك أو أنشئ حساباً جديداً للبدء</p>
+            
+            <input type="email" id="auth-email" class="input-field" placeholder="البريد الإلكتروني">
+            <input type="password" id="auth-password" class="input-field" placeholder="كلمة السر">
+            
+            <div id="signup-extra-fields" style="display:none;">
+                <input type="text" id="auth-name" class="input-field" placeholder="الاسم بالكامل">
+                <select id="auth-role" class="select-box" onchange="toggleDriverFields()">
+                    <option value="rider">راكب</option>
+                    <option value="driver">كابتن</option>
+                </select>
+                <div id="driver-fields" style="display:none;">
+                    <input type="text" id="auth-car" class="input-field" placeholder="نوع ونموذج السيارة (مثال: فيرنا 2020)">
+                    <input type="text" id="auth-plate" class="input-field" placeholder="رقم اللوحة (مثال: أ ب ج 1234)">
+                </div>
+            </div>
+
+            <button class="btn" id="main-auth-btn" onclick="handleAuth('login')">تسجيل الدخول</button>
+            <p style="font-size:13px; margin-top:15px; cursor:pointer; color:#38bdf8;" id="toggle-auth-text" onclick="switchAuthMode()">ليس لديك حساب؟ أنشئ حساباً الآن</p>
+        </div>
+    </div>
+
+    <div class="top-bar" id="app-top-bar" style="display:none;">
+        <span class="user-badge" id="user-display-badge">واجهة المستخدم</span>
+        <button class="logout-btn" onclick="logout()">خروج</button>
     </div>
 
     <div id="map"></div>
 
-    <div class="panel" id="control-panel">
+    <div class="panel" id="control-panel" style="display:none;">
         <h3 id="panel-title">جارٍ التحميل...</h3>
         <div id="panel-content">يرجى الانتظار قليلاً</div>
     </div>
@@ -42,58 +75,98 @@
 
         try {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } catch (e) {
-            console.error("خطأ في الاتصال بقاعدة البيانات:", e);
-        }
+        } catch (e) { console.error("خطأ في الاتصال بقاعدة البيانات:", e); }
 
-        let currentView = 'rider';
+        let currentUser = null;
+        let userProfile = null;
+        let isSignupMode = false;
+
         let map, pickupMarker, dropoffMarker, driverMarker;
         let pickupCoords = { lat: 30.0444, lng: 31.2357 };
         let dropoffCoords = null;
         let activeTripId = null;
-        let driverEarnings = 0;
-        let completedTripsCount = 0;
 
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(initMap, 500);
-        });
+        function switchAuthMode() {
+            isSignupMode = !isSignupMode;
+            document.getElementById('signup-extra-fields').style.display = isSignupMode ? 'block' : 'none';
+            document.getElementById('main-auth-btn').innerText = isSignupMode ? 'إنشاء الحساب' : 'تسجيل الدخول';
+            document.getElementById('toggle-auth-text').innerText = isSignupMode ? 'لديك حساب بالفعل؟ سجل دخولك' : 'ليس لديك حساب؟ أنشئ حساباً الآن';
+        }
 
-        function initMap() {
-            try {
-                map = L.map('map').setView([pickupCoords.lat, pickupCoords.lng], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '© OpenStreetMap'
-                }).addTo(map);
+        function toggleDriverFields() {
+            const role = document.getElementById('auth-role').value;
+            document.getElementById('driver-fields').style.display = role === 'driver' ? 'block' : 'none';
+        }
 
-                pickupMarker = L.marker([pickupCoords.lat, pickupCoords.lng]).addTo(map).bindPopup('موقع الانطلاق').openPopup();
+        async function handleAuth(type) {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
 
-                map.on('click', function(e) {
-                    if (currentView === 'rider') {
-                        dropoffCoords = e.latlng;
-                        if (dropoffMarker) map.removeLayer(dropoffMarker);
-                        dropoffMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map).bindPopup('موقع الوصول').openPopup();
-                        showRideConfirmation();
-                    }
-                });
+            if (!email || !password) return alert('برجاء كتابة البريد وكلمة السر');
 
-                renderRiderPanel();
-            } catch (err) {
-                console.error("خطأ في تشغيل الخريطة:", err);
+            if (isSignupMode) {
+                const name = document.getElementById('auth-name').value;
+                const role = document.getElementById('auth-role').value;
+                const car = document.getElementById('auth-car').value;
+                const plate = document.getElementById('auth-plate').value;
+
+                const { data, error } = await supabaseClient.auth.signUp({ email, password });
+                if (error) return alert('خطأ في التسجيل: ' + error.message);
+
+                if (data.user) {
+                    await supabaseClient.from('profiles').insert([{
+                        id: data.user.id,
+                        full_name: name,
+                        user_type: role,
+                        car_model: car,
+                        plate_number: plate
+                    }]);
+                    alert('تم إنشاء الحساب بنجاح! يتم الآن توجيهك...');
+                    loadUserProfile(data.user);
+                }
+            } else {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) return alert('خطأ في تسجيل الدخول: ' + error.message);
+                loadUserProfile(data.user);
             }
         }
 
-        function switchView(view) {
-            currentView = view;
-            document.getElementById('btn-rider').classList.toggle('active', view === 'rider');
-            document.getElementById('btn-driver').classList.toggle('active', view === 'driver');
-            
-            if (view === 'rider') {
+        async function loadUserProfile(user) {
+            currentUser = user;
+            const { data } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
+            userProfile = data || { user_type: 'rider', full_name: 'مستخدم' };
+
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app-top-bar').style.display = 'flex';
+            document.getElementById('control-panel').style.display = 'block';
+            document.getElementById('user-display-badge').innerText = userProfile.user_type === 'driver' ? `الكابتن: ${userProfile.full_name}` : `الراكب: ${userProfile.full_name}`;
+
+            initMap();
+        }
+
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            location.reload();
+        }
+
+        function initMap() {
+            if (map) return;
+            map = L.map('map').setView([pickupCoords.lat, pickupCoords.lng], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+            pickupMarker = L.marker([pickupCoords.lat, pickupCoords.lng]).addTo(map).bindPopup('موقع الانطلاق').openPopup();
+
+            if (userProfile.user_type === 'rider') {
+                map.on('click', function(e) {
+                    dropoffCoords = e.latlng;
+                    if (dropoffMarker) map.removeLayer(dropoffMarker);
+                    dropoffMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map).bindPopup('موقع الوصول').openPopup();
+                    showRideConfirmation();
+                });
                 renderRiderPanel();
             } else {
                 renderDriverPanel();
             }
-            if(map) setTimeout(() => map.invalidateSize(), 200);
         }
 
         function renderRiderPanel() {
@@ -110,11 +183,6 @@
                 </div>
                 <button class="btn" onclick="requestRide()" id="req-btn" style="display:none;">تأكيد وطلب الرحلة (25 جنيه)</button>
             `;
-            dropoffCoords = null;
-            if (dropoffMarker && map) {
-                map.removeLayer(dropoffMarker);
-                dropoffMarker = null;
-            }
         }
 
         function showRideConfirmation() {
@@ -123,22 +191,20 @@
         }
 
         async function requestRide() {
-            if (!supabaseClient) return;
             const vehicle = document.getElementById('vehicle-type').value;
             const otp = Math.floor(1000 + Math.random() * 9000).toString();
             
-            const { data, error } = await supabaseClient.from('trips').insert([
-                {
-                    pickup_lat: pickupCoords.lat,
-                    pickup_lng: pickupCoords.lng,
-                    dropoff_lat: dropoffCoords ? dropoffCoords.lat : pickupCoords.lat,
-                    dropoff_lng: dropoffCoords ? dropoffCoords.lng : pickupCoords.lng,
-                    fixed_price: 25.00,
-                    otp_code: otp,
-                    vehicle_type: vehicle,
-                    status: 'SEARCHING'
-                }
-            ]).select();
+            const { data, error } = await supabaseClient.from('trips').insert([{
+                rider_id: currentUser.id,
+                pickup_lat: pickupCoords.lat,
+                pickup_lng: pickupCoords.lng,
+                dropoff_lat: dropoffCoords ? dropoffCoords.lat : pickupCoords.lat,
+                dropoff_lng: dropoffCoords ? dropoffCoords.lng : pickupCoords.lng,
+                fixed_price: 25.00,
+                otp_code: otp,
+                vehicle_type: vehicle,
+                status: 'SEARCHING'
+            }]).select();
 
             if (error) {
                 alert('خطأ في إرسال الطلب: ' + error.message);
@@ -154,42 +220,35 @@
 
         function listenToTrip(tripId) {
             supabaseClient.channel('trip-changes-' + tripId)
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, payload => {
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, async payload => {
                     const trip = payload.new;
                     if (trip.status === 'ACCEPTED') {
+                        // جلب بيانات الكابتن الذي قبل الرحلة
+                        const { data: driverData } = await supabaseClient.from('profiles').select('*').eq('id', trip.driver_id).single();
+                        
                         document.getElementById('panel-content').innerHTML = `
-                            <p style="color:#22c55e; font-weight: bold; margin: 5px 0;">تم قبول رحلتك! الكابتن يتحرك في الطريق إليك.</p>
-                            <p style="margin: 5px 0;">كود التأكيد: <b>${trip.otp_code}</b></p>
+                            <p style="color:#22c55e; font-weight: bold; margin: 5px 0;">تم قبول رحلتك! الكابتن في الطريق إليك.</p>
+                            <div style="background:#1e293b; padding:10px; border-radius:8px; margin:10px 0; font-size:13px;">
+                                <p style="margin:3px 0;">اسم الكابتن: <b>${driverData ? driverData.full_name : 'الكابتن'}</b></p>
+                                <p style="margin:3px 0;">السيارة: <b>${driverData ? driverData.car_model : 'غير محدد'}</b></p>
+                                <p style="margin:3px 0;">اللوحة: <b>${driverData ? driverData.plate_number : 'غير محدد'}</b></p>
+                            </div>
+                            <p style="margin: 5px 0;">كود التأكيد للركوب: <b>${trip.otp_code}</b></p>
                         `;
-                        if (trip.driver_lat && trip.driver_lng) {
-                            if (driverMarker) {
-                                driverMarker.setLatLng([trip.driver_lat, trip.driver_lng]);
-                            } else {
-                                driverMarker = L.marker([trip.driver_lat, trip.driver_lng], {
-                                    icon: L.divIcon({className: 'driver-icon', html: '🚗', iconSize: [30, 30]})
-                                }).addTo(map).bindPopup('موقع الكابتن الحالي');
-                            }
-                        }
                     }
-                })
-                .subscribe();
+                }).subscribe();
         }
 
         function renderDriverPanel() {
-            document.getElementById('panel-title').innerText = "واجهة الكابتن - الطلبات والأرباح";
+            document.getElementById('panel-title').innerText = "واجهة الكابتن - الطلبات المتاحة";
             document.getElementById('panel-content').innerHTML = `
-                <div style="background: #1e293b; padding: 10px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 14px;">
-                    <span>الرحلات المكتملة: <b>${completedTripsCount}</b></span>
-                    <span style="color: #22c55e;">الأرباح: <b>${driverEarnings} جنيه</b></span>
-                </div>
                 <button class="btn" onclick="fetchAvailableTrips()" style="margin-top:0;">تحديث قائمة الطلبات</button>
-                <div id="trips-list" style="max-height: 130px; overflow-y: auto; margin-top: 10px;"></div>
+                <div id="trips-list" style="max-height: 150px; overflow-y: auto; margin-top: 10px;"></div>
             `;
             fetchAvailableTrips();
         }
 
         async function fetchAvailableTrips() {
-            if (!supabaseClient) return;
             const { data, error } = await supabaseClient.from('trips').select('*').eq('status', 'SEARCHING');
             const listDiv = document.getElementById('trips-list');
             if (error || !data || !data.length) {
@@ -199,64 +258,25 @@
             listDiv.innerHTML = data.map(trip => `
                 <div style="background:#1e293b; padding:10px; margin-top:8px; border-radius:6px; border: 1px solid #334155;">
                     <p style="margin: 0 0 5px 0;">المركبة: <b>${trip.vehicle_type || 'ملاكي'}</b> | السعر: <b>${trip.fixed_price} جنيه</b></p>
-                    <button class="btn" style="margin-top:0; padding: 6px;" onclick="acceptTrip('${trip.id}', ${trip.pickup_lat}, ${trip.pickup_lng})">قبول الرحلة وبدء التوجيه</button>
+                    <button class="btn" style="margin-top:0; padding: 6px;" onclick="acceptTrip('${trip.id}')">قبول الرحلة</button>
                 </div>
             `).join('');
         }
 
-        async function acceptTrip(tripId, pLat, pLng) {
-            if (!supabaseClient) return;
-            const { error } = await supabaseClient
-                .from('trips')
-                .update({ status: 'ACCEPTED' })
-                .eq('id', tripId);
-                
-            if (!error) {
-                activeTripId = tripId;
-                driverEarnings += 25;
-                completedTripsCount += 1;
-                alert('تم قبول الرحلة بنجاح! يتم توجيهك لموقع الراكب.');
-                
-                if(map) {
-                    map.setView([pLat, pLng], 15);
-                    L.marker([pLat, pLng]).addTo(map).bindPopup('موقع الراكب المطلوب').openPopup();
-                }
+        async function acceptTrip(tripId) {
+            const { error } = await supabaseClient.from('trips').update({
+                status: 'ACCEPTED',
+                driver_id: currentUser.id
+            }).eq('id', tripId);
 
-                renderDriverActiveTrip(tripId);
+            if (!error) {
+                alert('تم قبول الرحلة بنجاح! توجه الآن لنقطة الراكب.');
+                document.getElementById('panel-content').innerHTML = `
+                    <p style="color:#22c55e; font-weight:bold;">أنت الآن في طريقك للراكب!</p>
+                `;
             } else {
                 alert('خطأ في قبول الرحلة: ' + error.message);
             }
-        }
-
-        function renderDriverActiveTrip(tripId) {
-            document.getElementById('panel-content').innerHTML = `
-                <p style="color:#22c55e; font-weight:bold; margin: 5px 0;">الرحلة نشطة - أنت في الطريق للراكب</p>
-                <button class="btn" onclick="sendDriverLiveLocation('${tripId}')">تحديث وإرسال موقعي الحي للراكب</button>
-            `;
-        }
-
-        function sendDriverLiveLocation(tripId) {
-            if (!navigator.geolocation) {
-                alert('خاصية تحديد الموقع غير متوفرة في متصفحك');
-                return;
-            }
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                
-                const { error } = await supabaseClient
-                    .from('trips')
-                    .update({ driver_lat: lat, driver_lng: lng })
-                    .eq('id', tripId);
-
-                if(!error) {
-                    alert('تم تحديث وإرسال موقعك الحي للراكب بنجاح.');
-                } else {
-                    alert('خطأ في إرسال الموقع: ' + error.message);
-                }
-            }, () => {
-                alert('تعذر الحصول على موقعك الحالي.');
-            });
         }
     </script>
 </body>
