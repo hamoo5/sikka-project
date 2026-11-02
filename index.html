@@ -3,132 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة كومبو - الفخامة في التنقل</title>
+    <title>كومبو | تنقل بذكاء وأمان</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
         body { 
             margin: 0; padding: 0; 
-            font-family: 'Segoe UI', Tahoma, sans-serif; 
-            background: #070b19; 
-            background-image: radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.15) 0%, transparent 40%),
-                              radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.1) 0%, transparent 40%);
+            background: #050b14; 
+            background-image: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.18) 0%, transparent 60%);
             color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; 
         }
-        .main-container { width: 100%; max-width: 420px; padding: 20px; margin: auto; }
+        .wrapper { width: 100%; max-width: 400px; padding: 20px; }
         
-        /* تصميم الزجاج الفاخر */
-        .glass-card { 
-            background: rgba(30, 41, 59, 0.7); 
-            backdrop-filter: blur(16px); 
-            -webkit-backdrop-filter: blur(16px);
+        .card-box { 
+            background: rgba(15, 23, 42, 0.75); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.08); 
-            padding: 30px; border-radius: 24px; 
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            padding: 32px 24px; border-radius: 28px; 
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
             text-align: center; position: relative; overflow: hidden;
         }
-        
-        .brand-badge { 
-            display: inline-block; background: rgba(56, 189, 248, 0.1); 
-            color: #38bdf8; padding: 6px 16px; border-radius: 30px; 
-            font-size: 13px; font-weight: 700; margin-bottom: 20px; 
-            border: 1px solid rgba(56, 189, 248, 0.2);
-        }
 
-        /* تبديل علوي ذكي بين تسجيل الدخول وحساب جديد */
-        .mode-switch {
-            display: flex; background: rgba(15, 23, 42, 0.8);
-            border-radius: 14px; padding: 4px; margin-bottom: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+        .logo-area { font-weight: 900; font-size: 26px; color: #fff; margin-bottom: 8px; letter-spacing: -0.5px; }
+        .logo-area span { color: #38bdf8; }
+        .sub-desc { font-size: 13px; color: #94a3b8; margin-bottom: 25px; font-weight: 400; }
+
+        /* تباين المود الفاخر */
+        .segmented-control {
+            display: flex; background: rgba(2, 6, 23, 0.9);
+            border-radius: 14px; padding: 5px; margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
         }
-        .mode-btn {
-            flex: 1; padding: 10px; border: none; background: transparent;
-            color: #94a3b8; font-size: 14px; font-weight: 600; border-radius: 10px;
-            cursor: pointer; transition: all 0.3s ease;
+        .seg-btn {
+            flex: 1; padding: 12px; border: none; background: transparent;
+            color: #64748b; font-size: 14px; font-weight: 700; border-radius: 10px;
+            cursor: pointer; transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .mode-btn.active {
+        .seg-btn.active {
             background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: #fff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+            color: #fff; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
         }
 
-        .input-group { position: relative; margin-bottom: 15px; text-align: right; }
-        .input-field { 
-            width: 100%; padding: 14px 16px; border-radius: 12px; 
-            background: rgba(15, 23, 42, 0.9); 
+        .input-wrapper { position: relative; margin-bottom: 16px; text-align: right; }
+        .input-box { 
+            width: 100%; padding: 15px 18px; border-radius: 14px; 
+            background: rgba(2, 6, 23, 0.7); 
             border: 1px solid rgba(255, 255, 255, 0.08); 
             color: #fff; font-size: 15px; transition: all 0.3s ease; 
         }
-        .input-field:focus { 
+        .input-box:focus { 
             border-color: #38bdf8; outline: none; 
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.25); 
-            background: #0f172a;
+            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15); 
+            background: rgba(2, 6, 23, 0.95);
         }
 
-        .select-box { 
-            width: 100%; padding: 14px 16px; border-radius: 12px; 
-            background: rgba(15, 23, 42, 0.9); color: #fff; 
+        .select-custom { 
+            width: 100%; padding: 15px 18px; border-radius: 14px; 
+            background: rgba(2, 6, 23, 0.7); color: #fff; 
             border: 1px solid rgba(255, 255, 255, 0.08); font-size: 15px; 
+            appearance: none; cursor: pointer; text-align: right;
         }
 
-        .btn-primary { 
+        .main-btn { 
             background: linear-gradient(135deg, #38bdf8, #2563eb); 
-            color: #fff; border: none; padding: 15px; width: 100%; 
-            border-radius: 12px; font-weight: bold; cursor: pointer; 
+            color: #fff; border: none; padding: 16px; width: 100%; 
+            border-radius: 14px; font-weight: 700; cursor: pointer; 
             margin-top: 10px; font-size: 16px; 
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.35);
             transition: transform 0.2s, opacity 0.2s; 
         }
-        .btn-primary:active { transform: scale(0.98); }
+        .main-btn:active { transform: scale(0.98); }
         
-        .action-link { margin-top: 15px; font-size: 13px; color: #38bdf8; cursor: pointer; display: inline-block; }
-        .action-link:hover { text-decoration: underline; }
+        .footer-link { margin-top: 18px; font-size: 13px; color: #38bdf8; cursor: pointer; display: inline-block; font-weight: 600; }
+        .footer-link:hover { text-decoration: underline; }
         
-        .form-section { display: none; }
-        .form-section.active { display: block; }
+        .form-pane { display: none; opacity: 0; transition: opacity 0.3s ease; }
+        .form-pane.active { display: block; opacity: 1; }
     </style>
 </head>
 <body>
 
-    <div class="main-container">
-        <div class="glass-card">
-            <div class="brand-badge">منصة كومبو الذكية 🚗📦</div>
+    <div class="wrapper">
+        <div class="card-box">
+            <div class="logo-area">كومبو <span>COMBO</span></div>
+            <div class="sub-desc" id="dynamic-subtitle">بوابتك الذكية للتنقل الآمن والموثوق</div>
             
-            <!-- أزرار التبديل الفاخرة بين الدخول والتسجيل -->
-            <div class="mode-switch">
-                <button class="mode-btn active" id="btn-login-tab" onclick="switchTab('login')">تسجيل الدخول</button>
-                <button class="mode-btn" id="btn-register-tab" onclick="switchTab('register')">حساب جديد</button>
+            <!-- أزرار التبديل العلوية الاحترافية -->
+            <div class="segmented-control">
+                <button class="seg-btn active" id="tab-login" onclick="switchMode('login')">تسجيل الدخول</button>
+                <button class="seg-btn" id="tab-register" onclick="switchMode('register')">حساب جديد</button>
             </div>
 
-            <!-- نموذج تسجيل الدخول -->
-            <div id="section-login" class="form-section active">
-                <div class="input-group">
-                    <input type="tel" id="login-phone" class="input-field" placeholder="رقم الموبايل (01xxxxxxxxx)" maxlength="11" style="text-align: right; direction: ltr;">
+            <!-- لوحة تسجيل الدخول -->
+            <div id="pane-login" class="form-pane active">
+                <div class="input-wrapper">
+                    <input type="tel" id="l-phone" class="input-box" placeholder="رقم الموبايل (01xxxxxxxxx)" maxlength="11" style="text-align: right; direction: ltr;">
                 </div>
-                <div class="input-group">
-                    <input type="password" id="login-password" class="input-field" placeholder="كلمة المرور">
+                <div class="input-wrapper">
+                    <input type="password" id="l-pass" class="input-box" placeholder="كلمة المرور">
                 </div>
-                <button class="btn-primary" onclick="handleLogin()">دخول سريع 🚀</button>
-                <span class="action-link" onclick="handleForgotPassword()">نسيت كلمة المرور؟ 🔑</span>
+                <button class="main-btn" onclick="executeLogin()">دخول سريع ⚡</button>
+                <span class="footer-link" onclick="executeForgotPass()">نسيت كلمة المرور؟</span>
             </div>
 
-            <!-- نموذج إنشاء حساب جديد -->
-            <div id="section-register" class="form-section">
-                <div class="input-group">
-                    <input type="text" id="reg-name" class="input-field" placeholder="الاسم بالكامل">
+            <!-- لوحة إنشاء الحساب -->
+            <div id="pane-register" class="form-pane">
+                <div class="input-wrapper">
+                    <input type="text" id="r-name" class="input-box" placeholder="الاسم بالكامل">
                 </div>
-                <div class="input-group">
-                    <input type="tel" id="reg-phone" class="input-field" placeholder="رقم الموبايل (01xxxxxxxxx)" maxlength="11" style="text-align: right; direction: ltr;">
+                <div class="input-wrapper">
+                    <input type="tel" id="r-phone" class="input-box" placeholder="رقم الموبايل (01xxxxxxxxx)" maxlength="11" style="text-align: right; direction: ltr;">
                 </div>
-                <div class="input-group">
-                    <input type="password" id="reg-password" class="input-field" placeholder="كلمة المرور الجديدة">
+                <div class="input-wrapper">
+                    <input type="password" id="r-pass" class="input-box" placeholder="كلمة المرور الجديدة">
                 </div>
-                <div class="input-group">
-                    <select id="reg-role" class="select-box">
-                        <option value="rider">🚏 راكب (أرغب في التنقل والحجز)</option>
-                        <option value="driver">🚗 كابتن (أرغب في قيادة وتوصيل الركاب)</option>
+                <div class="input-wrapper">
+                    <select id="r-role" class="select-custom">
+                        <option value="rider">🚏 راكب - أرغب في حجز رحلات وتنقل</option>
+                        <option value="driver">🚗 كابتن - أرغب في القيادة وتوصيل الركاب</option>
                     </select>
                 </div>
-                <button class="btn-primary" onclick="handleRegister()">إنشاء الحساب والانطلاق ⭐</button>
+                <button class="main-btn" onclick="executeRegister()">إنشاء الحساب والانطلاق 🚀</button>
             </div>
 
         </div>
@@ -139,23 +136,25 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
         let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        function switchTab(tab) {
-            if (tab === 'login') {
-                document.getElementById('btn-login-tab').classList.add('active');
-                document.getElementById('btn-register-tab').classList.remove('active');
-                document.getElementById('section-login').classList.add('active');
-                document.getElementById('section-register').classList.remove('active');
+        function switchMode(mode) {
+            if (mode === 'login') {
+                document.getElementById('tab-login').classList.add('active');
+                document.getElementById('tab-register').classList.remove('active');
+                document.getElementById('pane-login').classList.add('active');
+                document.getElementById('pane-register').classList.remove('active');
+                document.getElementById('dynamic-subtitle').innerText = 'أهلاً بعودتك، ادخل لحسابك فوراً';
             } else {
-                document.getElementById('btn-register-tab').classList.add('active');
-                document.getElementById('btn-login-tab').classList.remove('active');
-                document.getElementById('section-register').classList.add('active');
-                document.getElementById('section-login').classList.remove('active');
+                document.getElementById('tab-register').classList.add('active');
+                document.getElementById('tab-login').classList.remove('active');
+                document.getElementById('pane-register').classList.add('active');
+                document.getElementById('pane-login').classList.remove('active');
+                document.getElementById('dynamic-subtitle').innerText = 'انضم إلينا وابدأ رحلتك معنا اليوم';
             }
         }
 
-        async function handleLogin() {
-            const phone = document.getElementById('login-phone').value.trim();
-            const password = document.getElementById('login-password').value.trim();
+        async function executeLogin() {
+            const phone = document.getElementById('l-phone').value.trim();
+            const password = document.getElementById('l-pass').value.trim();
 
             const phoneRegex = /^01[0125][0-9]{8}$/;
             if (!phoneRegex.test(phone)) {
@@ -170,7 +169,7 @@
             let { data: user, error } = await supabaseClient.from('profiles').select('*').eq('phone', phone).single();
 
             if (error || !user) {
-                alert('رقم الموبايل غير مسجل لدينا، يرجى إنشاء حساب جديد.');
+                alert('هذا الرقم غير مسجل لدينا، انضم إلينا عبر تبويب حساب جديد.');
                 return;
             }
 
@@ -179,14 +178,14 @@
                 return;
             }
 
-            redirectUser(user);
+            saveAndRedirect(user);
         }
 
-        async function handleRegister() {
-            const name = document.getElementById('reg-name').value.trim();
-            const phone = document.getElementById('reg-phone').value.trim();
-            const password = document.getElementById('reg-password').value.trim();
-            const role = document.getElementById('reg-role').value;
+        async function executeRegister() {
+            const name = document.getElementById('r-name').value.trim();
+            const phone = document.getElementById('r-phone').value.trim();
+            const password = document.getElementById('r-pass').value.trim();
+            const role = document.getElementById('r-role').value;
 
             if (!name || !password) {
                 alert('يرجى إكمال جميع الحقول المطلوبة.');
@@ -199,12 +198,11 @@
                 return;
             }
 
-            // فحص هل الرقم موجود مسبقاً
             let { data: existingUser } = await supabaseClient.from('profiles').select('*').eq('phone', phone).single();
             if (existingUser) {
                 alert('رقم الموبايل مسجل مسبقاً، قم بتسجيل الدخول مباشرة.');
-                switchTab('login');
-                document.getElementById('login-phone').value = phone;
+                switchMode('login');
+                document.getElementById('l-phone').value = phone;
                 return;
             }
 
@@ -220,16 +218,16 @@
 
             const { error } = await supabaseClient.from('profiles').insert([newUserObj]);
             if (error) {
-                alert('خطأ أثناء التسجيل: ' + error.message);
+                alert('خطأ أثناء إنشاء الحساب: ' + error.message);
                 return;
             }
 
-            alert('تم إنشاء الحساب بنجاح! أهلاً بك في كومبو.');
-            redirectUser(newUserObj);
+            alert('تم إنشاء حسابك بنجاح يا بطل!');
+            saveAndRedirect(newUserObj);
         }
 
-        async function handleForgotPassword() {
-            const phone = document.getElementById('login-phone').value.trim();
+        async function executeForgotPass() {
+            const phone = document.getElementById('l-phone').value.trim();
             if (!phone) {
                 alert('يرجى كتابة رقم الموبايل أولاً في خانة تسجيل الدخول ثم اضغط على نسيت كلمة المرور.');
                 return;
@@ -250,11 +248,11 @@
                 return;
             }
 
-            alert('تم تحديث كلمة المرور بنجاح، يمكنك الدخول بها الآن!');
-            document.getElementById('login-password').value = newPass;
+            alert('تم تحديث كلمة المرور بنجاح، يمكنك تسجيل الدخول بها الآن!');
+            document.getElementById('l-pass').value = newPass;
         }
 
-        function redirectUser(user) {
+        function saveAndRedirect(user) {
             localStorage.setItem('combo_user', JSON.stringify(user));
             if (user.user_type === 'driver') {
                 window.location.href = 'captain.html';
