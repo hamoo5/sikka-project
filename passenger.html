@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>كومبو - واجهة الراكب</title>
+  <title>موقف - Mahattat</title>
   
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
@@ -11,13 +11,16 @@
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; padding: 12px; background: #f4f4f9; direction: rtl; text-align: right; margin: 0; }
     .card { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    input, button { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
+    input, select, button { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
     button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
     button:hover { background: #218838; }
     .btn-secondary { background: #007bff; }
     .btn-gps { background: #17a2b8; }
     .btn-danger { background: #dc3545; }
-    #map { height: 350px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
+    .mode-selector { display: flex; gap: 8px; margin-bottom: 12px; }
+    .mode-btn { flex: 1; padding: 10px; background: #e9ecef; border: 2px solid #ccc; color: #333; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; font-size: 14px; }
+    .mode-btn.active { background: #007bff; color: white; border-color: #0056b3; }
+    #map { height: 320px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
     .hidden { display: none; }
     .leaflet-routing-container { display: none !important; }
     #trip-status { background: #e8f4fd; border: 1px solid #b6effb; color: #055160; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px; line-height: 1.6; display: none; }
@@ -25,40 +28,63 @@
 </head>
 <body>
 
-  <!-- 1. تسجيل الدخول السريع -->
+  <!-- 1. تسجيل الدخول -->
   <div id="auth-section" class="card">
-    <h2 style="text-align: center;">تسجيل دخول الراكب</h2>
+    <h2 style="text-align: center;">🚏 تطبيق موقف - Mahattat</h2>
     <input type="text" id="user_name" placeholder="اسمك الكريم (اختياري)">
-    <input type="tel" id="user_phone" placeholder="رقم الموبايل (مثلاً: 0111...)">
-    
-    <button id="auth-btn" class="btn-secondary" onclick="handleAuth()">دخول مباشر للخريطة 🚀</button>
+    <input type="tel" id="user_phone" placeholder="رقم الموبايل">
+    <button class="btn-secondary" onclick="handleAuth()">دخول وحجز رحلة 🚀</button>
   </div>
 
-  <!-- 2. الخريطة والطلب -->
+  <!-- 2. واجهة الحجز والتحديد -->
   <div id="app-section" class="card hidden">
-    <h3 style="margin-top:0;" id="app-title">🗺️ حجز وتحديد الرحلة</h3>
+    <h3 style="margin-top:0;" id="app-title">🚏 تحديد الرحلة والموقف</h3>
+
+    <!-- اختيار نظام الرحلة -->
+    <div class="mode-selector">
+      <div id="mode-shared" class="mode-btn active" onclick="switchRideMode('shared')">🚐 خط سير / موقف (تشاركي)</div>
+      <div id="mode-private" class="mode-btn" onclick="switchRideMode('private')">🚗 رحلة خاصة (ملاكي)</div>
+    </div>
     
     <div id="booking-controls">
       <button class="btn-gps" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
+
+      <!-- تفاصيل النقل التشاركي (المواقف والكراسي) -->
+      <div id="shared-options">
+        <label style="font-weight:bold; font-size:13px; color:#555;">وسيلة النقل التشاركية:</label>
+        <select id="vehicle_type">
+          <option value="microbus">🚐 ميكروباص (خطوط سير ومواقف)</option>
+          <option value="suzuki">🚐 سوزوكي (رحلات تشاركية مرنة)</option>
+          <option value="private_shared">🚗 ملاكي تشاركي (حجز مقاعد)</option>
+        </select>
+
+        <label style="font-weight:bold; font-size:13px; color:#555; margin-top:6px; display:block;">عدد المقاعد المحجوزة:</label>
+        <select id="seats_count">
+          <option value="1">مقعد واحد (1)</option>
+          <option value="2">مقعدان (2)</option>
+          <option value="3">3 مقاعد</option>
+          <option value="4">4 مقاعد</option>
+        </select>
+      </div>
       
-      <label style="font-weight:bold; font-size:13px; color:#555;">موقع الركوب (نقطة الانطلاق - أخضر 🟢):</label>
+      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">موقف/نقطة الانطلاق (أخضر 🟢):</label>
       <div style="display:flex; gap:5px;">
-        <input type="text" id="pickup_loc" placeholder="اكتب الشارع أو اضغط على الخريطة" style="margin:0;">
+        <input type="text" id="pickup_loc" placeholder="اكتب الموقف أو اختر من الخريطة" style="margin:0;">
         <button style="width:30%; margin:0; background:#007bff;" onclick="searchPickupLocation()">بحث</button>
       </div>
 
-      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">وجهة النزول (الوصول - أحمر 🔴):</label>
+      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">موقف/وجهة الوصول (أحمر 🔴):</label>
       <div style="display:flex; gap:5px;">
-        <input type="text" id="dropoff_loc" placeholder="اكتب وجهة النزول أو اضغط الخريطة" style="margin:0;">
+        <input type="text" id="dropoff_loc" placeholder="اكتب موقف الوصول أو اضغط الخريطة" style="margin:0;">
         <button style="width:30%; margin:0; background:#007bff;" onclick="searchDropoffLocation()">بحث</button>
       </div>
     </div>
 
-    <!-- صندوق تفاصيل الرحلة والتتبع -->
-    <div id="trip-status">حدد نقطة الانطلاق والوصول ليتم حساب الرحلة أوتوماتيكياً...</div>
+    <!-- تفاصيل التكلفة والتتبع -->
+    <div id="trip-status">حدد نقاط الحركة لحساب تفاصيل خط السير...</div>
 
-    <button id="action-btn" onclick="requestRide()" style="background:#28a745;">🚀 تأكيد وطلب المشوار الآن</button>
-    <button id="cancel-btn" class="btn-danger hidden" onclick="cancelRide()">❌ إلغاء الرحلة</button>
+    <button id="action-btn" onclick="requestRide()" style="background:#28a745;">🚀 تأكيد حجز المقاعد والرحلة</button>
+    <button id="cancel-btn" class="btn-danger hidden" onclick="cancelRide()">❌ إلغاء الطلب</button>
 
     <div id="map"></div>
   </div>
@@ -72,7 +98,7 @@
     let map, routingControl;
     let pickupCoords = null, dropoffCoords = null;
     let pickupMarker = null, dropoffMarker = null, captainMarker = null;
-    let activeBookingId = 1;
+    let currentMode = 'shared'; // shared | private
 
     const greenIcon = L.icon({
       iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -86,13 +112,17 @@
       iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
     });
 
+    window.switchRideMode = function(mode) {
+      currentMode = mode;
+      document.getElementById('mode-shared').classList.toggle('active', mode === 'shared');
+      document.getElementById('mode-private').classList.toggle('active', mode === 'private');
+      document.getElementById('shared-options').style.display = (mode === 'shared') ? 'block' : 'none';
+      if (pickupCoords && dropoffCoords) drawRoute();
+    };
+
     window.handleAuth = function() {
       const phone = document.getElementById('user_phone').value;
-      if (!phone || phone.length < 10) { 
-        alert('أدخل رقم موبايل صحيح من فضلك'); 
-        return; 
-      }
-
+      if (!phone || phone.length < 10) { alert('أدخل رقم موبايل صحيح من فضلك'); return; }
       document.getElementById('auth-section').classList.add('hidden');
       document.getElementById('app-section').classList.remove('hidden');
       setTimeout(initMap, 200);
@@ -101,58 +131,34 @@
     function initMap() {
       if (map) return;
       map = L.map('map').setView([30.0444, 31.2357], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/*/*').addTo(map);
 
       map.on('click', async function(e) {
-        if (activeBookingId && document.getElementById('cancel-btn').classList.contains('hidden') == false) return;
-        const lat = e.latlng.lat, lng = e.latlng.lng;
-        const coords = L.latLng(lat, lng);
-        const address = await getAddressName(lat, lng);
+        if (!document.getElementById('cancel-btn').classList.contains('hidden')) return;
+        const coords = L.latLng(e.latlng.lat, e.latlng.lng);
+        const address = await getAddressName(coords.lat, coords.lng);
 
         if (!pickupCoords) {
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
           if (pickupMarker) { pickupMarker.setLatLng(coords); } 
-          else { 
-            pickupMarker = L.marker(coords, {icon: greenIcon, draggable: true}).addTo(map);
-            pickupMarker.on('dragend', async function(event) {
-              const pos = event.target.getLatLng();
-              pickupCoords = pos;
-              document.getElementById('pickup_loc').value = await getAddressName(pos.lat, pos.lng);
-              if (pickupCoords && dropoffCoords) drawRoute();
-            });
-          }
+          else { pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map); }
           map.setView(coords, 14);
         } else if (!dropoffCoords) {
           dropoffCoords = coords;
           document.getElementById('dropoff_loc').value = address;
           if (dropoffMarker) { dropoffMarker.setLatLng(coords); } 
-          else { 
-            dropoffMarker = L.marker(coords, {icon: redIcon, draggable: true}).addTo(map);
-            dropoffMarker.on('dragend', async function(event) {
-              const pos = event.target.getLatLng();
-              dropoffCoords = pos;
-              document.getElementById('dropoff_loc').value = await getAddressName(pos.lat, pos.lng);
-              if (pickupCoords && dropoffCoords) drawRoute();
-            });
-          }
-          map.setView(coords, 14);
+          else { dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map); }
           drawRoute();
         } else {
           pickupCoords = coords;
           document.getElementById('pickup_loc').value = address;
-          if (pickupMarker) { pickupMarker.setLatLng(coords); } 
-          else { 
-            pickupMarker = L.marker(coords, {icon: greenIcon, draggable: true}).addTo(map);
-          }
+          if (pickupMarker) pickupMarker.setLatLng(coords);
           dropoffCoords = null;
           document.getElementById('dropoff_loc').value = '';
           if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
           if (routingControl) map.removeControl(routingControl);
           document.getElementById('trip-status').style.display = 'none';
-          map.setView(coords, 14);
         }
       });
     }
@@ -168,64 +174,34 @@
 
     window.searchPickupLocation = async function() {
       let query = document.getElementById('pickup_loc').value;
-      if (!query) { alert('اكتب مكان الانطلاق أولاً'); return; }
-      if (!query.includes('القاهرة') && !query.includes('الجيزة') && !query.includes('مصر')) query += ", القاهرة, مصر";
-
+      if (!query) return;
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=eg&limit=1&accept-language=ar`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", مصر")}&limit=1&accept-language=ar`);
         const results = await res.json();
-        if (results && results.length > 0) {
+        if (results.length > 0) {
           pickupCoords = L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon));
-          document.getElementById('pickup_loc').value = results[0].display_name.split(',').slice(0, 3).join(',');
-          
-          if (pickupMarker) {
-            pickupMarker.setLatLng(pickupCoords);
-          } else {
-            pickupMarker = L.marker(pickupCoords, {icon: greenIcon, draggable: true}).addTo(map);
-            pickupMarker.on('dragend', async function(event) {
-              const pos = event.target.getLatLng();
-              pickupCoords = pos;
-              document.getElementById('pickup_loc').value = await getAddressName(pos.lat, pos.lng);
-              if (pickupCoords && dropoffCoords) drawRoute();
-            });
-          }
+          if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
+          else pickupMarker = L.marker(pickupCoords, {icon: greenIcon}).addTo(map);
           map.setView(pickupCoords, 15);
           if (pickupCoords && dropoffCoords) drawRoute();
-        } else {
-          alert('لم يتم العثور على مكان الانطلاق');
         }
-      } catch (e) { alert('خطأ في البحث'); }
+      } catch (e) {}
     };
 
     window.searchDropoffLocation = async function() {
       let query = document.getElementById('dropoff_loc').value;
-      if (!query) { alert('اكتب وجهة الوصول أولاً'); return; }
-      if (!query.includes('القاهرة') && !query.includes('الجيزة') && !query.includes('مصر')) query += ", القاهرة, مصر";
-
+      if (!query) return;
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=eg&limit=1&accept-language=ar`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", مصر")}&limit=1&accept-language=ar`);
         const results = await res.json();
-        if (results && results.length > 0) {
+        if (results.length > 0) {
           dropoffCoords = L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon));
-          document.getElementById('dropoff_loc').value = results[0].display_name.split(',').slice(0, 3).join(',');
-          
-          if (dropoffMarker) {
-            dropoffMarker.setLatLng(dropoffCoords);
-          } else {
-            dropoffMarker = L.marker(dropoffCoords, {icon: redIcon, draggable: true}).addTo(map);
-            dropoffMarker.on('dragend', async function(event) {
-              const pos = event.target.getLatLng();
-              dropoffCoords = pos;
-              document.getElementById('dropoff_loc').value = await getAddressName(pos.lat, pos.lng);
-              if (pickupCoords && dropoffCoords) drawRoute();
-            });
-          }
+          if (dropoffMarker) dropoffMarker.setLatLng(dropoffCoords);
+          else dropoffMarker = L.marker(dropoffCoords, {icon: redIcon}).addTo(map);
           map.setView(dropoffCoords, 15);
           if (pickupCoords && dropoffCoords) drawRoute();
-        } else {
-          alert('لم يتم العثور على وجهة الوصول');
         }
-      } catch (e) { alert('خطأ في البحث'); }
+      } catch (e) {}
     };
 
     function drawRoute() {
@@ -243,17 +219,23 @@
       routingControl.on('routesfound', function(e) {
         const routes = e.routes;
         if (routes && routes.length > 0) {
-          const summary = routes[0].summary;
-          const distanceKm = (summary.totalDistance / 1000).toFixed(1);
-          const durationMin = Math.round(summary.totalTime / 60);
-          const estimatedPrice = Math.round(10 + (distanceKm * 5));
+          const distanceKm = (routes[0].summary.totalDistance / 1000).toFixed(1);
+          const durationMin = Math.round(routes[0].summary.totalTime / 60);
+          
+          let estimatedPrice = 0;
+          if (currentMode === 'shared') {
+            const seats = parseInt(document.getElementById('seats_count').value);
+            estimatedPrice = Math.round((5 + (distanceKm * 2.5)) * seats);
+          } else {
+            estimatedPrice = Math.round(10 + (distanceKm * 5));
+          }
 
           const statusDiv = document.getElementById('trip-status');
           statusDiv.style.display = 'block';
           statusDiv.innerHTML = `
-            📊 <b>تفاصيل الرحلة المتاحة:</b><br>
-            📏 المسافة: ${distanceKm} كم | ⏱️ الوقت التقديري: ${durationMin} دقيقة<br>
-            💰 السعر المقدر: ${estimatedPrice} جنيه
+            📊 <b>تفاصيل رحلة (${currentMode === 'shared' ? 'موقف / تشاركي' : 'خاص ملاكي'}):</b><br>
+            📏 المسافة: ${distanceKm} كم | ⏱️ الوقت: ${durationMin} دقيقة<br>
+            💰 التكلفة المقدرة: <b>${estimatedPrice} جنيه</b>
           `;
         }
       });
@@ -262,80 +244,40 @@
     window.getMyLocation = function() {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(async position => {
-          const lat = position.coords.latitude, lng = position.coords.longitude;
-          pickupCoords = L.latLng(lat, lng);
-          const address = await getAddressName(lat, lng);
-          document.getElementById('pickup_loc').value = address;
-          
-          if (pickupMarker) {
-            pickupMarker.setLatLng(pickupCoords);
-          } else {
-            pickupMarker = L.marker(pickupCoords, {icon: greenIcon, draggable: true}).addTo(map);
-            pickupMarker.on('dragend', async function(event) {
-              const pos = event.target.getLatLng();
-              pickupCoords = pos;
-              document.getElementById('pickup_loc').value = await getAddressName(pos.lat, pos.lng);
-              if (pickupCoords && dropoffCoords) drawRoute();
-            });
-          }
-          map.setView(pickupCoords, 16);
+          const coords = L.latLng(position.coords.latitude, position.coords.longitude);
+          pickupCoords = coords;
+          document.getElementById('pickup_loc').value = await getAddressName(coords.lat, coords.lng);
+          if (pickupMarker) pickupMarker.setLatLng(coords);
+          else pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
+          map.setView(coords, 16);
           if (pickupCoords && dropoffCoords) drawRoute();
-        }, () => { alert('تعذر تحديد موقعك بالـ GPS.'); });
+        });
       }
     };
 
     window.requestRide = function() {
       const pickup = document.getElementById('pickup_loc').value;
       const dropoff = document.getElementById('dropoff_loc').value;
-      if (!pickup || !dropoff) { alert('أكمل بيانات الرحلة'); return; }
+      if (!pickup || !dropoff) { alert('حدد موقف الانطلاق والوصول'); return; }
 
-      // تنفيذ الطلب وتحديث واجهة الراكب فوراً بسلاسة تامة
+      const pin = Math.floor(1000 + Math.random() * 9000);
+      
       document.getElementById('booking-controls').classList.add('hidden');
       document.getElementById('action-btn').classList.add('hidden');
       document.getElementById('cancel-btn').classList.remove('hidden');
-      document.getElementById('app-title').innerText = "🚗 جاري البحث عن كابتن...";
+      document.getElementById('app-title').innerText = "🚏 جاري حجز مقعدك وتواصل الكابتن...";
       
       const statusDiv = document.getElementById('trip-status');
       statusDiv.style.display = 'block';
-      statusDiv.innerHTML = "🔄 تم إرسال طلبك، جاري التواصل مع أقرب كابتن...";
-
-      // الاستماع الحي لقاعدة البيانات (في حال تم قبول الطلب من شاشة الكابتن)
-      listenToBookingStatus();
+      statusDiv.innerHTML = `
+        🔄 <b>تم طلب الرحلة بنجاح!</b><br>
+        🔑 كود الركوب الخاص بك (PIN): <b style="font-size:18px; color:#d9534f;">${pin}</b><br>
+        في انتظار تأكيد الكابتن لخط السير والمقاعد...
+      `;
     };
 
-    function listenToBookingStatus() {
-      supabase.channel('public:bookings')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings' }, payload => {
-          const updated = payload.new;
-          if (updated && (updated.status === 'accepted' || updated.status === 'active')) {
-            document.getElementById('app-title').innerText = "🚗 الكابتن في طريقه إليك!";
-            document.getElementById('trip-status').innerHTML = `
-              ✅ <b>تم قبول الرحلة بواسطة الكابتن!</b><br>
-              📱 يمكنك رؤية حركة الكابتن الحية على الخريطة الآن.
-            `;
-
-            if (updated.captain_lat && updated.captain_lng) {
-              const capLatLng = [updated.captain_lat, updated.captain_lng];
-              if (captainMarker) {
-                captainMarker.setLatLng(capLatLng);
-              } else {
-                captainMarker = L.marker(capLatLng, {
-                  icon: L.icon({ 
-                    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png', 
-                    iconSize: [35, 35], 
-                    iconAnchor: [17, 17] 
-                  })
-                }).addTo(map);
-              }
-              map.setView(capLatLng, 15);
-            }
-          }
-        })
-        .subscribe();
-    }
-
     window.cancelRide = function() {
-      alert('تم إلغاء الرحلة.');
+      alert('تم إلغاء طلب الحجز.');
       location.reload();
     };
   </script>
