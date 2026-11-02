@@ -44,7 +44,7 @@
                 <div class="request-card">
                     <div class="req-info">🟢 رحلة جديدة (UberX Saver) - 25.7 كم</div>
                     <div class="req-loc">من: البحث الجنائي 65، قسم المعادي</div>
-                    <div class="req-loc" style="color: #ef4444;">إلى: Garden 8، القاهرة الجديدة[span_9](start_span)[span_9](end_span)</div>
+                    <div class="req-loc" style="color: #ef4444;">إلى: Garden 8، القاهرة الجديدة</div>
                     <div style="font-size: 14px; color: #38bdf8; font-weight: 900; margin-bottom: 8px;">السعر: 68.67 ج.م</div>
                     <button class="btn-action" onclick="acceptTrip()">اقبل الرحلة ⚡</button>
                 </div>
@@ -58,12 +58,21 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
         let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let map, captainMarker, activeTripId = 1;
+        let map, captainMarker, riderPickupMarker, activeTripId = 1;
+        
         const captainIcon = L.divIcon({ html: '<div style="background-color: #2563eb; width: 24px; height: 24px; border-radius: 50%; border: 3px solid #fff;"></div>', iconSize: [24,24], iconAnchor: [12,12] });
+        const greenPinIcon = L.divIcon({ html: '<div style="background-color: #22c55e; width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid #fff;"></div>', iconSize: [22,22], iconAnchor: [11,22] });
 
         function initMap() {
-            map = L.map('map').setView([29.9602, 31.2569], 13);
+            // إحداثيات مبدئية في المعادي (نقطة انطلاق الراكب)
+            let riderLat = 29.9602, riderLng = 31.2569;
+            
+            map = L.map('map').setView([riderLat, riderLng], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+            // وضع دبوس موقع الراكب الأخضر فوراً على خريطة الكابتن
+            riderPickupMarker = L.marker([riderLat, riderLng], {icon: greenPinIcon}).addTo(map)
+                .bindPopup('موقع الراكب: البحث الجنائي 65، المعادي').openPopup();
 
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition(async position => {
@@ -71,7 +80,7 @@
                     let lng = position.coords.longitude;
 
                     if (!captainMarker) {
-                        captainMarker = L.marker([lat, lng], {icon: captainIcon}).addTo(map).bindPopup('موقعك (الكابتن)').openPopup();
+                        captainMarker = L.marker([lat, lng], {icon: captainIcon}).addTo(map).bindPopup('موقعك (الكابتن)');
                     } else {
                         captainMarker.setLatLng([lat, lng]);
                     }
@@ -89,7 +98,7 @@
             document.getElementById('trip-control-area').innerHTML = `
                 <div class="request-card" style="text-align: center;">
                     <div style="color: #eab308; font-weight: 700; margin-bottom: 8px;">⏳ جار انتظار الراكب...</div>
-                    <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px;">أدخل رقم التعريف الشخصي (PIN) للراكب[span_10](start_span)[span_10](end_span):</div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px;">أدخل رقم التعريف الشخصي (PIN) للراكب:</div>
                     <input type="password" maxlength="4" id="pin-code" class="pin-input" placeholder="----">
                     <button class="btn-action" onclick="verifyPin()">تأكيد وبدء الرحلة 🚀</button>
                 </div>
@@ -101,13 +110,13 @@
             if(pin.length === 4) {
                 document.getElementById('trip-control-area').innerHTML = `
                     <div class="request-card" style="text-align: center;">
-                        <div style="color: #22c55e; font-weight: 900; font-size: 14px; margin-bottom: 6px;">🚗 الرحلة جارية الآن نحو Garden 8[span_11](start_span)[span_11](end_span)</div>
+                        <div style="color: #22c55e; font-weight: 900; font-size: 14px; margin-bottom: 6px;">🚗 الرحلة جارية الآن نحو Garden 8</div>
                         <div style="font-size: 12px; color: #94a3b8;">موقعك يُبث لايف للراكب على الخريطة بنجاح.</div>
                         <button class="btn-action" style="background:#ef4444; margin-top:12px;" onclick="endTrip()">إنهاء الرحلة</button>
                     </div>
                 `;
             } else {
-                alert('الرجاء إدخال رمز الأمان المكون من 4 أرقام صحيحاً[span_12](start_span)[span_12](end_span).');
+                alert('الرجاء إدخال رمز الأمان المكون من 4 أرقام صحيحاً.');
             }
         }
 
