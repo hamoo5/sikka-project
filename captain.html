@@ -21,7 +21,7 @@
         .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; padding: 18px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); margin-bottom: 16px; }
         .card-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
 
-        .map-container { position: relative; width: 100%; height: 220px; margin-bottom: 14px; }
+        .map-container { position: relative; width: 100%; height: 240px; margin-bottom: 14px; }
         #map { width: 100%; height: 100%; border-radius: 14px; border: 1px solid #334155; z-index: 1; }
 
         .request-card { background: #050b14; border: 1px solid #334155; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
@@ -35,7 +35,7 @@
             cursor: pointer; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
         }
 
-        .status-banner { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #22c55e; padding: 10px; border-radius: 12px; text-align: center; font-weight: 700; font-size: 13px; margin-bottom: 12px; }
+        .status-banner { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #22c55e; padding: 10px; border-radius: 12px; text-align: center; font-weight: 700; font-size: 12px; margin-bottom: 12px; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -50,14 +50,14 @@
         </div>
 
         <div class="card-box">
-            <div class="card-title">🟢 رادار استقبال الطلبات الحية</div>
+            <div class="card-title">🟢 رادار الطلبات ومسار التوجيه</div>
 
             <div class="map-container">
                 <div id="map"></div>
             </div>
 
             <div id="requests-container">
-                <div style="text-align: center; color: #64748b; font-size: 12px; padding: 20px;">
+                <div style="text-align: center; color: #64748b; font-size: 12px; padding: 15px;">
                     ⏳ جاري البحث عن رحلات قريبة منك...
                 </div>
             </div>
@@ -73,9 +73,25 @@
         let currentCaptain = null;
         let map;
         let captainMarker = null;
+        let riderPickupMarker = null;
+        let navigationRouteLayer = null;
+
+        // دبابيس مميزة واضحة
+        const captainIcon = L.divIcon({
+            className: 'custom-pin',
+            html: '<div style="background-color: #2563eb; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border: 2px solid #fff;"><div style="width: 8px; height: 8px; background: #fff; border-radius: 50%;"></div></div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+
+        const greenPinIcon = L.divIcon({
+            className: 'custom-pin',
+            html: '<div style="background-color: #22c55e; width: 24px; height: 24px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border: 2px solid #fff;"><div style="width: 6px; height: 6px; background: #fff; border-radius: 50%; transform: rotate(45deg);"></div></div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 24]
+        });
 
         function initCaptainPage() {
-            // بيانات تجريبية مؤقتة للكابتن لحين ربط تسجيل الدخول الخاص به
             currentCaptain = { id: 'cap_01', full_name: 'عبدالله كابتن' };
             document.getElementById('captain-name').innerText = currentCaptain.full_name;
             document.getElementById('captain-initial').innerText = currentCaptain.full_name.charAt(0);
@@ -87,15 +103,15 @@
                 attribution: '&copy; OpenStreetMap'
             }).addTo(map);
 
-            // تتبع موقع الكابتن الحي عبر الـ GPS وإرساله للخريطة
+            // تتبع موقع الكابتن الحي عبر الـ GPS لحظياً
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition(position => {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
 
                     if (!captainMarker) {
-                        captainMarker = L.marker([lat, lng]).addTo(map)
-                            .bindPopup('موقعك الحالي (الكابتن)').openPopup();
+                        captainMarker = L.marker([lat, lng], {icon: captainIcon}).addTo(map)
+                            .bindPopup('موقعك الحالي (الكابتن)');
                         map.setView([lat, lng], 15);
                     } else {
                         captainMarker.setLatLng([lat, lng]);
@@ -107,25 +123,66 @@
         }
 
         async function loadAvailableRequests() {
-            // هنا بيتم جلب الرحلات المتاحة من جدول الرحلات في Supabase
-            // مؤقتين هنعرض نموذج تجريبي لطلب رحلة عشان نتأكد من كفاءة الشاشة
             const container = document.getElementById('requests-container');
+            // طلب تجريبي يوضح إحداثيات الراكب الحقيقية (مثلاً بجوار الكابتن في مصر الجديدة)
             container.innerHTML = `
                 <div class="request-card">
-                    <div class="req-info">🟢 رحلة جديدة (ملاكي) - المسافة: 3.2 كم</div>
-                    <div class="req-loc">من: ميدان التحرير</div>
-                    <div class="req-loc" style="color: #ef4444;">إلى: شارع 26 يوليو، بولاق</div>
-                    <div style="font-size: 13px; color: #38bdf8; font-weight: 800; margin-bottom: 10px;">السعر الإجمالي: 45 ج.م</div>
-                    <button class="btn-accept" onclick="acceptTrip()">قبول الرحلة الان ⚡</button>
+                    <div class="req-info">🟢 رحلة جديدة (ملاكي) - المسافة: 2.5 كم</div>
+                    <div class="req-loc">من: 87 شارع عثمان بن عفان، مصر الجديدة</div>
+                    <div class="req-loc" style="color: #ef4444;">إلى: شارع الحجاز، مصر الجديدة</div>
+                    <div style="font-size: 13px; color: #38bdf8; font-weight: 800; margin-bottom: 10px;">السعر: 35 ج.م</div>
+                    <button class="btn-accept" onclick="acceptTrip(30.0591, 31.3323)">قبول الرحلة وعرض مسار التوجيه ⚡</button>
                 </div>
             `;
         }
 
-        function acceptTrip() {
-            alert('تم قبول الرحلة بنجاح! توجه الآن إلى نقطة ركوب الراكب.');
+        async function acceptTrip(riderLat, riderLng) {
+            alert('تم قبول الرحلة بنجاح! يتم الآن رسم مسار الشوارع للوصول للراكب.');
+            
+            // وضع دبوس الراكب الأخضر على الخريطة
+            if (riderPickupMarker) {
+                map.removeLayer(riderPickupMarker);
+            }
+            riderPickupMarker = L.marker([riderLat, riderLng], {icon: greenPinIcon}).addTo(map)
+                .bindPopup('موقع الراكب (الانطلاق)').openPopup();
+
+            // تحديث حالة الشاشة
             document.getElementById('requests-container').innerHTML = `
-                <div class="status-banner">🚗 الرحلة جارية الآن - التوجيه لموقع الراكب</div>
+                <div class="status-banner">
+                    🚗 الرحلة جارية الآن<br>
+                    <span style="color: #38bdf8; font-weight: 900;">اتبع الخط الأزرق الملون على الشوارع للوصول لموقع الراكب بسلام</span>
+                </div>
             `;
+
+            // جلب مسار التوجيه من الكابتن للراكب باستخدام OSRM ورسمه على الخريطة
+            if (captainMarker) {
+                const capLatLng = captainMarker.getLatLng();
+                try {
+                    const url = `https://router.project-osrm.org/route/v1/driving/${capLatLng.lng},${capLatLng.lat};${riderLng},${riderLat}?overview=full&geometries=geojson`;
+                    let response = await fetch(url);
+                    let data = await response.json();
+
+                    if (data.routes && data.routes.length > 0) {
+                        const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+
+                        if (navigationRouteLayer) {
+                            map.removeLayer(navigationRouteLayer);
+                        }
+
+                        // رسم خط توجيه أزرق فخم وواضح يوضح للكابتن الشوارع اللي هيماشها
+                        navigationRouteLayer = L.polyline(coords, {
+                            color: '#38bdf8',
+                            weight: 7,
+                            opacity: 0.95
+                        }).addTo(map);
+
+                        const bounds = L.latLngBounds([[capLatLng.lat, capLatLng.lng], [riderLat, riderLng]]);
+                        map.fitBounds(bounds, { padding: [50, 50] });
+                    }
+                } catch (e) {
+                    console.log('خطأ في جلب مسار التوجيه');
+                }
+            }
         }
 
         function logout() {
