@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>كومبو - الرحلة المتكاملة</title>
+    <title>كومبو - طلب رحلة</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
         .logout-btn { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 5px 10px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 11px; }
         .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; padding: 18px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); margin-bottom: 16px; }
         .card-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
-        .map-container { position: relative; width: 100%; height: 220px; margin-bottom: 10px; border-radius: 14px; overflow: hidden; border: 1px solid #334155; }
+        .map-container { position: relative; width: 100%; height: 240px; margin-bottom: 14px; border-radius: 14px; overflow: hidden; border: 1px solid #334155; }
         #map { width: 100%; height: 100%; z-index: 1; }
         .form-group { margin-bottom: 12px; text-align: right; }
         .label { font-size: 11px; color: #94a3b8; margin-bottom: 4px; display: block; font-weight: 700; text-transform: uppercase; }
@@ -37,7 +37,7 @@
         <div class="header">
             <div class="user-info">
                 <div class="avatar-circle">م</div>
-                <div class="user-welcome">أهلاً، <span>محمد عبد</span></div>
+                <div class="user-welcome">أهلاً، <span id="rider-name">محمد عبد</span></div>
             </div>
             <button class="logout-btn" onclick="logout()">خروج</button>
         </div>
@@ -47,9 +47,9 @@
             <div class="map-container"><div id="map"></div></div>
 
             <div class="trip-summary">
-                <div><div class="summary-label">المسافة</div><div class="summary-value">25.7 كم</div></div>
-                <div><div class="summary-label">الوقت المتوقع</div><div class="summary-value">27 دقيقة</div></div>
-                <div><div class="summary-label">السعر الإجمالي</div><div class="summary-value">68.67 ج.م</div></div>
+                <div><div class="summary-label">المسافة</div><div class="summary-value" id="dist-val">25.7 كم</div></div>
+                <div><div class="summary-label">الوقت المتوقع</div><div class="summary-value" id="dur-val">27 دقيقة</div></div>
+                <div><div class="summary-label">السعر الإجمالي</div><div class="summary-value" id="price-val">68.67 ج.م</div></div>
             </div>
 
             <div class="form-group">
@@ -75,24 +75,50 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let map;
-        function initMap() {
-            // إحداثيات المعادي و القاهرة الجديدة
-            let pickup = [29.9602, 31.2569];
-            let dropoff = [30.0333, 31.4333];
+        let map, routeLayer;
+        // إحداثيات المعادي (الانطلاق) و القاهرة الجديدة Garden 8 (الوصول)
+        const pickupCoords = [29.9602, 31.2569];
+        const dropoffCoords = [30.0333, 31.4700];
 
-            map = L.map('map').setView(pickup, 12);
+        const greenPin = L.divIcon({ html: '<div style="background:#22c55e;width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;"></div>', iconSize:[22,22], iconAnchor:[11,22] });
+        const redPin = L.divIcon({ html: '<div style="background:#ef4444;width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;"></div>', iconSize:[22,22], iconAnchor:[11,22] });
+
+        async function initMap() {
+            map = L.map('map').setView(pickupCoords, 11);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-            
-            L.marker(pickup, {icon: L.divIcon({html: '<div style="background:#22c55e;width:18px;height:18px;border-radius:50%;border:2px solid #fff"></div>', iconSize:[18,18]})}).addTo(map).bindPopup('الانطلاق');
-            L.marker(dropoff, {icon: L.divIcon({html: '<div style="background:#ef4444;width:18px;height:18px;border-radius:50%;border:2px solid #fff"></div>', iconSize:[18,18]})}).addTo(map).bindPopup('الوصول');
 
-            setTimeout(() => { map.invalidateSize(); }, 500);
+            // 1. رسم الدبوس الأخضر والدبوس الأحمر
+            L.marker(pickupCoords, {icon: greenPin}).addTo(map).bindPopup('الانطلاق: المعادي');
+            L.marker(dropoffCoords, {icon: redPin}).addTo(map).bindPopup('الوصول: Garden 8');
+
+            // 2. جلب خط مسار الشوارع الأزرق الحقيقي بين النقطتين من OSRM
+            try {
+                let url = `https://router.project-osrm.org/route/v1/driving/${pickupCoords[1]},${pickupCoords[0]};${dropoffCoords[1]},${dropoffCoords[0]}?overview=full&geometries=geojson`;
+                let res = await fetch(url);
+                let data = await res.json();
+                if(data.routes && data.routes.length > 0) {
+                    let coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                    
+                    // رسم الخط الأزرق المتصل على الشوارع
+                    routeLayer = L.polyline(coords, {color: '#2563eb', weight: 6, opacity: 0.9}).addTo(map);
+                    
+                    // عمل زوم أوتوماتيك يظهر المسار والنقطتين بالكامل على الشاشة
+                    map.fitBounds(routeLayer.getBounds(), {padding: [30, 30]});
+                }
+            } catch(e) {
+                // خط احتياطي في حالة بطء السيرفر
+                routeLayer = L.polyline([pickupCoords, dropoffCoords], {color: '#2563eb', weight: 5}).addTo(map);
+                map.fitBounds(routeLayer.getBounds(), {padding: [30, 30]});
+            }
+
+            setTimeout(() => { map.invalidateSize(); }, 400);
         }
+
         function requestRide() {
             document.getElementById('booking-card').style.display = 'none';
             document.getElementById('active-trip-card').style.display = 'block';
         }
+
         function logout() { window.location.href = 'index.html'; }
         window.onload = initMap;
     </script>
