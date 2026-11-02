@@ -27,8 +27,8 @@
   <!-- 1. تسجيل دخول الكابتن -->
   <div id="captain-auth" class="card">
     <h2 style="text-align: center;">🚐 دخول الكابتن - موقف</h2>
-    <input type="text" id="captain_name" placeholder="اسم الكابتن">
-    <input type="tel" id="captain_phone" placeholder="رقم الموبايل">
+    <input type="text" id="captain_name" placeholder="اسم الكابتن" value="حمدي">
+    <input type="tel" id="captain_phone" placeholder="رقم الموبايل" value="01118845665">
     <label style="font-weight:bold; font-size:13px; color:#555;">نوع مركبتك في الخط:</label>
     <select id="captain_vehicle">
       <option value="microbus">🚐 ميكروباص (خطوط سير ومواقف)</option>
@@ -36,7 +36,7 @@
       <option value="private_shared">🚗 ملاكي تشاركي (حجز مقاعد)</option>
       <option value="private_special">🚗 رحلة خاصة (ملاكي من الباب للباب)</option>
     </select>
-    <button class="btn-secondary" onclick="loginCaptain()">فتح لوحة التحكم ورادار الخط 🚀</button>
+    <button class="btn-secondary" type="button" onclick="loginCaptain()">فتح لوحة التحكم ورادار الخط 🚀</button>
   </div>
 
   <!-- 2. لوحة تحكم الكابتن -->
@@ -48,7 +48,7 @@
       <p style="text-align: center; color: #777;">جاري البحث عن طلبات قريبة على خط سيرك...</p>
     </div>
 
-    <button id="finish-btn" class="btn-danger hidden" onclick="finishTrip()">🏁 إنهاء الرحلة الحالية وتسليم الركاب</button>
+    <button id="finish-btn" type="button" class="btn-danger hidden" onclick="finishTrip()">🏁 إنهاء الرحلة الحالية وتسليم الركاب</button>
 
     <div id="map"></div>
   </div>
@@ -58,7 +58,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    // بيانات الاتصال الخاصة بمشروعك في Supabase
     const SUPABASE_URL = 'https://pmpzilqpcomoodaksbhw.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -73,7 +72,7 @@
       iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
     });
 
-    window.loginCaptain = function() {
+    function loginCaptain() {
       const name = document.getElementById('captain_name').value;
       const vehicle = document.getElementById('captain_vehicle').value;
       if (!name) { alert('أدخل اسم الكابتن من فضلك'); return; }
@@ -88,7 +87,7 @@
       setTimeout(initMap, 200);
       fetchPendingTrips(vehicle);
       subscribeToNewTrips(vehicle);
-    };
+    }
 
     function initMap() {
       if (map) return;
@@ -143,13 +142,13 @@
             <p><b>💺 المقاعد المحجوزة:</b> ${trip.seats_count} مقعد</p>
             <p><b>📍 التحرك:</b> ${trip.pickup_location} ➔ ${trip.dropoff_location}</p>
             <p><b>🔑 كود التحقق (PIN):</b> <span style="color:#d9534f; font-weight:bold; font-size:16px;">${trip.pin_code}</span></p>
-            <button onclick="acceptTrip('${trip.id}')" style="background:#28a745; margin-top:5px;">✅ قبول الرحلة وبدء التحميل</button>
+            <button type="button" onclick="acceptTrip('${trip.id}')" style="background:#28a745; margin-top:5px;">✅ قبول الرحلة وبدء التحميل</button>
           </div>
         `;
       });
     }
 
-    window.acceptTrip = async function(tripId) {
+    async function acceptTrip(tripId) {
       activeTripId = tripId;
       const { error } = await supabase
         .from('trips')
@@ -170,15 +169,15 @@
       `;
       document.getElementById('finish-btn').classList.remove('hidden');
       document.getElementById('dashboard-title').innerText = "🚐 رحلة نشطة - خدمة الموقف";
-    };
+    }
 
-    window.finishTrip = async function() {
+    async function finishTrip() {
       if (activeTripId) {
         await supabase.from('trips').update({ status: 'completed' }).eq('id', activeTripId);
       }
       alert('تم إنهاء الرحلة بنجاح وإغلاق الحسابات!');
       location.reload();
-    };
+    }
   </script>
 </body>
 </html>
