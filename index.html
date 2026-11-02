@@ -16,6 +16,8 @@
         .select-box { width: 100%; padding: 14px; margin: 10px 0; border-radius: 10px; background: #0f172a; color: #fff; border: 1px solid #334155; font-size: 15px; box-sizing: border-box; }
         .hidden-step { display: none; }
         .badge { display: inline-block; background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 5px 12px; border-radius: 20px; font-size: 12px; margin-bottom: 15px; font-weight: 600; }
+        .link-text { margin-top: 12px; font-size: 13px; color: #38bdf8; cursor: pointer; display: inline-block; }
+        .link-text:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -31,11 +33,10 @@
             <button class="btn" onclick="proceedNextStep()">متابعة ⚡</button>
         </div>
 
-        <!-- الخطوة الثانية: كتابة كلمة المرور وباقي البيانات -->
+        <!-- الخطوة الثانية: كتابة كلمة المرور أو تحديثها -->
         <div id="step-extra-details" class="hidden-step">
             <input type="text" id="user-name" class="input-field" placeholder="الاسم بالكامل">
             
-            <!-- حقل كلمة المرور متاح بوضوح -->
             <input type="password" id="user-password" class="input-field" placeholder="كلمة المرور">
             
             <div id="role-selection-box">
@@ -47,7 +48,14 @@
             </div>
 
             <button class="btn" id="action-btn-text" onclick="executeAuthAction()">تسجيل الحساب وانطلاق 🚀</button>
-            <p style="margin-top: 15px; font-size: 12px; color: #38bdf8; cursor: pointer;" onclick="resetForm()">← تغيير رقم الموبايل</p>
+            
+            <!-- زر نسيت كلمة المرور (يظهر فقط للمستخدم القديم) -->
+            <div id="forgot-password-container" style="display:none;">
+                <span class="link-text" onclick="enablePasswordReset()">نسيت كلمة المرور القديمة؟ 🔑</span>
+            </div>
+
+            <br>
+            <span class="link-text" onclick="resetForm()" style="color: #94a3b8; font-size: 12px;">← تغيير رقم الموبايل</span>
         </div>
     </div>
 
@@ -57,6 +65,7 @@
         let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         let foundExistingUser = null;
+        let isResettingPassword = false;
 
         async function proceedNextStep() {
             const phone = document.getElementById('user-phone').value.trim();
@@ -67,35 +76,46 @@
                 return;
             }
 
-            // الاستعلام من قاعدة البيانات Supabase
             let { data: user } = await supabaseClient.from('profiles').select('*').eq('phone', phone).single();
 
-            // إخفاء خطوة رقم الموبايل وإظهار خطوة إدخال كلمة المرور
             document.getElementById('step-phone').style.display = 'none';
             const extraBox = document.getElementById('step-extra-details');
             extraBox.style.display = 'block';
+            isResettingPassword = false;
 
             if (user) {
-                // مستخدم قديم -> إظهار كلمة المرور فقط
                 foundExistingUser = user;
                 document.getElementById('form-title').innerText = `مرحباً بعودتك، ${user.full_name || 'بطل كومبو'}`;
                 document.getElementById('form-subtitle').innerText = 'أدخل كلمة المرور الخاصة بك لتسجيل الدخول';
                 
                 document.getElementById('user-name').style.display = 'none';
                 document.getElementById('user-password').style.display = 'block';
+                document.getElementById('user-password').placeholder = 'كلمة المرور الحالية';
                 document.getElementById('role-selection-box').style.display = 'none';
                 document.getElementById('action-btn-text').innerText = 'تسجيل الدخول الفوري 🔓';
+                document.getElementById('forgot-password-container').style.display = 'block';
             } else {
-                // مستخدم جديد -> إظهار كل الحقول للتسجيل
                 foundExistingUser = null;
                 document.getElementById('form-title').innerText = 'حساب جديد في كومبو';
                 document.getElementById('form-subtitle').innerText = 'أكمل بياناتك البسيطة لتنضم إلينا';
                 
                 document.getElementById('user-name').style.display = 'block';
                 document.getElementById('user-password').style.display = 'block';
+                document.getElementById('user-password').placeholder = 'كلمة المرور الجديدة';
                 document.getElementById('role-selection-box').style.display = 'block';
                 document.getElementById('action-btn-text').innerText = 'تسجيل الحساب وانطلاق 🚀';
+                document.getElementById('forgot-password-container').style.display = 'none';
             }
+        }
+
+        function enablePasswordReset() {
+            isResettingPassword = true;
+            document.getElementById('form-title').innerText = 'إعادة تعيين كلمة المرور';
+            document.getElementById('form-subtitle').innerText = 'أدخل كلمة المرور الجديدة لحسابك';
+            document.getElementById('user-password').value = '';
+            document.getElementById('user-password').placeholder = 'كلمة المرور الجديدة';
+            document.getElementById('action-btn-text').innerText = 'حفظ وتحديث كلمة المرور 🔒';
+            document.getElementById('forgot-password-container').style.display = 'none';
         }
 
         async function executeAuthAction() {
@@ -108,14 +128,31 @@
             }
 
             if (foundExistingUser) {
-                // تسجيل الدخول
-                if (foundExistingUser.password && foundExistingUser.password !== password) {
-                    alert('كلمة المرور غير صحيحة!');
-                    return;
+                if (isResettingPassword) {
+                    // تحديث كلمة المرور في قاعدة البيانات
+                    const { error } = await supabaseClient
+                        .from('profiles')
+                        .update({ password: password })
+                        .eq('id', foundExistingUser.id);
+
+                    if (error) {
+                        alert('خطأ أثناء تحديث كلمة المرور: ' + error.message);
+                        return;
+                    }
+
+                    alert('تم تحديث كلمة المرور بنجاح! جاري تسجيل الدخول...');
+                    foundExistingUser.password = password;
+                    currentUserRedirect(foundExistingUser);
+                } else {
+                    // تسجيل الدخول العادي
+                    if (foundExistingUser.password && foundExistingUser.password !== password) {
+                        alert('كلمة المرور غير صحيحة!');
+                        return;
+                    }
+                    currentUserRedirect(foundExistingUser);
                 }
-                currentUserRedirect(foundExistingUser);
             } else {
-                // إنشـاء حساب جديد
+                // إنشاء حساب جديد
                 const name = document.getElementById('user-name').value.trim();
                 const role = document.getElementById('user-role').value;
 
@@ -150,6 +187,7 @@
             document.getElementById('form-title').innerText = 'أهلاً بك في رحلتك';
             document.getElementById('form-subtitle').innerText = 'أدخل رقم الموبايل للبدء فوراً';
             document.getElementById('user-password').value = '';
+            isResettingPassword = false;
         }
 
         function currentUserRedirect(user) {
