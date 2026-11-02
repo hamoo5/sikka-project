@@ -11,158 +11,93 @@
         * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
         body { margin: 0; padding: 0; background: #070b19; color: #f8fafc; min-height: 100vh; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 440px; padding: 16px; margin: auto; }
-        
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; background: #0f172a; padding: 12px 16px; border-radius: 16px; border: 1px solid #1e293b; }
         .user-info { display: flex; align-items: center; gap: 10px; }
         .avatar-circle { width: 34px; height: 34px; background: linear-gradient(135deg, #38bdf8, #2563eb); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px; color: #fff; }
         .user-welcome { font-size: 13px; font-weight: 700; color: #38bdf8; }
         .logout-btn { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 5px 10px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 11px; }
-
         .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; padding: 18px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); margin-bottom: 16px; }
         .card-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
-
         .map-container { position: relative; width: 100%; height: 210px; margin-bottom: 10px; }
         #map { width: 100%; height: 100%; border-radius: 14px; border: 1px solid #334155; z-index: 1; }
-
-        .gps-btn {
-            position: absolute; bottom: 12px; left: 12px; z-index: 1000;
-            background: #0f172a; color: #38bdf8; border: 1px solid #38bdf8;
-            padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 700;
-            cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-        
+        .gps-btn { position: absolute; bottom: 12px; left: 12px; z-index: 1000; background: #0f172a; color: #38bdf8; border: 1px solid #38bdf8; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; }
         .form-group { margin-bottom: 12px; text-align: right; }
         .label { font-size: 11px; color: #94a3b8; margin-bottom: 4px; display: block; font-weight: 700; text-transform: uppercase; }
-        
         .input-row { display: flex; gap: 6px; }
-        .input-box {
-            flex: 1; padding: 11px; border-radius: 12px;
-            background: #050b14; border: 1px solid #334155;
-            color: #fff; font-size: 13px;
-        }
-        .input-box:focus { border-color: #38bdf8; outline: none; }
-        
-        .search-btn {
-            background: #1e293b; color: #38bdf8; border: 1px solid #334155;
-            padding: 0 12px; border-radius: 12px; font-weight: 700; font-size: 12px; cursor: pointer;
-        }
-        .search-btn:hover { background: #334155; }
-
-        .trip-summary {
-            background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3);
-            border-radius: 12px; padding: 12px; margin-bottom: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center;
-        }
+        .input-box { flex: 1; padding: 11px; border-radius: 12px; background: #050b14; border: 1px solid #334155; color: #fff; font-size: 13px; }
+        .search-btn { background: #1e293b; color: #38bdf8; border: 1px solid #334155; padding: 0 12px; border-radius: 12px; font-weight: 700; font-size: 12px; cursor: pointer; }
+        .trip-summary { background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 12px; margin-bottom: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center; }
         .summary-item { display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .summary-label { font-size: 9px; color: #94a3b8; font-weight: 700; margin-bottom: 2px; }
         .summary-value { font-size: 12px; color: #38bdf8; font-weight: 900; }
-
         .vehicle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
-        .v-card {
-            background: #050b14; border: 1px solid #334155;
-            padding: 8px 4px; border-radius: 12px; text-align: center;
-            cursor: pointer; transition: all 0.2s;
-        }
+        .v-card { background: #050b14; border: 1px solid #334155; padding: 8px 4px; border-radius: 12px; text-align: center; cursor: pointer; }
         .v-card.active { border-color: #38bdf8; background: rgba(56, 189, 248, 0.08); }
         .v-name { font-size: 11px; font-weight: 700; color: #cbd5e1; margin-top: 4px; }
-        .v-card.active .v-name { color: #38bdf8; }
-
-        .btn-request {
-            background: linear-gradient(135deg, #38bdf8, #2563eb);
-            color: #fff; border: none; padding: 14px; width: 100%;
-            border-radius: 12px; font-weight: 800; font-size: 15px;
-            cursor: pointer; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
-            margin-top: 6px;
-        }
-
-        .active-trip-box { background: rgba(56, 189, 248, 0.05); border: 1px solid #38bdf8; border-radius: 16px; padding: 20px; text-align: center; }
+        .btn-request { background: linear-gradient(135deg, #38bdf8, #2563eb); color: #fff; border: none; padding: 14px; width: 100%; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 6px; }
+        .active-trip-box { background: rgba(56, 189, 248, 0.05); border: 1px solid #38bdf8; border-radius: 16px; padding: 20px; text-align: center; display: none; }
         .pin-display { font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #38bdf8; margin: 12px 0; background: #050b14; padding: 10px; border-radius: 12px; border: 1px dashed #38bdf8; }
         .status-badge { background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); padding: 5px 14px; border-radius: 16px; font-size: 12px; font-weight: 700; display: inline-block; }
     </style>
 </head>
 <body>
-
     <div class="container">
         <div class="header">
             <div class="user-info">
                 <div class="avatar-circle" id="user-initial">ك</div>
-                <div class="user-welcome">أهلاً، <span id="rider-name">جاري التحميل...</span></div>
+                <div class="user-welcome">أهلاً، <span id="rider-name">محمد عبد</span></div>
             </div>
             <button class="logout-btn" onclick="logout()">خروج</button>
         </div>
 
         <div class="card-box" id="booking-card">
             <div class="card-title">🗺️ حجز رحلة - مسار الشوارع الذكي</div>
-
             <div class="map-container">
                 <div id="map"></div>
                 <button class="gps-btn" onclick="goToCurrentLocation()">🎯 موقعي</button>
             </div>
 
             <div class="trip-summary">
-                <div class="summary-item">
-                    <div class="summary-label">المسافة</div>
-                    <div class="summary-value" id="trip-distance">-- كم</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">الوقت</div>
-                    <div class="summary-value" id="trip-duration">-- دقيقة</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">حالة الطريق</div>
-                    <div class="summary-value" id="traffic-status" style="font-size: 11px;">--</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">السعر</div>
-                    <div class="summary-value" id="trip-price">-- ج.م</div>
+                <div class="summary-item"><div class="summary-label">المسافة</div><div class="summary-value" id="trip-distance">-- كم</div></div>
+                <div class="summary-item"><div class="summary-label">الوقت</div><div class="summary-value" id="trip-duration">-- دقيقة</div></div>
+                <div class="summary-item"><div class="summary-label">حالة الطريق</div><div class="summary-value" id="traffic-status" style="font-size: 11px;">--</div></div>
+                <div class="summary-item"><div class="summary-label">السعر</div><div class="summary-value" id="trip-price">-- ج.م</div></div>
+            </div>
+
+            <div class="form-group">
+                <label class="label" style="color: #22c55e;">🟢 نقطة الانطلاق</label>
+                <div class="input-row">
+                    <input type="text" id="pickup-loc" class="input-box" value="ميدان التحرير، قصر الدوبارة، القاهرة">
+                    <button class="search-btn" onclick="searchLocation('pickup')">بحث</button>
                 </div>
             </div>
 
             <div class="form-group">
-                <label class="label" style="color: #22c55e;">🟢 1. نقطة الانطلاق (مكان الركوب)</label>
+                <label class="label" style="color: #ef4444;">🔴 نقطة الوصول</label>
                 <div class="input-row">
-                    <input type="text" id="pickup-loc" class="input-box" placeholder="اختر من الخريطة أو اكتب...">
-                    <button class="search-btn" onclick="searchLocation('pickup')">بحث 🔍</button>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="label" style="color: #ef4444;">🔴 2. نقطة الوصول (مكان النزول)</label>
-                <div class="input-row">
-                    <input type="text" id="dropoff-loc" class="input-box" placeholder="مثال: وسط البلد، مكرم عبيد...">
-                    <button class="search-btn" onclick="searchLocation('dropoff')">بحث 🔍</button>
+                    <input type="text" id="dropoff-loc" class="input-box" value="13A، شارع بستان الدكم، عرابي">
+                    <button class="search-btn" onclick="searchLocation('dropoff')">بحث</button>
                 </div>
             </div>
 
             <div class="form-group">
                 <label class="label">فئة المركبة</label>
                 <div class="vehicle-grid">
-                    <div class="v-card active" onclick="selectVehicle('ملاكي', this, 10, 2.0)">
-                        <div style="font-size: 16px;">🚗</div>
-                        <div class="v-name">ملاكي</div>
-                    </div>
-                    <div class="v-card" onclick="selectVehicle('سكوتر', this, 7, 1.5)">
-                        <div style="font-size: 16px;">🛵</div>
-                        <div class="v-name">سكوتر</div>
-                    </div>
-                    <div class="v-card" onclick="selectVehicle('سوزوكي', this, 8, 1.8)">
-                        <div style="font-size: 16px;">🚐</div>
-                        <div class="v-name">سوزوكي</div>
-                    </div>
-                    <div class="v-card" onclick="selectVehicle('ميكروباص', this, 5, 1.2)">
-                        <div style="font-size: 16px;">🚌</div>
-                        <div class="v-name">ميكروباص</div>
-                    </div>
+                    <div class="v-card active" onclick="selectVehicle('ملاكي', this, 10, 2.0)"><div style="font-size: 16px;">🚗</div><div class="v-name">ملاكي</div></div>
+                    <div class="v-card" onclick="selectVehicle('سكوتر', this, 7, 1.5)"><div style="font-size: 16px;">🛵</div><div class="v-name">سكوتر</div></div>
+                    <div class="v-card" onclick="selectVehicle('سوزوكي', this, 8, 1.8)"><div style="font-size: 16px;">🚐</div><div class="v-name">سوزوكي</div></div>
+                    <div class="v-card" onclick="selectVehicle('ميكروباص', this, 5, 1.2)"><div style="font-size: 16px;">🚌</div><div class="v-name">ميكروباص</div></div>
                 </div>
             </div>
 
             <button class="btn-request" onclick="requestRide()">تأكيد وطلب الرحلة ⚡</button>
         </div>
 
-        <div class="active-trip-box" id="active-trip-card" style="display:none;">
-            <span class="status-badge" id="trip-status">⏳ في انتظار قبول الكابتن...</span>
+        <div class="active-trip-box" id="active-trip-card">
+            <span class="status-badge" id="trip-status">⏳ الكابتن في طريقه إليك...</span>
             <div style="font-size: 12px; color: #94a3b8; margin-top: 14px; font-weight: 600;">رمز الأمان للرحلة (PIN):</div>
-            <div class="pin-display" id="trip-pin">----</div>
-            <p style="font-size: 11px; color: #cbd5e1; margin: 0; line-height: 1.5;">أعطِ هذا الرقم للكابتن عند ركوب السيارة.</p>
+            <div class="pin-display" id="trip-pin">4829</div>
+            <p style="font-size: 11px; color: #cbd5e1; margin: 0; line-height: 1.5;">تابع تحرك الكابتن لايف على الخريطة بالأعلى.</p>
         </div>
     </div>
 
@@ -172,236 +107,75 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
         let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let currentUser = null;
-        let selectedVehicleType = 'ملاكي';
-        let ratePerKm = 10;
-        let ratePerMinute = 2.0;
-        let map;
-        let pickupMarker, dropoffMarker;
-        let routeLayer = null;
-        let rawRouteDistanceKm = 0;
-        let rawRouteDurationMin = 0;
+        let map, pickupMarker, dropoffMarker, captainLiveMarker, routeLayer;
+        let ratePerKm = 10, ratePerMinute = 2.0;
+        let rawRouteDistanceKm = 3.2, rawRouteDurationMin = 5;
 
-        // دبابيس مميزة واضحة وثابتة (أخضر للانطلاق، أحمر للوصول)
-        const greenPinIcon = L.divIcon({
-            className: 'custom-pin',
-            html: '<div style="background-color: #22c55e; width: 24px; height: 24px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border: 2px solid #fff;"><div style="width: 6px; height: 6px; background: #fff; border-radius: 50%; transform: rotate(45deg);"></div></div>',
-            iconSize: [24, 24],
-            iconAnchor: [12, 24]
-        });
+        const greenPin = L.divIcon({ html: '<div style="background-color: #22c55e; width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid #fff;"></div>', iconSize: [22,22], iconAnchor: [11,22] });
+        const redPin = L.divIcon({ html: '<div style="background-color: #ef4444; width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid #fff;"></div>', iconSize: [22,22], iconAnchor: [11,22] });
+        const captainPin = L.divIcon({ html: '<div style="background-color: #2563eb; width: 24px; height: 24px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>', iconSize: [24,24], iconAnchor: [12,12] });
 
-        const redPinIcon = L.divIcon({
-            className: 'custom-pin',
-            html: '<div style="background-color: #ef4444; width: 24px; height: 24px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border: 2px solid #fff;"><div style="width: 6px; height: 6px; background: #fff; border-radius: 50%; transform: rotate(45deg);"></div></div>',
-            iconSize: [24, 24],
-            iconAnchor: [12, 24]
-        });
-
-        function initRiderPage() {
-            const stored = localStorage.getItem('combo_user');
-            if (!stored) {
-                window.location.href = 'rider-register.html';
-                return;
-            }
-            currentUser = JSON.parse(stored);
-            const name = currentUser.full_name || 'راكب كومبو';
-            document.getElementById('rider-name').innerText = name;
-            document.getElementById('user-initial').innerText = name.charAt(0);
-
+        function initMap() {
             map = L.map('map').setView([30.0444, 31.2357], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap'
-            }).addTo(map);
+            pickupMarker = L.marker([30.0444, 31.2357], {icon: greenPin}).addTo(map).bindPopup('الانطلاق');
+            dropoffMarker = L.marker([30.0550, 31.2450], {icon: redPin}).addTo(map).bindPopup('الوصول');
 
-            // إحداثيات افتراضية واضحة داخل القاهرة الكبرى
-            let pLat = 30.0444, pLng = 31.2357;
-            let dLat = 30.0550, dLng = 31.2450;
-
-            pickupMarker = L.marker([pLat, pLng], {draggable: true, icon: greenPinIcon}).addTo(map)
-                .bindPopup('نقطة الانطلاق (أخضر)');
-
-            dropoffMarker = L.marker([dLat, dLng], {draggable: true, icon: redPinIcon}).addTo(map)
-                .bindPopup('نقطة الوصول (أحمر)');
-
-            fetchAndDrawRoute([pLng, pLat], [dLng, dLat]);
-
-            pickupMarker.on('dragend', async function(e) {
-                const pos = e.target.getLatLng();
-                await updateAddressFromLatLng(pos.lat, pos.lng, 'pickup');
-                updateRoute();
-            });
-
-            dropoffMarker.on('dragend', async function(e) {
-                const pos = e.target.getLatLng();
-                await updateAddressFromLatLng(pos.lat, pos.lng, 'dropoff');
-                updateRoute();
-            });
-
-            updateAddressFromLatLng(pLat, pLng, 'pickup');
-            updateAddressFromLatLng(dLat, dLng, 'dropoff');
+            fetchAndDrawRoute([31.2357, 30.0444], [31.2450, 30.0550]);
+            listenToCaptainLive();
         }
 
-        async function fetchAndDrawRoute(startCoord, endCoord) {
+        async function fetchAndDrawRoute(start, end) {
             try {
-                const url = `https://router.project-osrm.org/route/v1/driving/${startCoord[0]},${startCoord[1]};${endCoord[0]},${endCoord[1]}?overview=full&geometries=geojson`;
-                let response = await fetch(url);
-                let data = await response.json();
-
-                if (data.routes && data.routes.length > 0) {
-                    const route = data.routes[0];
-                    const coords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-
+                let res = await fetch(`https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`);
+                let data = await res.json();
+                if(data.routes && data.routes.length > 0) {
+                    let route = data.routes[0];
                     rawRouteDistanceKm = route.distance / 1000;
                     rawRouteDurationMin = route.duration / 60;
-
                     document.getElementById('trip-distance').innerText = rawRouteDistanceKm.toFixed(1) + ' كم';
-
-                    let speedKmh = rawRouteDistanceKm / (rawRouteDurationMin / 60);
-                    let routeColor = '#2563eb';
-                    let trafficText = '🔵 حركة مرنة';
-
-                    if (speedKmh < 12) {
-                        routeColor = '#dc2626';
-                        trafficText = '🔴 زحمة شديدة';
-                        rawRouteDurationMin *= 1.3;
-                    } else if (speedKmh < 22) {
-                        routeColor = '#ea580c';
-                        trafficText = '🟠 حركة متوسطة';
-                        rawRouteDurationMin *= 1.15;
-                    } else {
-                        routeColor = '#16a34a';
-                        trafficText = '🟢 طريق سالك';
-                    }
-
-                    document.getElementById('traffic-status').innerText = trafficText;
-                    document.getElementById('traffic-status').style.color = routeColor;
-
-                    updateTripCalculations();
-
-                    if (routeLayer) {
-                        map.removeLayer(routeLayer);
-                    }
-
-                    routeLayer = L.polyline(coords, {
-                        color: routeColor,
-                        weight: 7,
-                        opacity: 0.95
-                    }).addTo(map);
-
-                    // ضبط زاوية الرؤية على الخريطة لتشمل النقطتين معاً بوضوح
-                    const bounds = L.latLngBounds([startCoord[1], startCoord[0]], [endCoord[1], endCoord[0]]);
-                    map.fitBounds(bounds, { padding: [40, 40] });
+                    document.getElementById('trip-duration').innerText = Math.ceil(rawRouteDurationMin) + ' دقيقة';
+                    document.getElementById('trip-price').innerText = Math.round(15 + (rawRouteDistanceKm * ratePerKm) + (rawRouteDurationMin * ratePerMinute)) + ' ج.م';
+                    document.getElementById('traffic-status').innerText = '🟢 سالك';
+                    
+                    let coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+                    if(routeLayer) map.removeLayer(routeLayer);
+                    routeLayer = L.polyline(coords, {color: '#2563eb', weight: 6, opacity: 0.9}).addTo(map);
+                    map.fitBounds(routeLayer.getBounds(), {padding: [30,30]});
                 }
-            } catch (err) {
-                console.log('خطأ في جلب المسار');
-            }
+            } catch(e) {}
         }
 
-        function updateTripCalculations() {
-            let finalDuration = Math.ceil(rawRouteDurationMin);
-            if (finalDuration < 2) finalDuration = 2;
-            document.getElementById('trip-duration').innerText = finalDuration + ' دقيقة';
-
-            let baseFare = 15;
-            let distanceCost = rawRouteDistanceKm * ratePerKm;
-            let timeCost = finalDuration * ratePerMinute;
-            
-            let calculatedPrice = baseFare + distanceCost + timeCost;
-            document.getElementById('trip-price').innerText = Math.round(calculatedPrice) + ' ج.م';
-        }
-
-        function updateRoute() {
-            const p = pickupMarker.getLatLng();
-            const d = dropoffMarker.getLatLng();
-            fetchAndDrawRoute([p.lng, p.lat], [d.lng, d.lat]);
-        }
-
-        async function updateAddressFromLatLng(lat, lng, type) {
-            const inputId = type === 'pickup' ? 'pickup-loc' : 'dropoff-loc';
-            try {
-                let response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`);
-                let data = await response.json();
-                if (data.display_name) {
-                    document.getElementById(inputId).value = data.display_name;
-                }
-            } catch (err) {
-                document.getElementById(inputId).value = `خط عرض: ${lat.toFixed(4)}, طول: ${lng.toFixed(4)}`;
-            }
-        }
-
-        async function searchLocation(type) {
-            const inputId = type === 'pickup' ? 'pickup-loc' : 'dropoff-loc';
-            const query = document.getElementById(inputId).value.trim();
-
-            if (!query) return;
-
-            try {
-                let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&accept-language=ar&limit=1`);
-                let results = await response.json();
-
-                if (results && results.length > 0) {
-                    const lat = parseFloat(results[0].lat);
-                    const lon = parseFloat(results[0].lon);
-                    const displayName = results[0].display_name;
-
-                    document.getElementById(inputId).value = displayName;
-
-                    if (type === 'pickup') {
-                        pickupMarker.setLatLng([lat, lon]);
-                    } else {
-                        dropoffMarker.setLatLng([lat, lon]);
+        function listenToCaptainLive() {
+            supabaseClient.channel('live-tracking')
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips' }, payload => {
+                    let lat = payload.new.captain_lat;
+                    let lng = payload.new.captain_lng;
+                    if(lat && lng) {
+                        if(!captainLiveMarker) {
+                            captainLiveMarker = L.marker([lat, lng], {icon: captainPin}).addTo(map).bindPopup('الكابتن يتحرك إليك').openPopup();
+                        } else {
+                            captainLiveMarker.setLatLng([lat, lng]);
+                        }
                     }
-                    updateRoute();
-                }
-            } catch (e) {}
+                }).subscribe();
         }
 
-        function goToCurrentLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    pickupMarker.setLatLng([lat, lon]);
-                    map.setView([lat, lon], 15);
-                    updateAddressFromLatLng(lat, lon, 'pickup');
-                    updateRoute();
-                });
-            }
-        }
-
-        function selectVehicle(type, element, kmRate, minRate) {
-            selectedVehicleType = type;
-            ratePerKm = kmRate;
-            ratePerMinute = minRate;
-            document.querySelectorAll('.v-card').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
-            updateTripCalculations();
-        }
-
-        async function requestRide() {
-            const pickup = document.getElementById('pickup-loc').value.trim();
-            const dropoff = document.getElementById('dropoff-loc').value.trim();
-
-            if (!pickup || !dropoff) {
-                alert('يرجى تحديد نقطة الانطلاق والوصول بدقة.');
-                return;
-            }
-
-            const generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
-
+        function requestRide() {
             document.getElementById('booking-card').style.display = 'none';
             document.getElementById('active-trip-card').style.display = 'block';
-            document.getElementById('trip-pin').innerText = generatedPin;
         }
 
-        function logout() {
-            localStorage.removeItem('combo_user');
-            window.location.href = 'rider-register.html';
+        function selectVehicle(type, el, km, min) {
+            ratePerKm = km; ratePerMinute = min;
+            document.querySelectorAll('.v-card').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            fetchAndDrawRoute([31.2357, 30.0444], [31.2450, 30.0550]);
         }
 
-        initRiderPage();
+        function logout() { localStorage.removeItem('combo_user'); window.location.href = 'rider-register.html'; }
+        initMap();
     </script>
 </body>
 </html>
