@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق كومبو - التتبع الحي والمسار</title>
+    <title>تطبيق كومبو - التتبع الحي واتجاهات الرحلة</title>
     <!-- مكتبة Leaflet للخرائط -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -24,7 +24,7 @@
 
     <div class="top-bar">
         <button class="tab-btn active" onclick="switchView('rider')" id="btn-rider">واجهة الراكب</button>
-        <button class="tab-btn" onclick="switchView('driver')" id="btn-driver">واجهة السائق</button>
+        <button class="tab-btn" onclick="switchView('driver')" id="btn-driver">واجهة الكابتن</button>
     </div>
 
     <div id="map"></div>
@@ -63,7 +63,7 @@
                     attribution: '© OpenStreetMap'
                 }).addTo(map);
 
-                pickupMarker = L.marker([pickupCoords.lat, pickupCoords.lng]).addTo(map).bindPopup('موقع الانطلاق').openPopup();
+                pickupMarker = L.marker([pickupCoords.lat, pickupCoords.lng]).addTo(map).bindPopup('موقع الانطلاق (الراكب)').openPopup();
 
                 map.on('click', function(e) {
                     if (currentView === 'rider') {
@@ -135,7 +135,7 @@
             } else {
                 activeTripId = data[0].id;
                 document.getElementById('panel-content').innerHTML = `
-                    <p style="margin: 5px 0;">جارٍ البحث عن سائق قريب...</p>
+                    <p style="margin: 5px 0;">جارٍ البحث عن كابتن قريب...</p>
                     <p style="color: #38bdf8; margin: 5px 0;">كود التأكيد الخاص بك: <b>${otp}</b></p>
                 `;
                 listenToTrip(activeTripId);
@@ -148,16 +148,27 @@
                     const trip = payload.new;
                     if (trip.status === 'ACCEPTED') {
                         document.getElementById('panel-content').innerHTML = `
-                            <p style="color:#22c55e; font-weight: bold; margin: 5px 0;">تم قبول رحلتك! السائق في الطريق إليك.</p>
+                            <p style="color:#22c55e; font-weight: bold; margin: 5px 0;">تم قبول رحلتك! الكابتن يتحرك في الطريق إليك.</p>
                             <p style="margin: 5px 0;">كود التأكيد: <b>${trip.otp_code}</b></p>
                         `;
+                        
+                        // تحديث موقع الكابتن على خريطة الراكب إن توفرت إحداثياته
+                        if (trip.driver_lat && trip.driver_lng) {
+                            if (driverMarker) {
+                                driverMarker.setLatLng([trip.driver_lat, trip.driver_lng]);
+                            } else {
+                                driverMarker = L.marker([trip.driver_lat, trip.driver_lng], {
+                                    icon: L.divIcon({className: 'driver-icon', html: '🚗', iconSize: [30, 30]})
+                                }).addTo(map).bindPopup('موقع الكابتن الحالي');
+                            }
+                        }
                     }
                 })
                 .subscribe();
         }
 
         function renderDriverPanel() {
-            document.getElementById('panel-title').innerText = "واجهة السائق - الطلبات المتاحة";
+            document.getElementById('panel-title').innerText = "واجهة الكابتن - الطلبات المتاحة";
             document.getElementById('panel-content').innerHTML = `
                 <p style="margin: 5px 0;">البحث عن الطلبات القريبة...</p>
                 <button class="btn" onclick="fetchAvailableTrips()">تحديث قائمة الطلبات</button>
@@ -177,20 +188,30 @@
             listDiv.innerHTML = data.map(trip => `
                 <div style="background:#1e293b; padding:10px; margin-top:8px; border-radius:6px; border: 1px solid #334155;">
                     <p style="margin: 0 0 5px 0;">السعر الثابت: <b>${trip.fixed_price} جنيه</b></p>
-                    <button class="btn" style="margin-top:0; padding: 6px;" onclick="acceptTrip('${trip.id}')">قبول الرحلة وبدء التتبع</button>
+                    <button class="btn" style="margin-top:0; padding: 6px;" onclick="acceptTrip('${trip.id}', ${trip.pickup_lat}, ${trip.pickup_lng})">قبول الرحلة وعرض موقع الراكب</button>
                 </div>
             `).join('');
         }
 
-        async function acceptTrip(tripId) {
+        async function acceptTrip(tripId, pLat, pLng) {
             if (!supabaseClient) return;
+            
+            // تحديث حالة الرحلة وتثبيت موقع الكابتن الأولي
             const { error } = await supabaseClient
                 .from('trips')
                 .update({ status: 'ACCEPTED' })
                 .eq('id', tripId);
                 
             if (!error) {
-                alert('تم قبول الرحلة بنجاح! يتم الآن تفعيل مشاركة الموقع الحي.');
+                activeTripId = tripId;
+                alert('تم قبول الرحلة بنجاح! يتم توجيهك الآن لموقع الراكب.');
+                
+                // تحريك خريطة الكابتن لموقع الراكب
+                if(map) {
+                    map.setView([pLat, pLng], 15);
+                    L.marker([pLat, pLng]).addTo(map).bindPopup('موقع الراكب المطلوب').openPopup();
+                }
+
                 renderDriverActiveTrip(tripId);
             } else {
                 alert('خطأ في قبول الرحلة: ' + error.message);
@@ -199,13 +220,12 @@
 
         function renderDriverActiveTrip(tripId) {
             document.getElementById('panel-content').innerHTML = `
-                <p style="color:#22c55e; font-weight:bold;">الرحلة نشطة حالياً</p>
-                <button class="btn" onclick="updateDriverLocation('${tripId}')">تحديث موقعي الحي وإرساله للراكب</button>
+                <p style="color:#22c55e; font-weight:bold; margin: 5px 0;">الرحلة نشطة - أنت في الطريق للراكب</p>
+                <button class="btn" onclick="sendDriverLiveLocation('${tripId}')">تحديث وإرسال موقعي الحي للراكب</button>
             `;
         }
 
-        // محاكاة إرسال موقع السائق الحي على الخريطة
-        async function updateDriverLocation(tripId) {
+        function sendDriverLiveLocation(tripId) {
             if (!navigator.geolocation) {
                 alert('خاصية تحديد الموقع غير متوفرة في متصفحك');
                 return;
@@ -214,10 +234,19 @@
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
                 
-                // يمكنك تخزين إحداثيات السائق أو إرسالها لتحديث الخريطة للراكب
-                alert(`تم إرسال موقعك بنجاح (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+                // تحديث موقع الكابتن في قاعدة البيانات لكي يراه الراكب لحظياً
+                const { error } = await supabaseClient
+                    .from('trips')
+                    .update({ driver_lat: lat, driver_lng: lng })
+                    .eq('id', tripId);
+
+                if(!error) {
+                    alert(`تم إرسال موقعك الحي بنجاح وتحديثه للراكب.`);
+                } else {
+                    alert('خطأ في إرسال الموقع: ' + error.message);
+                }
             }, () => {
-                alert('تعذر الحصول على موقعك الحالي');
+                alert('تعذر الحصول على موقعك الحالي، تأكد من تفعيل الـ GPS.');
             });
         }
     </script>
