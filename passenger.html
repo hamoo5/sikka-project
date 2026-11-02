@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>موقف - Mahattat</title>
+  <title>موقف - Mahattat | الراكب</title>
   
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
@@ -31,7 +31,7 @@
   <!-- 1. تسجيل الدخول -->
   <div id="auth-section" class="card">
     <h2 style="text-align: center;">🚏 تطبيق موقف - Mahattat</h2>
-    <input type="text" id="user_name" placeholder="اسمك الكريم (اختياري)">
+    <input type="text" id="user_name" placeholder="اسمك الكريم">
     <input type="tel" id="user_phone" placeholder="رقم الموبايل">
     <button class="btn-secondary" onclick="handleAuth()">دخول وحجز رحلة 🚀</button>
   </div>
@@ -49,7 +49,7 @@
     <div id="booking-controls">
       <button class="btn-gps" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
 
-      <!-- تفاصيل النقل التشاركي (المواقف والكراسي) -->
+      <!-- تفاصيل النقل التشاركي -->
       <div id="shared-options">
         <label style="font-weight:bold; font-size:13px; color:#555;">وسيلة النقل التشاركية:</label>
         <select id="vehicle_type">
@@ -99,6 +99,7 @@
     let pickupCoords = null, dropoffCoords = null;
     let pickupMarker = null, dropoffMarker = null;
     let currentMode = 'shared';
+    let currentTripId = null;
 
     const greenIcon = L.icon({
       iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -121,8 +122,13 @@
     };
 
     window.handleAuth = function() {
+      const name = document.getElementById('user_name').value || 'راكب';
       const phone = document.getElementById('user_phone').value;
       if (!phone || phone.length < 10) { alert('أدخل رقم موبايل صحيح من فضلك'); return; }
+      
+      localStorage.setItem('passenger_name', name);
+      localStorage.setItem('passenger_phone', phone);
+
       document.getElementById('auth-section').classList.add('hidden');
       document.getElementById('app-section').classList.remove('hidden');
       setTimeout(initMap, 200);
@@ -136,10 +142,8 @@
         attribution: '&copy; OpenStreetMap' 
       }).addTo(map);
 
-      // مركز الخريطة الافتراضي في القاهرة كبداية لو مفيش إحداثيات
       const center = map.getCenter();
       
-      // إنشاء الدبوس الأخضر قابل للسحب (Draggable)
       pickupCoords = center;
       pickupMarker = L.marker(center, {icon: greenIcon, draggable: true}).addTo(map);
       updatePickupAddress(center.lat, center.lng);
@@ -151,8 +155,7 @@
         if (dropoffCoords) drawRoute();
       });
 
-      // إنشاء الدبوس الأحمر قابل للسحب بعيد عنه قليلاً
-      const dropoffDefault = L.latLng(center.lat + 0.02, center.lng + 0.02);
+      const dropoffDefault = L.latLng(center.lat + 0.015, center.lng + 0.015);
       dropoffCoords = dropoffDefault;
       dropoffMarker = L.marker(dropoffDefault, {icon: redIcon, draggable: true}).addTo(map);
       updateDropoffAddress(dropoffDefault.lat, dropoffDefault.lng);
@@ -179,9 +182,8 @@
 
     async function getAddressName(lat, lng) {
       try {
-        const res = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`;
-        const response = await fetch(res);
-        const data = await response.json();
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`);
+        const data = await res.json();
         if (data && data.display_name) return data.display_name.split(',').slice(0, 3).join(',');
       } catch (e) {}
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
@@ -267,13 +269,46 @@
       }
     };
 
-    window.requestRide = function() {
+    window.requestRide = async function() {
       const pickup = document.getElementById('pickup_loc').value;
       const dropoff = document.getElementById('dropoff_loc').value;
       if (!pickup || !dropoff) { alert('حدد موقف الانطلاق والوصول'); return; }
 
       const pin = Math.floor(1000 + Math.random() * 9000);
-      
+      const vehicleType = (currentMode === 'shared') ? document.getElementById('vehicle_type').value : 'private_special';
+      const seatsCount = (currentMode === 'shared') ? parseInt(document.getElementById('seats_count').value) : 1;
+      const passengerName = localStorage.getItem('passenger_name') || 'راكب';
+      const passengerPhone = localStorage.getItem('passenger_phone') || '';
+
+      // حفظ الطلب في Supabase
+      const { data, error } = await supabase.from('trips').insert([
+        {
+          passenger_name: passengerName,
+          passenger_phone: passengerPhone,
+          pickup_location: pickup,
+          dropoff_location: dropoff,
+          vehicle_type: vehicleType,
+          seats_count: seatsCount,
+          pin_code: pin,
+          status: 'pending',
+          pickup_lat: pickupCoords.lat,
+          pickup_lng: pickupCoords.lng,
+          dropoff_lat: dropoffCoords.lat,
+          dropoff_lng: dropoffCoords.lng
+        }
+      ]).select();
+
+      if (error) {
+        console.error('Error inserting trip:', error);
+        alert('حدث خطأ في طلب الرحلة، تأكد من إعدادات Supabase');
+        return;
+      }
+
+      if (data && data.length > 0) {
+        currentTripId = data[0].id;
+        subscribeToTripUpdates(currentTripId);
+      }
+
       document.getElementById('booking-controls').classList.add('hidden');
       document.getElementById('action-btn').classList.add('hidden');
       document.getElementById('cancel-btn').classList.remove('hidden');
@@ -282,13 +317,32 @@
       const statusDiv = document.getElementById('trip-status');
       statusDiv.style.display = 'block';
       statusDiv.innerHTML = `
-        🔄 <b>تم طلب الرحلة بنجاح!</b><br>
+        🔄 <b>تم إرسال طلبك بنجاح!</b><br>
         🔑 كود الركوب الخاص بك (PIN): <b style="font-size:18px; color:#d9534f;">${pin}</b><br>
-        في انتظار تأكيد الكابتن لخط السير والمقاعد...
+        في انتظار قبول الكابتن المناسب على الخط...
       `;
     };
 
-    window.cancelRide = function() {
+    function subscribeToTripUpdates(tripId) {
+      supabase
+        .channel(`trip_${tripId}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, payload => {
+          if (payload.new.status === 'accepted') {
+            const statusDiv = document.getElementById('trip-status');
+            statusDiv.innerHTML = `
+              🎉 <b>تم قبول رحلتك من قبل الكابتن!</b><br>
+              🔑 كود الركوب الخاص بك: <b style="font-size:18px; color:#d9534f;">${payload.new.pin_code}</b><br>
+              الكابتن في طريقه إليك الآن.
+            `;
+          }
+        })
+        .subscribe();
+    }
+
+    window.cancelRide = async function() {
+      if (currentTripId) {
+        await supabase.from('trips').update({ status: 'cancelled' }).eq('id', currentTripId);
+      }
       alert('تم إلغاء طلب الحجز.');
       location.reload();
     };
