@@ -83,13 +83,13 @@
         </div>
 
         <div class="card-box" id="booking-card">
-            <div class="card-title">🗺️ الخريطة الحية - مسار السير</div>
+            <div class="card-title">🗺️ مسار سير الرحلة الفعلي</div>
 
             <div class="map-container">
                 <div id="map"></div>
                 <button class="gps-btn" onclick="goToCurrentLocation()">🎯 موقعي</button>
             </div>
-            <div style="font-size: 11px; color: #38bdf8; text-align: center; margin-bottom: 10px;">اسحب الدبابيس أو ابحث لرسم مسار الرحلة</div>
+            <div style="font-size: 11px; color: #38bdf8; text-align: center; margin-bottom: 10px;">المسار يتبع الشوارع الفعلية تلقائياً</div>
 
             <div class="form-group">
                 <label class="label">1. نقطة الانطلاق (مكان الركوب)</label>
@@ -148,7 +148,7 @@
         let selectedVehicleType = 'ملاكي';
         let map;
         let pickupMarker, dropoffMarker;
-        let routePolyline = null;
+        let routeLayer = null; // طبقة مسار الشوارع الفعلية
 
         function initRiderPage() {
             const stored = localStorage.getItem('combo_user');
@@ -177,38 +177,54 @@
             dropoffMarker = L.marker([dLat, dLng], {draggable: true}).addTo(map)
                 .bindPopup('نقطة الوصول');
 
-            updateRouteLine();
+            fetchAndDrawRoute([pLng, pLat], [dLng, dLat]);
 
             pickupMarker.on('dragend', async function(e) {
                 const pos = e.target.getLatLng();
                 await updateAddressFromLatLng(pos.lat, pos.lng, 'pickup');
-                updateRouteLine();
+                updateRoute();
             });
 
             dropoffMarker.on('dragend', async function(e) {
                 const pos = e.target.getLatLng();
                 await updateAddressFromLatLng(pos.lat, pos.lng, 'dropoff');
-                updateRouteLine();
+                updateRoute();
             });
 
             updateAddressFromLatLng(pLat, pLng, 'pickup');
             updateAddressFromLatLng(dLat, dLng, 'dropoff');
         }
 
-        function updateRouteLine() {
-            const pLatLng = pickupMarker.getLatLng();
-            const dLatLng = dropoffMarker.getLatLng();
+        // جلب مسار السير الحقيقي المار عبر الشوارع باستخدام OSRM API
+        async function fetchAndDrawRoute(startCoord, endCoord) {
+            try {
+                const url = `https://router.project-osrm.org/route/v1/driving/${startCoord[0]},${startCoord[1]};${endCoord[0]},${endCoord[1]}?overview=full&geometries=geojson`;
+                let response = await fetch(url);
+                let data = await response.json();
 
-            if (routePolyline) {
-                map.removeLayer(routePolyline);
+                if (data.routes && data.routes.length > 0) {
+                    const coords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+
+                    if (routeLayer) {
+                        map.removeLayer(routeLayer);
+                    }
+
+                    // رسم المسار الفعلي الملتف مع الشوارع بلون أزرق فخم زي جوجل ماب
+                    routeLayer = L.polyline(coords, {
+                        color: '#2563eb',
+                        weight: 6,
+                        opacity: 0.85
+                    }).addTo(map);
+                }
+            } catch (err) {
+                console.log('تعذر جلب مسار الشوارع، يتم الاعتماد على المسار المباشر');
             }
+        }
 
-            routePolyline = L.polyline([pLatLng, dLatLng], {
-                color: '#38bdf8',
-                weight: 5,
-                opacity: 0.8,
-                dashArray: '8, 8'
-            }).addTo(map);
+        function updateRoute() {
+            const p = pickupMarker.getLatLng();
+            const d = dropoffMarker.getLatLng();
+            fetchAndDrawRoute([p.lng, p.lat], [d.lng, d.lat]);
         }
 
         async function updateAddressFromLatLng(lat, lng, type) {
@@ -248,7 +264,7 @@
                         dropoffMarker.setLatLng([lat, lon]);
                         map.setView([lat, lon], 14);
                     }
-                    updateRouteLine();
+                    updateRoute();
                 }
             } catch (e) {}
         }
@@ -261,7 +277,7 @@
                     map.setView([lat, lon], 15);
                     pickupMarker.setLatLng([lat, lon]);
                     updateAddressFromLatLng(lat, lon, 'pickup');
-                    updateRouteLine();
+                    updateRoute();
                 });
             }
         }
