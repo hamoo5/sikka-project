@@ -98,7 +98,6 @@
                 <button class="gps-btn" onclick="goToCurrentLocation()">🎯 موقعي</button>
             </div>
 
-            <!-- لوحة ملخص الرحلة مضاف إليها حالة المرور بوضوح -->
             <div class="trip-summary">
                 <div class="summary-item">
                     <div class="summary-label">المسافة</div>
@@ -242,7 +241,7 @@
             updateAddressFromLatLng(dLat, dLng, 'dropoff');
         }
 
-        // خوارزمية أوقات الذروة لتحديد لون الخط وحالة المرور بشكل دقيق
+        // خوارزمية ذكية متوافقة مع ألوان الشوارع الحقيقية على الخريطة
         function getTrafficStatusAndMultiplier() {
             const currentHour = new Date().getHours();
             
@@ -251,11 +250,11 @@
             const isNightTime = (currentHour >= 0 && currentHour < 6);
 
             if (isMorningRush || isEveningRush) {
-                return { color: '#ef4444', text: '🔴 زحمة شديدة', factor: 1.4 }; // أحمر (ذروة)
+                return { color: '#dc2626', text: '🔴 زحمة شديدة', factor: 1.4 }; // أحمر غامق وواضح للطريق المزدحم
             } else if (isNightTime) {
-                return { color: '#22c55e', text: '🟢 طريق سالك', factor: 0.8 }; // أخضر (فاضي)
+                return { color: '#16a34a', text: '🟢 طريق سالك', factor: 0.8 }; // أخضر صريح للطريق الفاضي
             } else {
-                return { color: '#38bdf8', text: '🔵 حركة مرنة', factor: 1.0 }; // أزرق رايق (طبيعي)
+                return { color: '#ea580c', text: '🟠 حركة متوسطة', factor: 1.1 }; // برتقالي يندمج تماماً مع لون كوبري أكتوبر والشوارع الرئيسية
             }
         }
 
@@ -284,10 +283,11 @@
                         map.removeLayer(routeLayer);
                     }
 
+                    // رسم مسار الرحلة بخط سميك وحدود مظللة عشان يظهر بوضوح فوق شوارع الخريطة من غير ما يتوه فيها
                     routeLayer = L.polyline(coords, {
                         color: traffic.color,
-                        weight: 6,
-                        opacity: 0.9
+                        weight: 7,
+                        opacity: 0.95
                     }).addTo(map);
                 }
             } catch (err) {
