@@ -91,9 +91,13 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <script type="module">
-    import { supabase } from './supabase.js';
+  <script>
+    // بيانات الاتصال الخاصة بمشروعك في Supabase
+    const SUPABASE_URL = 'https://pmpzilqpcomoodaksbhw.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let map, routingControl;
     let pickupCoords = null, dropoffCoords = null;
@@ -280,7 +284,6 @@
       const passengerName = localStorage.getItem('passenger_name') || 'راكب';
       const passengerPhone = localStorage.getItem('passenger_phone') || '';
 
-      // حفظ الطلب في Supabase
       const { data, error } = await supabase.from('trips').insert([
         {
           passenger_name: passengerName,
@@ -300,7 +303,7 @@
 
       if (error) {
         console.error('Error inserting trip:', error);
-        alert('حدث خطأ في طلب الرحلة، تأكد من إعدادات Supabase');
+        alert('حدث خطأ في طلب الرحلة، تأكد من بيانات الاتصال بقاعدة البيانات');
         return;
       }
 
