@@ -3,85 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محطات - لوحة الإدارة</title>
-    <script src="https://jsdelivr.net"></script>
+    <title>لوحة تحكم الأدمن - منصة كومبو</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #1a1a1a; --accent: #ffc107; --bg: #eef2f5; --card: #ffffff; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: var(--bg); padding: 15px; }
-        .grid-stats { display: flex; gap: 10px; margin-bottom: 15px; }
-        .stat-card { flex: 1; background: var(--primary); color: white; padding: 15px; text-align: center; border-radius: 10px; }
-        .stat-card span { display: block; font-size: 20px; font-weight: bold; color: var(--accent); margin-top: 5px; }
-        .panel { background: var(--card); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        .btn-action { padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .item-list { background: #f8f9fa; padding: 10px; border-radius: 6px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        body { margin: 0; padding: 0; background: #070b19; color: #fff; min-height: 100vh; }
+        .header { background: #0f172a; border-bottom: 1px solid #1e293b; padding: 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; color: #38bdf8; }
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 20px; text-align: center; }
+        .stat-num { font-size: 32px; font-weight: 900; color: #38bdf8; margin-top: 5px; }
+
+        .section-title { font-size: 18px; font-weight: 700; margin-bottom: 15px; color: #cbd5e1; border-right: 4px solid #38bdf8; padding-right: 10px; }
+        
+        .table-responsive { width: 100%; overflow-x: auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; margin-bottom: 40px; }
+        table { width: 100%; border-collapse: collapse; text-align: right; font-size: 14px; }
+        th, td { padding: 14px 16px; border-bottom: 1px solid #1e293b; }
+        th { background: #1e293b; color: #38bdf8; font-weight: 700; }
+        tr:hover { background: rgba(56, 189, 248, 0.03); }
+        .badge-driver { background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+        .badge-rider { background: rgba(34, 197, 94, 0.1); color: #22c55e; padding: 4px 10px; border-radius: 20px; font-size: 12px; }
     </style>
 </head>
 <body>
 
-    <h2 style="margin-bottom: 15px; color: var(--primary);">📊 لوحة تحكم إدارة «محطات»</h2>
-
-    <!-- إحصائيات سريعة للعمولات المجمعة حياً للشركة -->
-    <div class="grid-stats">
-        <div class="stat-card">إجمالي عمولات المنصة<span>320.00 جنيه</span></div>
-        <div class="stat-card">الرحلات النشطة حالياً<span>12 رحلة</span></div>
+    <div class="header">
+        <h1>لوحة تحكم الأدمن العام - منصة كومبو ⚡</h1>
     </div>
 
-    <!-- مراجعة وتوثيق الكباتن الجدد وتراخيص السيارات -->
-    <div class="panel">
-        <h4>🚗 مراجعة حسابات السائقين والسيارات المعلقة</h4>
-        <div class="item-list">
-            <div><strong>كابتن: محمد عبد الله</strong> - سيارة ملاكي (أ ب ج 123)</div>
-            <button class="btn-action" onclick="alert('تم تفعيل حساب الكابتن وسيارة الملاكي بنجاح!')">اعتماد وتفعيل الحساب</button>
+    <div class="container">
+        <!-- الإحصائيات العامة -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div>إجمالي الكباتن المسجلين 🚗</div>
+                <div class="stat-num" id="total-drivers">0</div>
+            </div>
+            <div class="stat-card">
+                <div>إجمالي الركاب المسجلين 🚏</div>
+                <div class="stat-num" id="total-riders">0</div>
+            </div>
         </div>
-    </div>
 
-    <!-- إدارة وإضافة خطوط السير وتحديد الأسعار الثابتة والقطاعات -->
-    <div class="panel">
-        <h4>🚌 إضافة وتعديل خطوط السير والأسعار الثابتة</h4>
-        <div style="display: flex; gap: 8px; margin-top: 8px;">
-            <input type="text" id="new-route-name" placeholder="اسم الخط الجديد (مثال: التجمع - رمسيس)" style="flex: 2; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
-            <input type="number" id="new-route-fare" placeholder="الأجرة (جنيه)" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
-            <button class="btn-action" onclick="addNewRoute()">إضافة الخط</button>
+        <!-- جدول الكباتن -->
+        <div class="section-title">قائمة الكباتن وقادة المركبات</div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>الاسم بالكامل</th>
+                        <th>رقم الموبايل</th>
+                        <th>نوع الحساب</th>
+                        <th>بيانات السيارة (الموديل/اللون/الرقم)</th>
+                        <th>رصيد المحفظة</th>
+                    </tr>
+                </thead>
+                <tbody id="drivers-table-body">
+                    <!-- سيتم تعبئتها ديناميكياً -->
+                </tbody>
+            </table>
         </div>
-        <div id="admin-routes-list"></div>
-    </div>
 
-    <!-- إدارة ومراجعة الخطوط المقترحة من قبل الركاب بالتطبيق -->
-    <div class="panel" style="border-right: 4px solid var(--accent);">
-        <h4>🗺️ الخطوط المقترحة من الركاب (دراسة الجدوى وتجميع الطلب)</h4>
-        <div class="item-list">
-            <div>خط مقترح: <strong>من مدينتي إلى وسط البلد</strong> (مطلوب من 45 راكب هذا الأسبوع)</div>
-            <button class="btn-action" style="background: #007bff;" onclick="alert('تم تحويل الخط المقترح إلى خط سير معتمد وجاري تعيين كباتن عليه!')">قبول وتشغيل الخط</button>
+        <!-- جدول الركاب -->
+        <div class="section-title">قائمة الركاب والمستخدمين</div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>الاسم بالكامل</th>
+                        <th>رقم الموبايل</th>
+                        <th>نوع الحساب</th>
+                        <th>رصيد المحفظة</th>
+                    </tr>
+                </thead>
+                <tbody id="riders-table-body">
+                    <!-- سيتم تعبئتها ديناميكياً -->
+                </tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        const SUPABASE_URL = "https://supabase.co";
-        const SUPABASE_KEY = "قم_بوضع_Publishable_Key_الخاص_بك_هنا_من_الصورة";
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const SUPABASE_URL = 'https://pmpzilqpcomoodaksbhw.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
+        let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        async function loadAdminRoutes() {
-            const container = document.getElementById('admin-routes-list');
-            const { data } = await _supabase.from('routes').select('*');
-            if(data) {
-                container.innerHTML = "";
-                data.forEach(r => {
-                    container.innerHTML += `<div class="item-list"><div>🚌 ${r.name || 'خط التجمع - رمسيس'}</div><span style='font-weight:bold; color:green;'>سعر القطاع الأساسي: 10 جنيه</span></div>`;
-                });
+        async function fetchAdminData() {
+            let { data: profiles, error } = await supabaseClient.from('profiles').select('*');
+
+            if (error) {
+                alert('خطأ في جلب بيانات الأدمن: ' + error.message);
+                return;
             }
+
+            const drivers = profiles.filter(p => p.user_type === 'driver');
+            const riders = profiles.filter(p => p.user_type === 'rider');
+
+            document.getElementById('total-drivers').innerText = drivers.length;
+            document.getElementById('total-riders').innerText = riders.length;
+
+            // تعبئة جدول الكباتن
+            const driversBody = document.getElementById('drivers-table-body');
+            driversBody.innerHTML = '';
+            drivers.forEach(d => {
+                const carInfo = `${d.car_model || 'غير محدد'} - ${d.car_color || 'غير محدد'} (${d.plate_number || 'بدون لوحة'})`;
+                driversBody.innerHTML += `
+                    <tr>
+                        <td><b>${d.full_name || 'بدون اسم'}</b></td>
+                        <td style="direction: ltr; text-align: right;">${d.phone || '-'}</td>
+                        <td><span class="badge-driver">كابتن</span></td>
+                        <td>${carInfo}</td>
+                        <td>${d.wallet_balance || 0} ج.م</td>
+                    </tr>
+                `;
+            });
+
+            // تعبئة جدول الركاب
+            const ridersBody = document.getElementById('riders-table-body');
+            ridersBody.innerHTML = '';
+            riders.forEach(r => {
+                ridersBody.innerHTML += `
+                    <tr>
+                        <td><b>${r.full_name || 'بدون اسم'}</b></td>
+                        <td style="direction: ltr; text-align: right;">${r.phone || '-'}</td>
+                        <td><span class="badge-rider">راكب</span></td>
+                        <td>${r.wallet_balance || 0} ج.م</td>
+                    </tr>
+                `;
+            });
         }
 
-        async function addNewRoute() {
-            const name = document.getElementById('new-route-name').value;
-            if(!name) return alert("برجاء كتابة اسم الخط");
-            
-            await _supabase.from('routes').insert([{ name: name }]);
-            alert("تم إدراج خط السير الجديد في قاعدة بيانات السكة ومحطات حياً!");
-            loadAdminRoutes();
-        }
-
-        loadAdminRoutes();
+        // جلب البيانات فور فتح الصفحة
+        fetchAdminData();
     </script>
 </body>
 </html>
