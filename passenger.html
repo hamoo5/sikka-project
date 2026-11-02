@@ -11,9 +11,9 @@
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; padding: 12px; background: #f4f4f9; direction: rtl; text-align: right; margin: 0; }
     .card { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    input, select, button, .btn-link { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; text-align: center; display: block; text-decoration: none; }
-    button, .btn-link { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
-    button:hover, .btn-link:hover { background: #218838; }
+    input, select, button { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
+    button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
+    button:hover { background: #218838; }
     .btn-secondary { background: #007bff; }
     .btn-secondary:hover { background: #0056b3; }
     .btn-gps { background: #17a2b8; }
@@ -35,8 +35,8 @@
     <input type="text" id="user_name" placeholder="اسمك الكريم" value="أحمد">
     <input type="tel" id="user_phone" placeholder="رقم الموبايل" value="01112142750">
     
-    <!-- زر الدخول المباشر المضمون -->
-    <a href="javascript:void(0);" class="btn-link btn-secondary" onclick="loginAction()">دخول وحجز رحلة 🚀</a>
+    <!-- زر الدخول المباشر المظبوط -->
+    <button class="btn-secondary" type="button" onclick="executeLogin()">دخول وحجز رحلة 🚀</button>
   </div>
 
   <!-- 2. واجهة الحجز -->
@@ -110,17 +110,19 @@
       iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
     });
 
-    function loginAction() {
-      const name = document.getElementById('user_name').value || 'راكب';
+    function executeLogin() {
+      const name = document.getElementById('user_name').value || 'أحمد';
       const phone = document.getElementById('user_phone').value;
-      if (!phone) { alert('أدخل رقم الموبايل'); return; }
+      if (!phone) { alert('أدخل رقم الموبايل من فضلك'); return; }
       
       localStorage.setItem('passenger_name', name);
       localStorage.setItem('passenger_phone', phone);
 
+      // إخفاء شاشة الدخول وإظهار شاشة الحجز والخريطة فوراً
       document.getElementById('auth-section').style.display = 'none';
       document.getElementById('app-section').style.display = 'block';
-      setTimeout(initMap, 300);
+      
+      setTimeout(initMap, 400);
     }
 
     function switchRideMode(mode) {
@@ -222,7 +224,7 @@
         }
       ]).select();
 
-      if (error) { alert('خطأ في إرسال الرحلة'); return; }
+      if (error) { alert('خطأ في إرسال الرحلة لقاعدة البيانات'); return; }
 
       if (data && data.length > 0) {
         currentTripId = data[0].id;
