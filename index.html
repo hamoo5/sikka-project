@@ -52,7 +52,6 @@
         let dropoffCoords = null;
         let activeTripId = null;
 
-        // تهيئة الخريطة بعد تحميل الصفحة بالكامل
         window.addEventListener('DOMContentLoaded', () => {
             setTimeout(initMap, 500);
         });
@@ -65,7 +64,6 @@
                     attribution: '© OpenStreetMap'
                 }).addTo(map);
 
-                // وضع علامة الافتتاح للانطلاق
                 pickupMarker = L.marker([pickupCoords.lat, pickupCoords.lng]).addTo(map).bindPopup('موقع الانطلاق').openPopup();
 
                 map.on('click', function(e) {
@@ -73,8 +71,6 @@
                         dropoffCoords = e.latlng;
                         if (dropoffMarker) map.removeLayer(dropoffMarker);
                         dropoffMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map).bindPopup('موقع الوصول').openPopup();
-                        
-                        // رسم خط بسيط بين النقطتين
                         showRideConfirmation();
                     }
                 });
@@ -136,8 +132,8 @@
                 {
                     pickup_lat: pickupCoords.lat,
                     pickup_lng: pickupCoords.lng,
-                    dropoff_lat: dropoffCoords.lat ? dropoffCoords.lat : pickupCoords.lat,
-                    dropoff_lng: dropoffCoords.lng ? dropoffCoords.lng : pickupCoords.lng,
+                    dropoff_lat: dropoffCoords ? dropoffCoords.lat : pickupCoords.lat,
+                    dropoff_lng: dropoffCoords ? dropoffCoords.lng : pickupCoords.lng,
                     fixed_price: 25.00,
                     otp_code: otp,
                     status: 'SEARCHING'
@@ -198,14 +194,19 @@
             `).join('');
         }
 
+        // الدالة المحدثة والمصححة لقبول الرحلة وتحديثها في قاعدة البيانات
         async function acceptTrip(tripId) {
             if (!supabaseClient) return;
-            const { error } = await supabaseClient.from('trips').update({ status: 'ACCEPTED' }).eq('id', tripId);
+            const { error } = await supabaseClient
+                .from('trips')
+                .update({ status: 'ACCEPTED' })
+                .eq('id', tripId);
+                
             if (!error) {
-                alert('تم قبول الرحلة بنجاح!');
+                alert('تم قبول الرحلة بنجاح! السائق في الطريق للراكب.');
                 fetchAvailableTrips();
             } else {
-                alert('خطأ أثناء قبول الرحلة: موجة اتصال');
+                alert('خطأ في قبول الرحلة: ' + error.message);
             }
         }
     </script>
