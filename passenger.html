@@ -97,8 +97,8 @@
 
     let map, routingControl;
     let pickupCoords = null, dropoffCoords = null;
-    let pickupMarker = null, dropoffMarker = null, captainMarker = null;
-    let currentMode = 'shared'; // shared | private
+    let pickupMarker = null, dropoffMarker = null;
+    let currentMode = 'shared';
 
     const greenIcon = L.icon({
       iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -131,7 +131,11 @@
     function initMap() {
       if (map) return;
       map = L.map('map').setView([30.0444, 31.2357], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/*/*').addTo(map);
+      
+      // تصحيح رابط الخريطة
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+        attribution: '&copy; OpenStreetMap' 
+      }).addTo(map);
 
       map.on('click', async function(e) {
         if (!document.getElementById('cancel-btn').classList.contains('hidden')) return;
