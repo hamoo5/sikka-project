@@ -8,113 +8,141 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
-        body { margin: 0; padding: 0; background: #070b19; color: #fff; min-height: 100vh; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 440px; padding: 20px; }
+        body { margin: 0; padding: 0; background: #070b19; color: #f8fafc; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; }
+        .container { width: 100%; max-width: 440px; padding: 16px; margin: auto; }
         
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; }
-        .user-welcome { font-size: 16px; font-weight: 700; color: #38bdf8; }
-        .logout-btn { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; padding: 6px 14px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 12px; }
+        /* الشريط العلوي */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #0f172a; padding: 14px 18px; border-radius: 16px; border: 1px solid #1e293b; }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .avatar-circle { width: 38px; height: 38px; background: linear-gradient(135deg, #38bdf8, #2563eb); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; color: #fff; }
+        .user-welcome { font-size: 14px; font-weight: 700; color: #38bdf8; }
+        .logout-btn { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 12px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 12px; transition: 0.2s; }
+        .logout-btn:hover { background: rgba(239, 68, 68, 0.2); }
 
-        .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 24px; padding: 24px; box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5); margin-bottom: 20px; }
-        .card-title { font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+        /* الكارت الرئيسي */
+        .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 24px; padding: 22px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); margin-bottom: 20px; }
+        .card-title { font-size: 17px; font-weight: 800; color: #fff; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 10px; }
 
         .form-group { margin-bottom: 16px; text-align: right; }
-        .label { font-size: 13px; color: #94a3b8; margin-bottom: 6px; display: block; font-weight: 600; }
+        .label { font-size: 12px; color: #94a3b8; margin-bottom: 6px; display: block; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         
+        .input-wrapper { position: relative; }
         .input-box, .select-box {
-            width: 100%; padding: 14px; border-radius: 12px;
+            width: 100%; padding: 14px 14px 14px 40px; border-radius: 14px;
             background: #050b14; border: 1px solid #334155;
-            color: #fff; font-size: 14px; appearance: none;
+            color: #fff; font-size: 14px; transition: all 0.2s;
         }
-        .input-box:focus, .select-box:focus { border-color: #38bdf8; outline: none; }
+        .input-box:focus, .select-box:focus { border-color: #38bdf8; outline: none; box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15); }
+        .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; opacity: 0.7; }
 
-        .vehicle-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+        /* خيارات المركبات الاحترافية */
+        .vehicle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; }
         .v-card {
             background: #050b14; border: 1px solid #334155;
-            padding: 12px 8px; border-radius: 14px; text-align: center;
-            cursor: pointer; transition: all 0.2s;
+            padding: 14px 8px; border-radius: 16px; text-align: center;
+            cursor: pointer; transition: all 0.25s ease;
         }
-        .v-card.active { border-color: #38bdf8; background: rgba(56, 189, 248, 0.1); }
-        .v-icon { font-size: 22px; margin-bottom: 4px; }
-        .v-name { font-size: 12px; font-weight: 700; }
+        .v-card:hover { border-color: #475569; }
+        .v-card.active { border-color: #38bdf8; background: rgba(56, 189, 248, 0.08); box-shadow: 0 0 15px rgba(56, 189, 248, 0.15); }
+        .v-svg { width: 32px; height: 32px; margin: 0 auto 6px; fill: #94a3b8; transition: 0.2s; }
+        .v-card.active .v-svg { fill: #38bdf8; }
+        .v-name { font-size: 13px; font-weight: 700; color: #cbd5e1; }
+        .v-card.active .v-name { color: #38bdf8; }
 
+        /* زر الطلب الفخم */
         .btn-request {
             background: linear-gradient(135deg, #38bdf8, #2563eb);
             color: #fff; border: none; padding: 16px; width: 100%;
-            border-radius: 14px; font-weight: 800; font-size: 16px;
-            cursor: pointer; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
-            margin-top: 10px;
+            border-radius: 14px; font-weight: 800; font-size: 15px;
+            cursor: pointer; box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+            margin-top: 10px; transition: 0.2s;
         }
+        .btn-request:active { transform: scale(0.98); }
 
+        /* كارت الرحلة النشطة */
         .active-trip-box {
-            background: rgba(56, 189, 248, 0.08); border: 1px solid #38bdf8;
-            border-radius: 20px; padding: 20px; text-align: center;
+            background: rgba(56, 189, 248, 0.05); border: 1px solid #38bdf8;
+            border-radius: 20px; padding: 24px; text-align: center;
         }
-        .pin-display { font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #38bdf8; margin: 10px 0; }
-        .status-badge { background: #eab308; color: #000; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 700; display: inline-block; }
+        .pin-display { font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #38bdf8; margin: 15px 0; background: #050b14; padding: 12px; border-radius: 14px; border: 1px dashed #38bdf8; }
+        .status-badge { background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; display: inline-block; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <!-- الشريط العلوى -->
+        <!-- الشريط العلوي -->
         <div class="header">
-            <div class="user-welcome">أهلاً بك 👋 <span id="rider-name">...</span></div>
-            <button class="logout-btn" onclick="logout()">خروج</button>
+            <div class="user-info">
+                <div class="avatar-circle" id="user-initial">ك</div>
+                <div class="user-welcome">أهلاً، <span id="rider-name">جاري التحميل...</span></div>
+            </div>
+            <button class="logout-btn" onclick="logout()">تسجيل خروج</button>
         </div>
 
         <!-- كارت حجز رحلة جديدة -->
         <div class="card-box" id="booking-card">
-            <div class="card-title">🚏 حجز رحلة جديدة</div>
-
-            <div class="form-group">
-                <label class="label">نقطة الانطلاق (الموقف / النقطة الحالية)</label>
-                <input type="text" id="pickup-loc" class="input-box" placeholder="مثال: موقف المحطة">
+            <div class="card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                حجز وجهة تنقل جديدة
             </div>
 
             <div class="form-group">
-                <label class="label">وجهة الوصول</label>
-                <input type="text" id="dropoff-loc" class="input-box" placeholder="مثال: وسط البلد">
+                <label class="label">نقطة الانطلاق (الموقف / الموقع الحالي)</label>
+                <div class="input-wrapper">
+                    <input type="text" id="pickup-loc" class="input-box" placeholder="مثال: موقف المحطة الرئيسية">
+                    <span class="input-icon">📍</span>
+                </div>
             </div>
 
             <div class="form-group">
-                <label class="label">اختر وسيلة التنقل المفضلة</label>
-                <div class="vehicle-options">
+                <label class="label">وجهة الوصول المطلوبة</label>
+                <div class="input-wrapper">
+                    <input type="text" id="dropoff-loc" class="input-box" placeholder="مثال: وسط البلد / الجامعة">
+                    <span class="input-icon">🏁</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="label">اختر فئة المركبة</label>
+                <div class="vehicle-grid">
                     <div class="v-card active" onclick="selectVehicle('ملاكي', this)">
-                        <div class="v-icon">🚗</div>
+                        <svg class="v-svg" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.76l.12.34V17z"/><circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/></svg>
                         <div class="v-name">ملاكي</div>
                     </div>
                     <div class="v-card" onclick="selectVehicle('سوزوكي', this)">
-                        <div class="v-icon">🚐</div>
+                        <svg class="v-svg" viewBox="0 0 24 24"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm12 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM17 12V9.5h2.5l1.96 2.5H17z"/></svg>
                         <div class="v-name">سوزوكي</div>
                     </div>
                     <div class="v-card" onclick="selectVehicle('ميكروباص', this)">
-                        <div class="v-icon">🚌</div>
+                        <svg class="v-svg" viewBox="0 0 24 24"><path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM4 11v-2h16v2H4z"/></svg>
                         <div class="v-name">ميكروباص</div>
                     </div>
                 </div>
             </div>
 
             <div class="form-group">
-                <label class="label">عدد المقاعد المطلوبة</label>
-                <select id="seats-count" class="select-box">
-                    <option value="1">مقعد واحد (1)</option>
-                    <option value="2">مقعدين (2)</option>
-                    <option value="3">3 مقاعد</option>
-                    <option value="4">4 مقاعد</option>
-                </select>
+                <label class="label">عدد المقاعد المحجوزة</label>
+                <div class="input-wrapper">
+                    <select id="seats-count" class="select-box">
+                        <option value="1">مقعد واحد (1)</option>
+                        <option value="2">مقعدين (2)</option>
+                        <option value="3">3 مقاعد</option>
+                        <option value="4">4 مقاعد</option>
+                    </select>
+                </div>
             </div>
 
-            <button class="btn-request" onclick="requestRide()">تأكيد وإرسال طلب الرحلة 🚀</button>
+            <button class="btn-request" onclick="requestRide()">تأكيد وإرسال طلب الرحلة ⚡</button>
         </div>
 
-        <!-- كارت الرحلة الحالية النشطة (يظهر عند طلب رحلة) -->
+        <!-- كارت الرحلة النشطة -->
         <div class="card-box" id="active-trip-card" style="display:none;">
             <div class="active-trip-box">
-                <span class="status-badge" id="trip-status">في انتظار قبول الكابتن...</span>
-                <div style="font-size: 13px; color: #94a3b8; margin-top: 15px;">رمز الأمان للرحلة (PIN):</div>
+                <span class="status-badge" id="trip-status">⏳ في انتظار قبول الكابتن...</span>
+                <div style="font-size: 13px; color: #94a3b8; margin-top: 18px; font-weight: 600;">رمز الأمان للرحلة (PIN):</div>
                 <div class="pin-display" id="trip-pin">----</div>
-                <p style="font-size: 12px; color: #cbd5e1; margin: 0;">أعطِ هذا الرقم للكابتن فور وصوله لبدء الرحلة بأمان.</p>
+                <p style="font-size: 12px; color: #cbd5e1; margin: 0; line-height: 1.6;">أعطِ هذا الرقم السري للكابتن فور وصوله لتبدأ رحلتك بأمان تام.</p>
             </div>
         </div>
     </div>
@@ -127,7 +155,6 @@
         let currentUser = null;
         let selectedVehicleType = 'ملاكي';
 
-        // التأكد من تسجيل الدخول
         function initRiderPage() {
             const stored = localStorage.getItem('combo_user');
             if (!stored) {
@@ -135,7 +162,9 @@
                 return;
             }
             currentUser = JSON.parse(stored);
-            document.getElementById('rider-name').innerText = currentUser.full_name || 'راكب كومبو';
+            const name = currentUser.full_name || 'راكب كومبو';
+            document.getElementById('rider-name').innerText = name;
+            document.getElementById('user-initial').innerText = name.charAt(0);
         }
 
         function selectVehicle(type, element) {
@@ -147,17 +176,14 @@
         async function requestRide() {
             const pickup = document.getElementById('pickup-loc').value.trim();
             const dropoff = document.getElementById('dropoff-loc').value.trim();
-            const seats = document.getElementById('seats-count').value;
 
             if (!pickup || !dropoff) {
-                alert('يرجى تحديد نقطة الانطلاق والوصول.');
+                alert('يرجى تحديد نقطة الانطلاق والوجهة بدقة.');
                 return;
             }
 
-            // توليد رمز PIN مكون من 4 أرقام
             const generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
 
-            // إظهار كارت الرحلة والـ PIN
             document.getElementById('booking-card').style.display = 'none';
             document.getElementById('active-trip-card').style.display = 'block';
             document.getElementById('trip-pin').innerText = generatedPin;
