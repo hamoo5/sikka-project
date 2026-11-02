@@ -48,7 +48,6 @@
         }
         .search-btn:hover { background: #334155; }
 
-        /* صندوق ملخص الرحلة (المسافة، الوقت، السعر) */
         .trip-summary {
             background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3);
             border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;
@@ -99,7 +98,6 @@
                 <button class="gps-btn" onclick="goToCurrentLocation()">🎯 موقعي</button>
             </div>
 
-            <!-- لوحة ملخص تفاصيل الرحلة (المسافة، الوقت، السعر التلقائي) -->
             <div class="trip-summary">
                 <div class="summary-item">
                     <div class="summary-label">المسافة</div>
@@ -134,19 +132,19 @@
             <div class="form-group">
                 <label class="label">فئة المركبة</label>
                 <div class="vehicle-grid">
-                    <div class="v-card active" onclick="selectVehicle('ملاكي', this, 10)">
+                    <div class="v-card active" onclick="selectVehicle('ملاكي', this, 10, 1.0)">
                         <div style="font-size: 16px;">🚗</div>
                         <div class="v-name">ملاكي</div>
                     </div>
-                    <div class="v-card" onclick="selectVehicle('سكوتر', this, 7)">
+                    <div class="v-card" onclick="selectVehicle('سكوتر', this, 7, 0.7)">
                         <div style="font-size: 16px;">🛵</div>
                         <div class="v-name">سكوتر</div>
                     </div>
-                    <div class="v-card" onclick="selectVehicle('سوزوكي', this, 8)">
+                    <div class="v-card" onclick="selectVehicle('سوزوكي', this, 8, 1.2)">
                         <div style="font-size: 16px;">🚐</div>
                         <div class="v-name">سوزوكي</div>
                     </div>
-                    <div class="v-card" onclick="selectVehicle('ميكروباص', this, 5)">
+                    <div class="v-card" onclick="selectVehicle('ميكروباص', this, 5, 1.4)">
                         <div style="font-size: 16px;">🚌</div>
                         <div class="v-name">ميكروباص</div>
                     </div>
@@ -156,13 +154,11 @@
             <button class="btn-request" onclick="requestRide()">تأكيد وطلب الرحلة ⚡</button>
         </div>
 
-        <div class="card-box" id="active-trip-card" style="display:none;">
-            <div class="active-trip-box">
-                <span class="status-badge" id="trip-status">⏳ في انتظار قبول الكابتن...</span>
-                <div style="font-size: 12px; color: #94a3b8; margin-top: 14px; font-weight: 600;">رمز الأمان للرحلة (PIN):</div>
-                <div class="pin-display" id="trip-pin">----</div>
-                <p style="font-size: 11px; color: #cbd5e1; margin: 0; line-height: 1.5;">أعطِ هذا الرقم للكابتن عند ركوب السيارة.</p>
-            </div>
+        <div class="active-trip-box" id="active-trip-card" style="display:none;">
+            <span class="status-badge" id="trip-status">⏳ في انتظار قبول الكابتن...</span>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 14px; font-weight: 600;">رمز الأمان للرحلة (PIN):</div>
+            <div class="pin-display" id="trip-pin">----</div>
+            <p style="font-size: 11px; color: #cbd5e1; margin: 0; line-height: 1.5;">أعطِ هذا الرقم للكابتن عند ركوب السيارة.</p>
         </div>
     </div>
 
@@ -174,12 +170,13 @@
 
         let currentUser = null;
         let selectedVehicleType = 'ملاكي';
-        let ratePerKm = 10; // سعر الكيلو الافتراضي للملاكي
+        let ratePerKm = 10;
+        let timeMultiplier = 1.0; // معامل سرعة الوسيلة
         let map;
         let pickupMarker, dropoffMarker;
         let routeLayer = null;
+        let baseRouteDurationMin = 0;
         let currentDistanceKm = 0;
-        let currentDurationMin = 0;
 
         function initRiderPage() {
             const stored = localStorage.getItem('combo_user');
@@ -226,7 +223,6 @@
             updateAddressFromLatLng(dLat, dLng, 'dropoff');
         }
 
-        // جلب مسار الشوارع وحساب المسافة والوقت الفعلي عبر OSRM API
         async function fetchAndDrawRoute(startCoord, endCoord) {
             try {
                 const url = `https://router.project-osrm.org/route/v1/driving/${startCoord[0]},${startCoord[1]};${endCoord[0]},${endCoord[1]}?overview=full&geometries=geojson`;
@@ -235,15 +231,14 @@
 
                 if (data.routes && data.routes.length > 0) {
                     const route = data.routes[0];
-                    const coords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                    const coords = route.geometry.coordinates.map(coord => [coord.lat = coord[1], coord.lng = coord[0]]);
 
-                    currentDistanceKm = (route.distance / 1000).toFixed(1); // المسافة بالكيلومتر
-                    currentDurationMin = Math.ceil(route.duration / 60); // الوقت بالدقائق
+                    currentDistanceKm = (route.distance / 1000).toFixed(1);
+                    baseRouteDurationMin = route.duration / 60; // الوقت الأساسي بالدقائق
 
                     document.getElementById('trip-distance').innerText = currentDistanceKm + ' كم';
-                    document.getElementById('trip-duration').innerText = currentDurationMin + ' دقيقة';
 
-                    calculatePrice();
+                    updateTripCalculations();
 
                     if (routeLayer) {
                         map.removeLayer(routeLayer);
@@ -256,12 +251,19 @@
                     }).addTo(map);
                 }
             } catch (err) {
-                console.log('تعذر جلب المسار');
+                console.log('خطأ في جلب المسار');
             }
         }
 
-        function calculatePrice() {
-            let baseFare = 15; // بداية الركوب الثابتة
+        // حساب الوقت والسعر بناءً على وسيلة المواصلات المختارة
+        function updateTripCalculations() {
+            // حساب الوقت المقدر مع تطبيق معامل السرعة للوسيلة
+            let finalDuration = Math.ceil(baseRouteDurationMin * timeMultiplier);
+            if (finalDuration < 2) finalDuration = 2; // أقل وقت للرحلة دقيقتين
+            document.getElementById('trip-duration').innerText = finalDuration + ' دقيقة';
+
+            // حساب السعر الإجمالي
+            let baseFare = 15;
             let calculatedPrice = baseFare + (currentDistanceKm * ratePerKm);
             document.getElementById('trip-price').innerText = Math.round(calculatedPrice) + ' ج.م';
         }
@@ -327,12 +329,13 @@
             }
         }
 
-        function selectVehicle(type, element, kmRate) {
+        function selectVehicle(type, element, kmRate, tMultiplier) {
             selectedVehicleType = type;
             ratePerKm = kmRate;
+            timeMultiplier = tMultiplier;
             document.querySelectorAll('.v-card').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
-            calculatePrice(); // إعادة حساب السعر فوراً حسب الوسيلة المختارة
+            updateTripCalculations(); // تحديث الوقت والسعر فوراً حسب الوسيلة
         }
 
         async function requestRide() {
