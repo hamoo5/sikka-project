@@ -3,260 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق كومبو - تسجيل برقم الموبايل</title>
-    <!-- مكتبة Leaflet للخرائط -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- مكتبة Supabase -->
+    <title>منصة كومبو - تسجيل الدخول</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: Tahoma, sans-serif; background: #0f172a; color: #fff; overflow: hidden; }
-        #map { height: 100vh; width: 100vw; position: absolute; top: 0; left: 0; z-index: 1; }
-        
-        .auth-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.98); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
-        .auth-card { background: #1e293b; padding: 25px; border-radius: 16px; width: 100%; max-width: 400px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .auth-card { background: #1e293b; padding: 25px; border-radius: 16px; width: 100%; max-width: 400px; border: 1px solid rgba(255,255,255,0.1); text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); box-sizing: border-box; margin: 20px; }
         .input-field { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; background: #0f172a; border: 1px solid #334155; color: #fff; font-size: 14px; box-sizing: border-box; }
-        
-        .top-bar { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(15, 23, 42, 0.9); padding: 8px 15px; border-radius: 30px; display: flex; gap: 10px; border: 1px solid rgba(255,255,255,0.1); }
-        .user-badge { background: #2563eb; padding: 6px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; }
-        .logout-btn { background: #ef4444; border: none; color: #fff; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 12px; }
-
-        .panel { position: absolute; bottom: 20px; left: 20px; right: 20px; z-index: 10; background: rgba(15, 23, 42, 0.95); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); max-width: 500px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .btn { background: #2563eb; color: #fff; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; }
+        .btn { background: #2563eb; color: #fff; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 12px; font-size: 16px; }
         .btn:hover { background: #1d4ed8; }
-        .select-box { width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; background: #1e293b; color: #fff; border: 1px solid #334155; font-size: 14px; }
+        .select-box { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; background: #0f172a; color: #fff; border: 1px solid #334155; font-size: 14px; box-sizing: border-box; }
+        .file-label { display: block; text-align: right; font-size: 12px; color: #94a3b8; margin-top: 8px; }
     </style>
 </head>
 <body>
 
-    <!-- شاشة تسجيل الدخول برقم الموبايل -->
-    <div class="auth-overlay" id="auth-screen">
-        <div class="auth-card">
-            <h2 style="margin-top:0; color:#38bdf8;">تطبيق كومبو 🚗</h2>
-            <p style="font-size:14px; color:#94a3b8;">ادخل رقم الموبايل للبدء مباشرة</p>
-            
-            <input type="text" id="auth-phone" class="input-field" placeholder="رقم الموبايل (مثال: 01012345678)">
-            <input type="text" id="auth-name" class="input-field" placeholder="الاسم بالكامل">
-            
-            <select id="auth-role" class="select-box" onchange="toggleDriverFields()">
-                <option value="rider">راكب</option>
-                <option value="driver">كابتن</option>
-            </select>
-            
-            <div id="driver-fields" style="display:none;">
-                <input type="text" id="auth-car" class="input-field" placeholder="نوع السيارة (مثال: سوزوكي / ملاكي)">
-                <input type="text" id="auth-plate" class="input-field" placeholder="رقم اللوحة">
-            </div>
+    <div class="auth-card">
+        <h2 style="margin-top:0; color:#38bdf8;">منصة كومبو 🚗📦</h2>
+        <p style="font-size:13px; color:#94a3b8; margin-bottom:15px;">سجل بياناتك للبدء في النظام</p>
+        
+        <input type="text" id="user-name" class="input-field" placeholder="الاسم بالكامل">
+        <input type="text" id="user-phone" class="input-field" placeholder="رقم الموبايل (مثال: 01012345678)">
+        <input type="password" id="user-password" class="input-field" placeholder="كلمة المرور">
+        
+        <span class="file-label">صورة شخصية (اختياري للراكب):</span>
+        <input type="file" id="user-image" class="input-field" accept="image/*" style="padding: 8px;">
 
-            <button class="btn" onclick="loginWithPhone()">دخول / تسجيل</button>
-        </div>
-    </div>
+        <select id="user-role" class="select-box">
+            <option value="rider">راكب</option>
+            <option value="driver">كابتن</option>
+        </select>
 
-    <div class="top-bar" id="app-top-bar" style="display:none;">
-        <span class="user-badge" id="user-display-badge">مستخدم</span>
-        <button class="logout-btn" onclick="logout()">خروج</button>
-    </div>
-
-    <div id="map"></div>
-
-    <div class="panel" id="control-panel" style="display:none;">
-        <h3 id="panel-title">جارٍ التحميل...</h3>
-        <div id="panel-content">يرجى الانتظار قليلاً</div>
+        <button class="btn" onclick="registerAndLogin()">دخول / تسجيل في النظام</button>
     </div>
 
     <script>
         const SUPABASE_URL = 'https://pmpzilqpcomoodaksbhw.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
-        let supabaseClient = null;
+        let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        try {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } catch (e) { console.error("خطأ في الاتصال بقاعدة البيانات:", e); }
-
-        let currentUser = null;
-        let map, pickupMarker, dropoffMarker, driverMarker;
-        let pickupCoords = { lat: 30.0444, lng: 31.2357 };
-        let dropoffCoords = null;
-        let activeTripId = null;
-
-        function toggleDriverFields() {
-            const role = document.getElementById('auth-role').value;
-            document.getElementById('driver-fields').style.display = role === 'driver' ? 'block' : 'none';
+        function convertImageToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
         }
 
-        async function loginWithPhone() {
-            const phone = document.getElementById('auth-phone').value.trim();
-            const name = document.getElementById('auth-name').value.trim();
-            const role = document.getElementById('auth-role').value;
-            const car = document.getElementById('auth-car') ? document.getElementById('auth-car').value : '';
-            const plate = document.getElementById('auth-plate') ? document.getElementById('auth-plate').value : '';
+        async function registerAndLogin() {
+            const name = document.getElementById('user-name').value.trim();
+            const phone = document.getElementById('user-phone').value.trim();
+            const password = document.getElementById('user-password').value.trim();
+            const role = document.getElementById('user-role').value;
+            const imageFile = document.getElementById('user-image').files[0];
 
-            if (!phone || !name) {
-                alert('يرجى ادخال رقم الموبايل والاسم بالكامل');
+            if (!name || !phone || !password) {
+                alert('يرجى إدخال الاسم، رقم الموبايل، وكلمة المرور كاملاً.');
                 return;
             }
 
-            // البحث أو إنشاء المستخدم برقم الهاتف مباشرة في جدول profiles
+            let imageUrl = '';
+            if (imageFile) {
+                try { imageUrl = await convertImageToBase64(imageFile); } catch (e) {}
+            }
+
             let { data: existingUser } = await supabaseClient.from('profiles').select('*').eq('phone', phone).single();
 
-            if (!existingUser) {
+            if (existingUser) {
+                if (existingUser.password && existingUser.password !== password) {
+                    alert('كلمة المرور غير صحيحة لهذا الرقم!');
+                    return;
+                }
+                currentUserRedirect(existingUser);
+            } else {
                 const newId = crypto.randomUUID();
-                const { error } = await supabaseClient.from('profiles').insert([{
+                const newUserObj = {
                     id: newId,
                     full_name: name,
                     phone: phone,
+                    password: password,
                     user_type: role,
-                    car_model: car,
-                    plate_number: plate
-                }]);
+                    profile_image: imageUrl || null,
+                    wallet_balance: role === 'driver' ? 100.00 : 0.00
+                };
 
+                const { error } = await supabaseClient.from('profiles').insert([newUserObj]);
                 if (error) {
-                    alert('خطأ في تسجيل الحساب: ' + error.message);
+                    alert('خطأ أثناء حفظ البيانات: ' + error.message);
                     return;
                 }
-                currentUser = { id: newId, full_name: name, user_type: role };
-            } else {
-                currentUser = existingUser;
-            }
 
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('app-top-bar').style.display = 'flex';
-            document.getElementById('control-panel').style.display = 'block';
-            document.getElementById('user-display-badge').innerText = currentUser.user_type === 'driver' ? `الكابتن: ${currentUser.full_name}` : `الراكب: ${currentUser.full_name}`;
-
-            initMap();
-        }
-
-        function logout() {
-            location.reload();
-        }
-
-        function initMap() {
-            if (map) return;
-            map = L.map('map').setView([pickupCoords.lat, pickupCoords.lng], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-
-            pickupMarker = L.marker([pickupCoords.lat, pickupCoords.lng]).addTo(map).bindPopup('موقع الانطلاق').openPopup();
-
-            if (currentUser.user_type === 'rider') {
-                map.on('click', function(e) {
-                    dropoffCoords = e.latlng;
-                    if (dropoffMarker) map.removeLayer(dropoffMarker);
-                    dropoffMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map).bindPopup('موقع الوصول').openPopup();
-                    showRideConfirmation();
-                });
-                renderRiderPanel();
-            } else {
-                renderDriverPanel();
+                currentUserRedirect(newUserObj);
             }
         }
 
-        function renderRiderPanel() {
-            document.getElementById('panel-title').innerText = "طلب رحلة جديدة (كومبو)";
-            document.getElementById('panel-content').innerHTML = `
-                <p style="margin: 5px 0; font-size: 14px;">انقر على الخريطة لتحديد مكان الوصول</p>
-                <div id="ride-options" style="display:none;">
-                    <label style="font-size: 13px; color: #94a3b8;">اختر نوع المركبة:</label>
-                    <select id="vehicle-type" class="select-box">
-                        <option value="ملاكي">سيارة ملاكي</option>
-                        <option value="سوزوكي">سوزوكي</option>
-                        <option value="ميكروباص">ميكروباص</option>
-                    </select>
-                </div>
-                <button class="btn" onclick="requestRide()" id="req-btn" style="display:none;">تأكيد وطلب الرحلة (25 جنيه)</button>
-            `;
-        }
+        function currentUserRedirect(user) {
+            localStorage.setItem('combo_user', JSON.stringify(user));
 
-        function showRideConfirmation() {
-            document.getElementById('ride-options').style.display = 'block';
-            document.getElementById('req-btn').style.display = 'block';
-        }
-
-        async function requestRide() {
-            const vehicle = document.getElementById('vehicle-type').value;
-            const otp = Math.floor(1000 + Math.random() * 9000).toString();
-            
-            const { data, error } = await supabaseClient.from('trips').insert([{
-                rider_id: currentUser.id,
-                pickup_lat: pickupCoords.lat,
-                pickup_lng: pickupCoords.lng,
-                dropoff_lat: dropoffCoords ? dropoffCoords.lat : pickupCoords.lat,
-                dropoff_lng: dropoffCoords ? dropoffCoords.lng : pickupCoords.lng,
-                fixed_price: 25.00,
-                otp_code: otp,
-                vehicle_type: vehicle,
-                status: 'SEARCHING'
-            }]).select();
-
-            if (error) {
-                alert('خطأ في إرسال الطلب: ' + error.message);
-            } else {
-                activeTripId = data[0].id;
-                document.getElementById('panel-content').innerHTML = `
-                    <p style="margin: 5px 0;">جارٍ البحث عن كابتن قريب (${vehicle})...</p>
-                    <p style="color: #38bdf8; margin: 5px 0;">كود التأكيد الخاص بك: <b>${otp}</b></p>
-                `;
-                listenToTrip(activeTripId);
-            }
-        }
-
-        function listenToTrip(tripId) {
-            supabaseClient.channel('trip-changes-' + tripId)
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, async payload => {
-                    const trip = payload.new;
-                    if (trip.status === 'ACCEPTED') {
-                        const { data: driverData } = await supabaseClient.from('profiles').select('*').eq('id', trip.driver_id).single();
-                        
-                        document.getElementById('panel-content').innerHTML = `
-                            <p style="color:#22c55e; font-weight: bold; margin: 5px 0;">تم قبول رحلتك! الكابتن في الطريق إليك.</p>
-                            <div style="background:#1e293b; padding:10px; border-radius:8px; margin:10px 0; font-size:13px;">
-                                <p style="margin:3px 0;">اسم الكابتن: <b>${driverData ? driverData.full_name : 'الكابتن'}</b></p>
-                                <p style="margin:3px 0;">السيارة: <b>${driverData ? driverData.car_model : 'غير محدد'}</b></p>
-                                <p style="margin:3px 0;">اللوحة: <b>${driverData ? driverData.plate_number : 'غير محدد'}</b></p>
-                            </div>
-                            <p style="margin: 5px 0;">كود التأكيد للركوب: <b>${trip.otp_code}</b></p>
-                        `;
-                    }
-                }).subscribe();
-        }
-
-        function renderDriverPanel() {
-            document.getElementById('panel-title').innerText = "واجهة الكابتن - الطلبات المتاحة";
-            document.getElementById('panel-content').innerHTML = `
-                <button class="btn" onclick="fetchAvailableTrips()" style="margin-top:0;">تحديث قائمة الطلبات</button>
-                <div id="trips-list" style="max-height: 150px; overflow-y: auto; margin-top: 10px;"></div>
-            `;
-            fetchAvailableTrips();
-        }
-
-        async function fetchAvailableTrips() {
-            const { data, error } = await supabaseClient.from('trips').select('*').eq('status', 'SEARCHING');
-            const listDiv = document.getElementById('trips-list');
-            if (error || !data || !data.length) {
-                listDiv.innerHTML = "<p style='color: #94a3b8; font-size: 14px;'>لا توجد طلبات متاحة حالياً.</p>";
-                return;
-            }
-            listDiv.innerHTML = data.map(trip => `
-                <div style="background:#1e293b; padding:10px; margin-top:8px; border-radius:6px; border: 1px solid #334155;">
-                    <p style="margin: 0 0 5px 0;">المركبة: <b>${trip.vehicle_type || 'ملاكي'}</b> | السعر: <b>${trip.fixed_price} جنيه</b></p>
-                    <button class="btn" style="margin-top:0; padding: 6px;" onclick="acceptTrip('${trip.id}')">قبول الرحلة</button>
-                </div>
-            `).join('');
-        }
-
-        async function acceptTrip(tripId) {
-            const { error } = await supabaseClient.from('trips').update({
-                status: 'ACCEPTED',
-                driver_id: currentUser.id
-            }).eq('id', tripId);
-
-            if (!error) {
-                alert('تم قبول الرحلة بنجاح! توجه الآن لنقطة الراكب.');
-                document.getElementById('panel-content').innerHTML = `
-                    <p style="color:#22c55e; font-weight:bold;">أنت الآن في طريقك للراكب!</p>
-                `;
-            } else {
-                alert('خطأ في قبول الرحلة: ' + error.message);
+            if (user.user_type === 'rider') {
+                window.location.href = 'passenger.html';
+            } else if (user.user_type === 'driver') {
+                window.location.href = 'captain.html';
+            } else if (user.user_type === 'admin') {
+                window.location.href = 'admin.html';
             }
         }
     </script>
