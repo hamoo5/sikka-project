@@ -3,89 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة كومبو - تسجيل الدخول</title>
+    <title>منصة كومبو - انطلق بثقة</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .auth-card { background: #1e293b; padding: 25px; border-radius: 16px; width: 100%; max-width: 400px; border: 1px solid rgba(255,255,255,0.1); text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); box-sizing: border-box; margin: 20px; }
-        .input-field { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; background: #0f172a; border: 1px solid #334155; color: #fff; font-size: 14px; box-sizing: border-box; }
-        .btn { background: #2563eb; color: #fff; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 12px; font-size: 16px; }
-        .btn:hover { background: #1d4ed8; }
-        .select-box { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; background: #0f172a; color: #fff; border: 1px solid #334155; font-size: 14px; box-sizing: border-box; }
-        .file-label { display: block; text-align: right; font-size: 12px; color: #94a3b8; margin-top: 8px; }
+        .auth-card { background: #1e293b; padding: 30px; border-radius: 20px; width: 100%; max-width: 400px; border: 1px solid rgba(255,255,255,0.08); text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.6); box-sizing: border-box; margin: 20px; position: relative; overflow: hidden; }
+        .auth-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #38bdf8, #2563eb); }
+        .input-field { width: 100%; padding: 14px; margin: 10px 0; border-radius: 10px; background: #0f172a; border: 1px solid #334155; color: #fff; font-size: 15px; box-sizing: border-box; transition: all 0.3s ease; }
+        .input-field:focus { border-color: #38bdf8; outline: none; box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+        .btn { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; border: none; padding: 14px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; transition: transform 0.2s, background 0.2s; }
+        .btn:active { transform: scale(0.98); }
+        .select-box { width: 100%; padding: 14px; margin: 10px 0; border-radius: 10px; background: #0f172a; color: #fff; border: 1px solid #334155; font-size: 15px; box-sizing: border-box; }
+        .hidden-step { display: none; opacity: 0; transition: opacity 0.4s ease-in; }
+        .fade-in { display: block; opacity: 1; }
+        .badge { display: inline-block; background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 5px 12px; border-radius: 20px; font-size: 12px; margin-bottom: 15px; font-weight: 600; }
     </style>
 </head>
 <body>
 
     <div class="auth-card">
-        <h2 style="margin-top:0; color:#38bdf8;">منصة كومبو 🚗📦</h2>
-        <p style="font-size:13px; color:#94a3b8; margin-bottom:15px;">سجل بياناتك للبدء في النظام</p>
+        <div class="badge">منصة كومبو الذكية 🚗📦</div>
+        <h2 id="form-title" style="margin: 0 0 5px 0; color: #fff; font-size: 22px;">أهلاً بك في رحلتك</h2>
+        <p id="form-subtitle" style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">أدخل رقم الموبايل للبدء فوراً</p>
         
-        <input type="text" id="user-name" class="input-field" placeholder="الاسم بالكامل">
-        
-        <!-- حقل رقم الموبايل محدد بأرقام فقط وباتجاه لتر -->
-        <input type="tel" id="user-phone" class="input-field" placeholder="رقم الموبايل (11 رقم مثل 01012345678)" maxlength="11" style="text-align: right; direction: ltr;">
-        
-        <input type="password" id="user-password" class="input-field" placeholder="كلمة المرور">
-        
-        <span class="file-label">صورة شخصية (اختياري للراكب):</span>
-        <input type="file" id="user-image" class="input-field" accept="image/*" style="padding: 8px;">
+        <!-- الخطوة الأولى: رقم الموبايل فقط -->
+        <div id="step-phone">
+            <input type="tel" id="user-phone" class="input-field" placeholder="رقم الموبايل (010xxxxxxxx)" maxlength="11" style="text-align: right; direction: ltr;" oninput="checkUserPhoneExist()">
+            <button class="btn" onclick="proceedNextStep()">متابعة ⚡</button>
+        </div>
 
-        <select id="user-role" class="select-box">
-            <option value="rider">راكب</option>
-            <option value="driver">كابتن</option>
-        </select>
+        <!-- الخطوة الثانية: باقي البيانات تظهر بناءً على حالة المستخدم -->
+        <div id="step-extra-details" class="hidden-step">
+            <input type="text" id="user-name" class="input-field" placeholder="الاسم بالكامل">
+            <input type="password" id="user-password" class="input-field" placeholder="كلمة المرور">
+            
+            <div id="role-selection-box">
+                <span style="display: block; text-align: right; font-size: 12px; color: #94a3b8; margin-top: 8px;">اختر نوع الحساب:</span>
+                <select id="user-role" class="select-box">
+                    <option value="rider">🚏 راكب (أرغب في التنقل والرحلات)</option>
+                    <option value="driver">🚗 كابتن (أرغب في قيادة وتوصيل الركاب)</option>
+                </select>
+            </div>
 
-        <button class="btn" onclick="registerAndLogin()">دخول / تسجيل في النظام</button>
+            <button class="btn" id="action-btn-text" onclick="executeAuthAction()">تسجيل الحساب وانطلاق 🚀</button>
+            <p style="margin-top: 15px; font-size: 12px; color: #38bdf8; cursor: pointer;" onclick="resetForm()">← تغيير رقم الموبايل</p>
+        </div>
     </div>
 
     <script>
         const SUPABASE_URL = 'https://pmpzilqpcomoodaksbhw.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
         let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let foundExistingUser = null;
 
-        function convertImageToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error);
-            });
-        }
-
-        async function registerAndLogin() {
-            const name = document.getElementById('user-name').value.trim();
+        async function proceedNextStep() {
             const phone = document.getElementById('user-phone').value.trim();
-            const password = document.getElementById('user-password').value.trim();
-            const role = document.getElementById('user-role').value;
-            const imageFile = document.getElementById('user-image').files[0];
-
-            if (!name || !phone || !password) {
-                alert('يرجى إدخال الاسم، رقم الموبايل، وكلمة المرور كاملاً.');
-                return;
-            }
-
-            // التحقق الصارم: رقم الموبايل يجب أن يكون 11 رقم ويبدأ بـ 01 (ملاكي/صحيح) وبدون حروف
+            
             const phoneRegex = /^01[0125][0-9]{8}$/;
             if (!phoneRegex.test(phone)) {
-                alert('خطأ: رقم الموبايل يجب أن يكون 11 رقماً صحيحاً يبدأ بـ 01 (مثل 01012345678) ولا يحتوي على حروف أو رموز.');
+                alert('يرجى إدخال رقم موبايل مصري صحيح مكون من 11 رقماً (يبدأ بـ 01).');
                 return;
             }
 
-            let imageUrl = '';
-            if (imageFile) {
-                try { imageUrl = await convertImageToBase64(imageFile); } catch (e) {}
+            // فحص هل المستخدم مسجل مسبقاً في قاعدة البيانات أم لا
+            let { data: user } = await supabaseClient.from('profiles').select('*').eq('phone', phone).single();
+
+            document.getElementById('step-phone').style.display = 'none';
+            const extraBox = document.getElementById('step-extra-details');
+            extraBox.classList.add('fade-in');
+
+            if (user) {
+                // مستخدم قديم -> اطلب كلمة المرور فقط لتسجيل الدخول
+                foundExistingUser = user;
+                document.getElementById('form-title').innerText = `مرحباً بعودتك، ${user.full_name || 'بطل كومبو'}`;
+                document.getElementById('form-subtitle').innerText = 'أدخل كلمة المرور الخاصة بك لتسجيل الدخول';
+                
+                document.getElementById('user-name').style.display = 'none';
+                document.getElementById('role-selection-box').style.display = 'none';
+                document.getElementById('action-btn-text').innerText = 'تسجيل الدخول الفوري 🔓';
+            } else {
+                // مستخدم جديد -> اظهر استمارة التسجيل الكاملة
+                foundExistingUser = null;
+                document.getElementById('form-title').innerText = 'حساب جديد في كومبو';
+                document.getElementById('form-subtitle').innerText = 'أكمل بياناتك البسيطة لتنضم إلينا';
+                
+                document.getElementById('user-name').style.display = 'block';
+                document.getElementById('role-selection-box').style.display = 'block';
+                document.getElementById('action-btn-text').innerText = 'تسجيل الحساب وانطلاق 🚀';
+            }
+        }
+
+        async function executeAuthAction() {
+            const phone = document.getElementById('user-phone').value.trim();
+            const password = document.getElementById('user-password').value.trim();
+
+            if (!password) {
+                alert('يرجى إدخال كلمة المرور.');
+                return;
             }
 
-            let { data: existingUser } = await supabaseClient.from('profiles').select('*').eq('phone', phone).single();
-
-            if (existingUser) {
-                if (existingUser.password && existingUser.password !== password) {
-                    alert('كلمة المرور غير صحيحة لهذا الرقم!');
+            if (foundExistingUser) {
+                // عملية تسجيل دخول لمستخدم قديم
+                if (foundExistingUser.password && foundExistingUser.password !== password) {
+                    alert('كلمة المرور غير صحيحة!');
                     return;
                 }
-                currentUserRedirect(existingUser);
+                currentUserRedirect(foundExistingUser);
             } else {
+                // عملية تسجيل حساب جديد
+                const name = document.getElementById('user-name').value.trim();
+                const role = document.getElementById('user-role').value;
+
+                if (!name) {
+                    alert('يرجى إدخال الاسم بالكامل.');
+                    return;
+                }
+
                 const newId = crypto.randomUUID();
                 const newUserObj = {
                     id: newId,
@@ -93,18 +127,26 @@
                     phone: phone,
                     password: password,
                     user_type: role,
-                    profile_image: imageUrl || null,
                     wallet_balance: role === 'driver' ? 100.00 : 0.00
                 };
 
                 const { error } = await supabaseClient.from('profiles').insert([newUserObj]);
                 if (error) {
-                    alert('خطأ أثناء حفظ البيانات: ' + error.message);
+                    alert('خطأ أثناء إنشاء الحساب: ' + error.message);
                     return;
                 }
 
                 currentUserRedirect(newUserObj);
             }
+        }
+
+        function resetForm() {
+            document.getElementById('step-extra-details').classList.remove('fade-in');
+            document.getElementById('step-extra-details').style.display = 'none';
+            document.getElementById('step-phone').style.display = 'block';
+            document.getElementById('form-title').innerText = 'أهلاً بك في رحلتك';
+            document.getElementById('form-subtitle').innerText = 'أدخل رقم الموبايل للبدء فوراً';
+            document.getElementById('user-password').value = '';
         }
 
         function currentUserRedirect(user) {
@@ -114,8 +156,8 @@
                 window.location.href = 'passenger.html';
             } else if (user.user_type === 'driver') {
                 window.location.href = 'captain.html';
-            } else if (user.user_type === 'admin') {
-                window.location.href = 'admin.html';
+            } else {
+                window.location.href = 'passenger.html';
             }
         }
     </script>
