@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>موقف - Mahattat | الراكب</title>
+  <title>موقف - كومبو | واجهة الراكب</title>
   
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
@@ -28,17 +28,17 @@
 </head>
 <body>
 
-  <!-- 1. تسجيل الدخول -->
+  <!-- 1. شاشة تسجيل الدخول السريعة -->
   <div id="auth-section" class="card">
-    <h2 style="text-align: center;">🚏 تطبيق موقف - Mahattat</h2>
+    <h2 style="text-align: center;">🚏 مشروع كومبو - الراكب</h2>
     <input type="text" id="user_name" placeholder="اسمك الكريم" value="أحمد">
     <input type="tel" id="user_phone" placeholder="رقم الموبايل" value="01112142750">
-    <button class="btn-secondary" id="login-btn" type="button">دخول وحجز رحلة 🚀</button>
+    <button class="btn-secondary" type="button" onclick="handleAuth()">دخول وحجز رحلة 🚀</button>
   </div>
 
-  <!-- 2. واجهة الحجز والتحديد -->
+  <!-- 2. واجهة الحجز والخريطة -->
   <div id="app-section" class="card hidden">
-    <h3 style="margin-top:0;" id="app-title">🚏 تحديد الرحلة والموقف</h3>
+    <h3 style="margin-top:0;" id="app-title">🚏 تحديد خط السير والموقف</h3>
 
     <div class="mode-selector">
       <div id="mode-shared" class="mode-btn active" onclick="switchRideMode('shared')">🚐 خط سير / موقف (تشاركي)</div>
@@ -49,14 +49,14 @@
       <button class="btn-gps" type="button" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
 
       <div id="shared-options">
-        <label style="font-weight:bold; font-size:13px; color:#555;">وسيلة النقل التشاركية:</label>
+        <label style="font-weight:bold; font-size:13px; color:#555;">وسيلة النقل:</label>
         <select id="vehicle_type">
           <option value="microbus">🚐 ميكروباص (خطوط سير ومواقف)</option>
-          <option value="suzuki">🚐 سوزوكي (رحلات تشاركية مرنة)</option>
+          <option value="suzuki">🚐 سوزوكي (تشاركي مرن)</option>
           <option value="private_shared">🚗 ملاكي تشاركي (حجز مقاعد)</option>
         </select>
 
-        <label style="font-weight:bold; font-size:13px; color:#555; margin-top:6px; display:block;">عدد المقاعد المحجوزة:</label>
+        <label style="font-weight:bold; font-size:13px; color:#555; margin-top:6px; display:block;">عدد المقاعد:</label>
         <select id="seats_count">
           <option value="1">مقعد واحد (1)</option>
           <option value="2">مقعدان (2)</option>
@@ -65,20 +65,14 @@
         </select>
       </div>
       
-      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">موقف/نقطة الانطلاق (اسحب الدبوس الأخضر 🟢):</label>
-      <div style="display:flex; gap:5px;">
-        <input type="text" id="pickup_loc" placeholder="اسحب الدبوس على الخريطة أو ابحث" style="margin:0;">
-        <button type="button" style="width:30%; margin:0; background:#007bff;" onclick="searchPickupLocation()">بحث</button>
-      </div>
+      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">موقف الانطلاق (الدبوس الأخضر 🟢):</label>
+      <input type="text" id="pickup_loc" placeholder="اسحب الدبوس على الخريطة">
 
-      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">موقف/وجهة الوصول (اسحب الدبوس الأحمر 🔴):</label>
-      <div style="display:flex; gap:5px;">
-        <input type="text" id="dropoff_loc" placeholder="اسحب الدبوس الأحمر أو ابحث" style="margin:0;">
-        <button type="button" style="width:30%; margin:0; background:#007bff;" onclick="searchDropoffLocation()">بحث</button>
-      </div>
+      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">وجهة الوصول (الدبوس الأحمر 🔴):</label>
+      <input type="text" id="dropoff_loc" placeholder="اسحب الدبوس الأحمر">
     </div>
 
-    <div id="trip-status">اسحب الدبابيس على الخريطة لتحديد خط السير بدقة...</div>
+    <div id="trip-status">اسحب الدبابيس على الخريطة لتحديد خط السير...</div>
 
     <button id="action-btn" type="button" onclick="requestRide()" style="background:#28a745;">🚀 تأكيد حجز المقاعد والرحلة</button>
     <button id="cancel-btn" type="button" class="btn-danger hidden" onclick="cancelRide()">❌ إلغاء الطلب</button>
@@ -134,9 +128,6 @@
       setTimeout(initMap, 200);
     }
 
-    // ربط الحدث مباشرة للزرار لضمان الاستجابة الفورية باللمس
-    document.getElementById('login-btn').addEventListener('click', handleAuth);
-
     function initMap() {
       if (map) return;
       map = L.map('map').setView([30.0444, 31.2357], 13);
@@ -146,7 +137,6 @@
       }).addTo(map);
 
       const center = map.getCenter();
-      
       pickupCoords = center;
       pickupMarker = L.marker(center, {icon: greenIcon, draggable: true}).addTo(map);
       updatePickupAddress(center.lat, center.lng);
@@ -174,52 +164,11 @@
     }
 
     async function updatePickupAddress(lat, lng) {
-      const address = await getAddressName(lat, lng);
-      document.getElementById('pickup_loc').value = address;
+      document.getElementById('pickup_loc').value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
     async function updateDropoffAddress(lat, lng) {
-      const address = await getAddressName(lat, lng);
-      document.getElementById('dropoff_loc').value = address;
-    }
-
-    async function getAddressName(lat, lng) {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`);
-        const data = await res.json();
-        if (data && data.display_name) return data.display_name.split(',').slice(0, 3).join(',');
-      } catch (e) {}
-      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    }
-
-    async function searchPickupLocation() {
-      let query = document.getElementById('pickup_loc').value;
-      if (!query) return;
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", مصر")}&limit=1&accept-language=ar`);
-        const results = await res.json();
-        if (results.length > 0) {
-          pickupCoords = L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon));
-          pickupMarker.setLatLng(pickupCoords);
-          map.setView(pickupCoords, 15);
-          if (dropoffCoords) drawRoute();
-        }
-      } catch (e) {}
-    }
-
-    async function searchDropoffLocation() {
-      let query = document.getElementById('dropoff_loc').value;
-      if (!query) return;
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", مصر")}&limit=1&accept-language=ar`);
-        const results = await res.json();
-        if (results.length > 0) {
-          dropoffCoords = L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon));
-          dropoffMarker.setLatLng(dropoffCoords);
-          map.setView(dropoffCoords, 15);
-          if (pickupCoords) drawRoute();
-        }
-      } catch (e) {}
+      document.getElementById('dropoff_loc').value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
     function drawRoute() {
@@ -238,23 +187,13 @@
         const routes = e.routes;
         if (routes && routes.length > 0) {
           const distanceKm = (routes[0].summary.totalDistance / 1000).toFixed(1);
-          const durationMin = Math.round(routes[0].summary.totalTime / 60);
-          
-          let estimatedPrice = 0;
-          if (currentMode === 'shared') {
-            const seats = parseInt(document.getElementById('seats_count').value);
-            estimatedPrice = Math.round((5 + (distanceKm * 2.5)) * seats);
-          } else {
-            estimatedPrice = Math.round(10 + (distanceKm * 5));
-          }
+          let estimatedPrice = (currentMode === 'shared') ? 
+            Math.round((5 + (distanceKm * 2.5)) * parseInt(document.getElementById('seats_count').value)) : 
+            Math.round(10 + (distanceKm * 5));
 
           const statusDiv = document.getElementById('trip-status');
           statusDiv.style.display = 'block';
-          statusDiv.innerHTML = `
-            📊 <b>تفاصيل رحلة (${currentMode === 'shared' ? 'موقف / تشاركي' : 'خاص ملاكي'}):</b><br>
-            📏 المسافة: ${distanceKm} كم | ⏱️ الوقت: ${durationMin} دقيقة<br>
-            💰 التكلفة المقدرة: <b>${estimatedPrice} جنيه</b>
-          `;
+          statusDiv.innerHTML = `📊 المسافة: ${distanceKm} كم | التكلفة التقريبية: <b>${estimatedPrice} جنيه</b>`;
         }
       });
     }
@@ -265,7 +204,7 @@
           const coords = L.latLng(position.coords.latitude, position.coords.longitude);
           pickupCoords = coords;
           pickupMarker.setLatLng(coords);
-          document.getElementById('pickup_loc').value = await getAddressName(coords.lat, coords.lng);
+          document.getElementById('pickup_loc').value = `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
           map.setView(coords, 16);
           if (dropoffCoords) drawRoute();
         });
@@ -273,22 +212,16 @@
     }
 
     async function requestRide() {
-      const pickup = document.getElementById('pickup_loc').value;
-      const dropoff = document.getElementById('dropoff_loc').value;
-      if (!pickup || !dropoff) { alert('حدد موقف الانطلاق والوصول'); return; }
-
       const pin = Math.floor(1000 + Math.random() * 9000);
       const vehicleType = (currentMode === 'shared') ? document.getElementById('vehicle_type').value : 'private_special';
       const seatsCount = (currentMode === 'shared') ? parseInt(document.getElementById('seats_count').value) : 1;
-      const passengerName = localStorage.getItem('passenger_name') || 'راكب';
-      const passengerPhone = localStorage.getItem('passenger_phone') || '';
-
+      
       const { data, error } = await supabase.from('trips').insert([
         {
-          passenger_name: passengerName,
-          passenger_phone: passengerPhone,
-          pickup_location: pickup,
-          dropoff_location: dropoff,
+          passenger_name: localStorage.getItem('passenger_name'),
+          passenger_phone: localStorage.getItem('passenger_phone'),
+          pickup_location: document.getElementById('pickup_loc').value,
+          dropoff_location: document.getElementById('dropoff_loc').value,
           vehicle_type: vehicleType,
           seats_count: seatsCount,
           pin_code: pin,
@@ -300,52 +233,26 @@
         }
       ]).select();
 
-      if (error) {
-        console.error('Error inserting trip:', error);
-        alert('حدث خطأ في طلب الرحلة، تأكد من الاتصال بقاعدة البيانات');
-        return;
-      }
+      if (error) { alert('خطأ في إرسال الرحلة'); return; }
 
       if (data && data.length > 0) {
         currentTripId = data[0].id;
-        subscribeToTripUpdates(currentTripId);
+        supabase.channel(`trip_${currentTripId}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${currentTripId}` }, payload => {
+          if (payload.new.status === 'accepted') {
+            document.getElementById('trip-status').innerHTML = `🎉 تم قبول الرحلة! كود التحقق (PIN): <b>${payload.new.pin_code}</b>`;
+          }
+        }).subscribe();
       }
 
       document.getElementById('booking-controls').classList.add('hidden');
       document.getElementById('action-btn').classList.add('hidden');
       document.getElementById('cancel-btn').classList.remove('hidden');
-      document.getElementById('app-title').innerText = "🚏 جاري حجز مقعدك وتواصل الكابتن...";
-      
-      const statusDiv = document.getElementById('trip-status');
-      statusDiv.style.display = 'block';
-      statusDiv.innerHTML = `
-        🔄 <b>تم إرسال طلبك بنجاح!</b><br>
-        🔑 كود الركوب الخاص بك (PIN): <b style="font-size:18px; color:#d9534f;">${pin}</b><br>
-        في انتظار قبول الكابتن المناسب على الخط...
-      `;
-    }
-
-    function subscribeToTripUpdates(tripId) {
-      supabase
-        .channel(`trip_${tripId}`)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, payload => {
-          if (payload.new.status === 'accepted') {
-            const statusDiv = document.getElementById('trip-status');
-            statusDiv.innerHTML = `
-              🎉 <b>تم قبول رحلتك من قبل الكابتن!</b><br>
-              🔑 كود الركوب الخاص بك: <b style="font-size:18px; color:#d9534f;">${payload.new.pin_code}</b><br>
-              الكابتن في طريقه إليك الآن.
-            `;
-          }
-        })
-        .subscribe();
+      document.getElementById('trip-status').style.display = 'block';
+      document.getElementById('trip-status').innerHTML = `🔄 تم إرسال الطلب بنجاح! كود الـ PIN الخاص بك: <b style="color:#d9534f; font-size:18px;">${pin}</b>`;
     }
 
     async function cancelRide() {
-      if (currentTripId) {
-        await supabase.from('trips').update({ status: 'cancelled' }).eq('id', currentTripId);
-      }
-      alert('تم إلغاء طلب الحجز.');
+      if (currentTripId) await supabase.from('trips').update({ status: 'cancelled' }).eq('id', currentTripId);
       location.reload();
     }
   </script>
