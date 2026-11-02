@@ -33,7 +33,7 @@
     <h2 style="text-align: center;">🚏 تطبيق موقف - Mahattat</h2>
     <input type="text" id="user_name" placeholder="اسمك الكريم" value="أحمد">
     <input type="tel" id="user_phone" placeholder="رقم الموبايل" value="01112142750">
-    <button class="btn-secondary" type="button" onclick="handleAuth()">دخول وحجز رحلة 🚀</button>
+    <button class="btn-secondary" id="login-btn" type="button">دخول وحجز رحلة 🚀</button>
   </div>
 
   <!-- 2. واجهة الحجز والتحديد -->
@@ -133,6 +133,9 @@
       document.getElementById('app-section').classList.remove('hidden');
       setTimeout(initMap, 200);
     }
+
+    // ربط الحدث مباشرة للزرار لضمان الاستجابة الفورية باللمس
+    document.getElementById('login-btn').addEventListener('click', handleAuth);
 
     function initMap() {
       if (map) return;
