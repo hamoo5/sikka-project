@@ -3,53 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة كومبو - لوحة الراكب</title>
+    <title>كومبو - حجز رحلة جديدة</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; padding: 20px; font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: #fff; text-align: center; }
-        .card { background: #1e293b; padding: 20px; border-radius: 12px; max-width: 400px; margin: auto; border: 1px solid #334155; }
-        .user-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #38bdf8; }
-        .btn { background: #2563eb; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        body { margin: 0; padding: 0; background: #070b19; color: #fff; min-height: 100vh; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 440px; padding: 20px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; }
+        .user-welcome { font-size: 16px; font-weight: 700; color: #38bdf8; }
+        .logout-btn { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; padding: 6px 14px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 12px; }
+
+        .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 24px; padding: 24px; box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5); margin-bottom: 20px; }
+        .card-title { font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+
+        .form-group { margin-bottom: 16px; text-align: right; }
+        .label { font-size: 13px; color: #94a3b8; margin-bottom: 6px; display: block; font-weight: 600; }
+        
+        .input-box, .select-box {
+            width: 100%; padding: 14px; border-radius: 12px;
+            background: #050b14; border: 1px solid #334155;
+            color: #fff; font-size: 14px; appearance: none;
+        }
+        .input-box:focus, .select-box:focus { border-color: #38bdf8; outline: none; }
+
+        .vehicle-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+        .v-card {
+            background: #050b14; border: 1px solid #334155;
+            padding: 12px 8px; border-radius: 14px; text-align: center;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .v-card.active { border-color: #38bdf8; background: rgba(56, 189, 248, 0.1); }
+        .v-icon { font-size: 22px; margin-bottom: 4px; }
+        .v-name { font-size: 12px; font-weight: 700; }
+
+        .btn-request {
+            background: linear-gradient(135deg, #38bdf8, #2563eb);
+            color: #fff; border: none; padding: 16px; width: 100%;
+            border-radius: 14px; font-weight: 800; font-size: 16px;
+            cursor: pointer; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+            margin-top: 10px;
+        }
+
+        .active-trip-box {
+            background: rgba(56, 189, 248, 0.08); border: 1px solid #38bdf8;
+            border-radius: 20px; padding: 20px; text-align: center;
+        }
+        .pin-display { font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #38bdf8; margin: 10px 0; }
+        .status-badge { background: #eab308; color: #000; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 700; display: inline-block; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>مشروع كومبو - الراكب 🚏</h2>
-        
-        <!-- مكان ظهور صورة المستخدم -->
-        <div id="user-image-container"></div>
-        
-        <h3 id="display-name" style="color: #38bdf8; margin: 5px 0;">جاري التحميل...</h3>
-        <p id="display-phone" style="color: #94a3b8; font-size: 14px;"></p>
-        
-        <hr style="border: 0; border-top: 1px solid #334155; margin: 15px 0;">
-        
-        <p style="font-size: 14px;">مرحباً بك في منصتك لحجز الرحلات والتوصيل</p>
-        
-        <button class="btn" onclick="logout()">تسجيل الخروج</button>
+    <div class="container">
+        <!-- الشريط العلوى -->
+        <div class="header">
+            <div class="user-welcome">أهلاً بك 👋 <span id="rider-name">...</span></div>
+            <button class="logout-btn" onclick="logout()">خروج</button>
+        </div>
+
+        <!-- كارت حجز رحلة جديدة -->
+        <div class="card-box" id="booking-card">
+            <div class="card-title">🚏 حجز رحلة جديدة</div>
+
+            <div class="form-group">
+                <label class="label">نقطة الانطلاق (الموقف / النقطة الحالية)</label>
+                <input type="text" id="pickup-loc" class="input-box" placeholder="مثال: موقف المحطة">
+            </div>
+
+            <div class="form-group">
+                <label class="label">وجهة الوصول</label>
+                <input type="text" id="dropoff-loc" class="input-box" placeholder="مثال: وسط البلد">
+            </div>
+
+            <div class="form-group">
+                <label class="label">اختر وسيلة التنقل المفضلة</label>
+                <div class="vehicle-options">
+                    <div class="v-card active" onclick="selectVehicle('ملاكي', this)">
+                        <div class="v-icon">🚗</div>
+                        <div class="v-name">ملاكي</div>
+                    </div>
+                    <div class="v-card" onclick="selectVehicle('سوزوكي', this)">
+                        <div class="v-icon">🚐</div>
+                        <div class="v-name">سوزوكي</div>
+                    </div>
+                    <div class="v-card" onclick="selectVehicle('ميكروباص', this)">
+                        <div class="v-icon">🚌</div>
+                        <div class="v-name">ميكروباص</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="label">عدد المقاعد المطلوبة</label>
+                <select id="seats-count" class="select-box">
+                    <option value="1">مقعد واحد (1)</option>
+                    <option value="2">مقعدين (2)</option>
+                    <option value="3">3 مقاعد</option>
+                    <option value="4">4 مقاعد</option>
+                </select>
+            </div>
+
+            <button class="btn-request" onclick="requestRide()">تأكيد وإرسال طلب الرحلة 🚀</button>
+        </div>
+
+        <!-- كارت الرحلة الحالية النشطة (يظهر عند طلب رحلة) -->
+        <div class="card-box" id="active-trip-card" style="display:none;">
+            <div class="active-trip-box">
+                <span class="status-badge" id="trip-status">في انتظار قبول الكابتن...</span>
+                <div style="font-size: 13px; color: #94a3b8; margin-top: 15px;">رمز الأمان للرحلة (PIN):</div>
+                <div class="pin-display" id="trip-pin">----</div>
+                <p style="font-size: 12px; color: #cbd5e1; margin: 0;">أعطِ هذا الرقم للكابتن فور وصوله لبدء الرحلة بأمان.</p>
+            </div>
+        </div>
     </div>
 
     <script>
-        // جلب بيانات المستخدم المسجل من الذاكرة المحلية
-        const userData = JSON.parse(localStorage.getItem('combo_user'));
+        const SUPABASE_URL = 'https://pmpzilqpcomoodaksbhw.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
+        let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        if (!userData) {
-            alert('يرجى تسجيل الدخول أولاً!');
-            window.location.href = 'index.html';
-        } else {
-            // عرض البيانات الحقيقية للمستخدم
-            document.getElementById('display-name').innerText = userData.full_name || 'مستخدم كومبو';
-            document.getElementById('display-phone').innerText = userData.phone || '';
+        let currentUser = null;
+        let selectedVehicleType = 'ملاكي';
 
-            if (userData.profile_image) {
-                document.getElementById('user-image-container').innerHTML = `<img src="${userData.profile_image}" class="user-img" alt="صورة البروفايل">`;
+        // التأكد من تسجيل الدخول
+        function initRiderPage() {
+            const stored = localStorage.getItem('combo_user');
+            if (!stored) {
+                window.location.href = 'rider-register.html';
+                return;
             }
+            currentUser = JSON.parse(stored);
+            document.getElementById('rider-name').innerText = currentUser.full_name || 'راكب كومبو';
+        }
+
+        function selectVehicle(type, element) {
+            selectedVehicleType = type;
+            document.querySelectorAll('.v-card').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        async function requestRide() {
+            const pickup = document.getElementById('pickup-loc').value.trim();
+            const dropoff = document.getElementById('dropoff-loc').value.trim();
+            const seats = document.getElementById('seats-count').value;
+
+            if (!pickup || !dropoff) {
+                alert('يرجى تحديد نقطة الانطلاق والوصول.');
+                return;
+            }
+
+            // توليد رمز PIN مكون من 4 أرقام
+            const generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
+
+            // إظهار كارت الرحلة والـ PIN
+            document.getElementById('booking-card').style.display = 'none';
+            document.getElementById('active-trip-card').style.display = 'block';
+            document.getElementById('trip-pin').innerText = generatedPin;
         }
 
         function logout() {
             localStorage.removeItem('combo_user');
-            window.location.href = 'index.html';
+            window.location.href = 'rider-register.html';
         }
+
+        initRiderPage();
     </script>
 </body>
 </html>
