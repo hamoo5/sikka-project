@@ -182,19 +182,19 @@
         let baseRouteDurationMin = 0;
         let currentDistanceKm = 0;
 
-        // أيقونات مخصصة للدبابيس (أخضر للانطلاق، أحمر للوصول)
-        const greenIcon = L.divIcon({
+        // دبابيس حقيقية احترافية (أخضر للانطلاق، أحمر للوصول)
+        const greenPinIcon = L.divIcon({
             className: 'custom-pin',
-            html: '<div style="font-size: 26px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">🟢</div>',
-            iconSize: [30, 30],
-            iconAnchor: [15, 30]
+            html: '<div style="background-color: #22c55e; width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.4); border: 2px solid #fff;"><div style="width: 6px; height: 6px; background: #fff; border-radius: 50%; transform: rotate(45deg);"></div></div>',
+            iconSize: [22, 22],
+            iconAnchor: [11, 22]
         });
 
-        const redIcon = L.divIcon({
+        const redPinIcon = L.divIcon({
             className: 'custom-pin',
-            html: '<div style="font-size: 26px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">🔴</div>',
-            iconSize: [30, 30],
-            iconAnchor: [15, 30]
+            html: '<div style="background-color: #ef4444; width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.4); border: 2px solid #fff;"><div style="width: 6px; height: 6px; background: #fff; border-radius: 50%; transform: rotate(45deg);"></div></div>',
+            iconSize: [22, 22],
+            iconAnchor: [11, 22]
         });
 
         function initRiderPage() {
@@ -218,13 +218,11 @@
             let pLat = 30.0444, pLng = 31.2357;
             let dLat = 30.0550, dLng = 31.2450;
 
-            // إنشاء الدبوس الأخضر للانطلاق
-            pickupMarker = L.marker([pLat, pLng], {draggable: true, icon: greenIcon}).addTo(map)
-                .bindPopup('نقطة الانطلاق (أخضر)');
+            pickupMarker = L.marker([pLat, pLng], {draggable: true, icon: greenPinIcon}).addTo(map)
+                .bindPopup('نقطة الانطلاق');
 
-            // إنشاء الدبوس الأحمر للوصول
-            dropoffMarker = L.marker([dLat, dLng], {draggable: true, icon: redIcon}).addTo(map)
-                .bindPopup('نقطة الوصول (أحمر)');
+            dropoffMarker = L.marker([dLat, dLng], {draggable: true, icon: redPinIcon}).addTo(map)
+                .bindPopup('نقطة الوصول');
 
             fetchAndDrawRoute([pLng, pLat], [dLng, dLat]);
 
@@ -265,16 +263,16 @@
                         map.removeLayer(routeLayer);
                     }
 
-                    // تحديد لون خط السير (الزحمة) زى جوجل ماب بناءً على الوقت والسرعة المقدرة
-                    let routeColor = '#22c55e'; // أخضر (طريق فاضي وسالك)
+                    // تلوين خط السير حسب حالة المرور (أخضر للسالك، برتقالي للمتوسط، أحمر للمزدحم)
+                    let routeColor = '#22c55e'; 
                     let trafficText = '🟢 سالك';
 
                     let avgSpeed = currentDistanceKm / (baseRouteDurationMin / 60);
                     if (avgSpeed < 15) {
-                        routeColor = '#ef4444'; // أحمر (زحمة شديدة)
+                        routeColor = '#ef4444'; 
                         trafficText = '🔴 مزدحم جداً';
                     } else if (avgSpeed < 25) {
-                        routeColor = '#f59e0b'; // برتقالي (حركة متوسطة)
+                        routeColor = '#f59e0b'; 
                         trafficText = '🟠 حركة متوسطة';
                     }
 
