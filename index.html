@@ -14,8 +14,7 @@
         .btn { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; border: none; padding: 14px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; transition: transform 0.2s, background 0.2s; }
         .btn:active { transform: scale(0.98); }
         .select-box { width: 100%; padding: 14px; margin: 10px 0; border-radius: 10px; background: #0f172a; color: #fff; border: 1px solid #334155; font-size: 15px; box-sizing: border-box; }
-        .hidden-step { display: none; opacity: 0; transition: opacity 0.4s ease-in; }
-        .fade-in { display: block; opacity: 1; }
+        .hidden-step { display: none; }
         .badge { display: inline-block; background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 5px 12px; border-radius: 20px; font-size: 12px; margin-bottom: 15px; font-weight: 600; }
     </style>
 </head>
@@ -26,15 +25,17 @@
         <h2 id="form-title" style="margin: 0 0 5px 0; color: #fff; font-size: 22px;">أهلاً بك في رحلتك</h2>
         <p id="form-subtitle" style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">أدخل رقم الموبايل للبدء فوراً</p>
         
-        <!-- الخطوة الأولى: رقم الموبايل فقط -->
+        <!-- الخطوة الأولى: رقم الموبايل -->
         <div id="step-phone">
-            <input type="tel" id="user-phone" class="input-field" placeholder="رقم الموبايل (010xxxxxxxx)" maxlength="11" style="text-align: right; direction: ltr;" oninput="checkUserPhoneExist()">
+            <input type="tel" id="user-phone" class="input-field" placeholder="رقم الموبايل (010xxxxxxxx)" maxlength="11" style="text-align: right; direction: ltr;">
             <button class="btn" onclick="proceedNextStep()">متابعة ⚡</button>
         </div>
 
-        <!-- الخطوة الثانية: باقي البيانات تظهر بناءً على حالة المستخدم -->
+        <!-- الخطوة الثانية: كتابة كلمة المرور وباقي البيانات -->
         <div id="step-extra-details" class="hidden-step">
             <input type="text" id="user-name" class="input-field" placeholder="الاسم بالكامل">
+            
+            <!-- حقل كلمة المرور متاح بوضوح -->
             <input type="password" id="user-password" class="input-field" placeholder="كلمة المرور">
             
             <div id="role-selection-box">
@@ -66,29 +67,32 @@
                 return;
             }
 
-            // فحص هل المستخدم مسجل مسبقاً في قاعدة البيانات أم لا
+            // الاستعلام من قاعدة البيانات Supabase
             let { data: user } = await supabaseClient.from('profiles').select('*').eq('phone', phone).single();
 
+            // إخفاء خطوة رقم الموبايل وإظهار خطوة إدخال كلمة المرور
             document.getElementById('step-phone').style.display = 'none';
             const extraBox = document.getElementById('step-extra-details');
-            extraBox.classList.add('fade-in');
+            extraBox.style.display = 'block';
 
             if (user) {
-                // مستخدم قديم -> اطلب كلمة المرور فقط لتسجيل الدخول
+                // مستخدم قديم -> إظهار كلمة المرور فقط
                 foundExistingUser = user;
                 document.getElementById('form-title').innerText = `مرحباً بعودتك، ${user.full_name || 'بطل كومبو'}`;
                 document.getElementById('form-subtitle').innerText = 'أدخل كلمة المرور الخاصة بك لتسجيل الدخول';
                 
                 document.getElementById('user-name').style.display = 'none';
+                document.getElementById('user-password').style.display = 'block';
                 document.getElementById('role-selection-box').style.display = 'none';
                 document.getElementById('action-btn-text').innerText = 'تسجيل الدخول الفوري 🔓';
             } else {
-                // مستخدم جديد -> اظهر استمارة التسجيل الكاملة
+                // مستخدم جديد -> إظهار كل الحقول للتسجيل
                 foundExistingUser = null;
                 document.getElementById('form-title').innerText = 'حساب جديد في كومبو';
                 document.getElementById('form-subtitle').innerText = 'أكمل بياناتك البسيطة لتنضم إلينا';
                 
                 document.getElementById('user-name').style.display = 'block';
+                document.getElementById('user-password').style.display = 'block';
                 document.getElementById('role-selection-box').style.display = 'block';
                 document.getElementById('action-btn-text').innerText = 'تسجيل الحساب وانطلاق 🚀';
             }
@@ -104,14 +108,14 @@
             }
 
             if (foundExistingUser) {
-                // عملية تسجيل دخول لمستخدم قديم
+                // تسجيل الدخول
                 if (foundExistingUser.password && foundExistingUser.password !== password) {
                     alert('كلمة المرور غير صحيحة!');
                     return;
                 }
                 currentUserRedirect(foundExistingUser);
             } else {
-                // عملية تسجيل حساب جديد
+                // إنشـاء حساب جديد
                 const name = document.getElementById('user-name').value.trim();
                 const role = document.getElementById('user-role').value;
 
@@ -141,7 +145,6 @@
         }
 
         function resetForm() {
-            document.getElementById('step-extra-details').classList.remove('fade-in');
             document.getElementById('step-extra-details').style.display = 'none';
             document.getElementById('step-phone').style.display = 'block';
             document.getElementById('form-title').innerText = 'أهلاً بك في رحلتك';
