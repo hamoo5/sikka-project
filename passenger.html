@@ -48,7 +48,6 @@
         }
         .search-btn:hover { background: #334155; }
 
-        /* صندوق ملخص الرحلة مقسم على 3 خانات فقط (المسافة، الوقت، السعر) */
         .trip-summary {
             background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3);
             border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;
@@ -92,14 +91,13 @@
         </div>
 
         <div class="card-box" id="booking-card">
-            <div class="card-title">🗺️ حجز رحلة - مسار الشوارع المروري</div>
+            <div class="card-title">🗺️ حجز رحلة - مسار الشوارع الذكي</div>
 
             <div class="map-container">
                 <div id="map"></div>
                 <button class="gps-btn" onclick="goToCurrentLocation()">🎯 موقعي</button>
             </div>
 
-            <!-- ملخص الرحلة (مسافة، وقت، سعر) بدون كلمات زيادة -->
             <div class="trip-summary">
                 <div class="summary-item">
                     <div class="summary-label">المسافة</div>
@@ -240,6 +238,26 @@
             updateAddressFromLatLng(dLat, dLng, 'dropoff');
         }
 
+        // خوارزمية أوقات الذروة الحقيقية المربوطة بالساعة الحالية
+        function getTrafficColorAndMultiplier() {
+            const currentHour = new Date().getHours();
+            
+            // فترات الذروة (مثال: من 8 لـ 10 صباحاً، ومن 3 لـ 7 مساءً) تعتبر زحمة شديدة
+            const isMorningRush = (currentHour >= 8 && currentHour <= 10);
+            const isEveningRush = (currentHour >= 15 && currentHour <= 19);
+            
+            // فترات الليل المتأخر (من 12 لـ 5 صباحاً) تكون الشوارع فارغة تماماً
+            const isNightTime = (currentHour >= 0 && currentHour < 6);
+
+            if (isMorningRush || isEveningRush) {
+                return { color: '#ef4444', trafficFactor: 1.5 }; // أحمر (زحمة ذروة) وزيادة الوقت المقدر
+            } else if (isNightTime) {
+                return { color: '#22c55e', trafficFactor: 0.8 }; // أخضر (طريق سالك وفارغ تماماً)
+            } else {
+                return { color: '#f59e0b', trafficFactor: 1.1 }; // برتقالي (حركة مرور متوسطة وعادية)
+            }
+        }
+
         async function fetchAndDrawRoute(startCoord, endCoord) {
             try {
                 const url = `https://router.project-osrm.org/route/v1/driving/${startCoord[0]},${startCoord[1]};${endCoord[0]},${endCoord[1]}?overview=full&geometries=geojson`;
@@ -261,18 +279,11 @@
                         map.removeLayer(routeLayer);
                     }
 
-                    // تلوين خط السير على الخريطة حسب حالة المرور (أخضر للطريق السالك، برتقالي للحركة المتوسطة، أحمر للمزدحم)
-                    let routeColor = '#22c55e'; // أخضر (سالك)
-                    let avgSpeed = currentDistanceKm / (baseRouteDurationMin / 60);
-
-                    if (avgSpeed < 15) {
-                        routeColor = '#ef4444'; // أحمر (مزدحم)
-                    } else if (avgSpeed < 25) {
-                        routeColor = '#f59e0b'; // برتقالي (حركة متوسطة)
-                    }
+                    // تطبيق خوارزمية أوقات الذروة لتحديد لون الخط على الخريطة
+                    const trafficInfo = getTrafficColorAndMultiplier();
 
                     routeLayer = L.polyline(coords, {
-                        color: routeColor,
+                        color: trafficInfo.color,
                         weight: 6,
                         opacity: 0.85
                     }).addTo(map);
@@ -283,7 +294,9 @@
         }
 
         function updateTripCalculations() {
-            let finalDuration = Math.ceil(baseRouteDurationMin * timeMultiplier);
+            const trafficInfo = getTrafficColorAndMultiplier();
+            // حساب الوقت بناءً على مسافة الشوارع، نوع المركبة، ومعامل وقت الذروة الحالي
+            let finalDuration = Math.ceil(baseRouteDurationMin * timeMultiplier * trafficInfo.trafficFactor);
             if (finalDuration < 2) finalDuration = 2;
             document.getElementById('trip-duration').innerText = finalDuration + ' دقيقة';
 
