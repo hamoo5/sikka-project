@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>كومبو - حجز رحلة بالخريطة التفاعلية</title>
+    <title>كومبو - حجز رحلة ذكية</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- مكتبة الخرائط Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -20,20 +19,22 @@
         .logout-btn { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 5px 10px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 11px; }
 
         .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; padding: 18px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); margin-bottom: 16px; }
-        .card-title { font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
+        .card-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
 
-        /* تصميم الخريطة الواقعية */
-        #map { width: 100%; height: 220px; border-radius: 14px; border: 1px solid #334155; margin-bottom: 12px; z-index: 1; }
+        #map { width: 100%; height: 240px; border-radius: 14px; border: 1px solid #334155; margin-bottom: 10px; z-index: 1; }
         
         .form-group { margin-bottom: 12px; text-align: right; }
         .label { font-size: 11px; color: #94a3b8; margin-bottom: 4px; display: block; font-weight: 700; text-transform: uppercase; }
         
-        .input-box, .select-box {
+        .input-box {
             width: 100%; padding: 12px; border-radius: 12px;
             background: #050b14; border: 1px solid #334155;
-            color: #fff; font-size: 13px; transition: all 0.2s;
+            color: #fff; font-size: 13px;
         }
-        .input-box:focus, .select-box:focus { border-color: #38bdf8; outline: none; }
+
+        .mode-selector { display: flex; gap: 8px; margin-bottom: 10px; }
+        .mode-btn { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid #334155; background: #050b14; color: #94a3b8; font-size: 12px; font-weight: 700; cursor: pointer; text-align: center; }
+        .mode-btn.active { border-color: #38bdf8; background: rgba(56, 189, 248, 0.1); color: #38bdf8; }
 
         .vehicle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
         .v-card {
@@ -61,7 +62,6 @@
 <body>
 
     <div class="container">
-        <!-- الشريط العلوي -->
         <div class="header">
             <div class="user-info">
                 <div class="avatar-circle" id="user-initial">ك</div>
@@ -70,22 +70,26 @@
             <button class="logout-btn" onclick="logout()">خروج</button>
         </div>
 
-        <!-- كارت حجز رحلة بالخريطة -->
         <div class="card-box" id="booking-card">
-            <div class="card-title">🗺️ حدد موقعك ووجهتك على الخريطة</div>
+            <div class="card-title">🗺️ حدد خط سير الرحلة على الخريطة</div>
 
-            <!-- الخريطة التفاعلية -->
+            <!-- أزرار التبديل لتحديد نقطة الانطلاق أو الوجهة -->
+            <div class="mode-selector">
+                <div class="mode-btn active" id="btn-mode-pickup" onclick="setSelectionMode('pickup')">📍 حدد نقطة الانطلاق</div>
+                <div class="mode-btn" id="btn-mode-dropoff" onclick="setSelectionMode('dropoff')">🏁 حدد وجهة الوصول</div>
+            </div>
+
             <div id="map"></div>
-            <div style="font-size: 11px; color: #38bdf8; text-align: center; margin-bottom: 12px;">انقر على الخريطة لتحديد مكان الانطلاق بدقة</div>
+            <div style="font-size: 11px; color: #38bdf8; text-align: center; margin-bottom: 10px;" id="map-instruction">انقر على الخريطة لتحديد مكان الانطلاق بدقة</div>
 
             <div class="form-group">
-                <label class="label">نقطة الانطلاق (الشارع / الموقع الجغرافي)</label>
-                <input type="text" id="pickup-loc" class="input-box" placeholder="اختر من الخريطة أو اكتب..." readonly>
+                <label class="label">نقطة الانطلاق (موقع الركوب)</label>
+                <input type="text" id="pickup-loc" class="input-box" placeholder="انقر على الخريطة لتحديده..." readonly>
             </div>
 
             <div class="form-group">
-                <label class="label">وجهة الوصول المطلوبة</label>
-                <input type="text" id="dropoff-loc" class="input-box" placeholder="مثال: وسط البلد / مول شهير">
+                <label class="label">وجهة الوصول (نقطة الوصول)</label>
+                <input type="text" id="dropoff-loc" class="input-box" placeholder="اختر من زر الوجهة واضغط الخريطة..." readonly>
             </div>
 
             <div class="form-group">
@@ -109,7 +113,6 @@
             <button class="btn-request" onclick="requestRide()">تأكيد وطلب الرحلة ⚡</button>
         </div>
 
-        <!-- كارت الرحلة النشطة -->
         <div class="card-box" id="active-trip-card" style="display:none;">
             <div class="active-trip-box">
                 <span class="status-badge" id="trip-status">⏳ في انتظار قبول الكابتن...</span>
@@ -120,7 +123,6 @@
         </div>
     </div>
 
-    <!-- مكتبة Leaflet JS للخرائط -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         const SUPABASE_URL = 'https://pmpzilqpcomoodaksbhw.supabase.co';
@@ -129,7 +131,10 @@
 
         let currentUser = null;
         let selectedVehicleType = 'ملاكي';
-        let map, marker;
+        let map;
+        let pickupMarker = null;
+        let dropoffMarker = null;
+        let currentMode = 'pickup'; // 'pickup' أو 'dropoff'
 
         function initRiderPage() {
             const stored = localStorage.getItem('combo_user');
@@ -142,37 +147,56 @@
             document.getElementById('rider-name').innerText = name;
             document.getElementById('user-initial').innerText = name.charAt(0);
 
-            // إعداد الخريطة الافتراضية (مثال: القاهرة / مصر)
+            // إعداد خريطة واضحة ونظيفة بدون أخطاء API Keys
             map = L.map('map').setView([30.0444, 31.2357], 13);
 
-            // استخدام طبقة خريطة داكنة وفخمة تتناسب مع تصميم الـ Dark Slate
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap & CARTO',
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
                 maxZoom: 19
             }).addTo(map);
 
-            // إضافة دبوس عند النقر على الخريطة وجلب اسم الشارع الحقيقي
             map.on('click', async function(e) {
                 const lat = e.latlng.lat;
                 const lon = e.latlng.lng;
 
-                if (marker) {
-                    map.removeLayer(marker);
-                }
-
-                marker = L.marker([lat, lon]).addTo(map);
-
-                // جلب اسم الشارع والموقع الجغرافي مجاناً عبر نظام Geocoding
                 try {
                     let response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ar`);
                     let data = await response.json();
                     let addressName = data.display_name || 'موقع محدد على الخريطة';
-                    document.getElementById('pickup-loc').value = addressName;
-                    marker.bindPopup(`<b>موقع الانطلاق:</b><br>${addressName}`).openPopup();
+
+                    if (currentMode === 'pickup') {
+                        if (pickupMarker) map.removeLayer(pickupMarker);
+                        pickupMarker = L.marker([lat, lon], {
+                            icon: L.icon({
+                                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.xout.png' // تفادي الأخطاء أو استخدام الافتراضي
+                            })
+                        }).addTo(map);
+                        document.getElementById('pickup-loc').value = addressName;
+                        pickupMarker.bindPopup(`<b>📍 الانطلاق:</b><br>${addressName}`).openPopup();
+                    } else {
+                        if (dropoffMarker) map.removeLayer(dropoffMarker);
+                        dropoffMarker = L.marker([lat, lon]).addTo(map);
+                        document.getElementById('dropoff-loc').value = addressName;
+                        dropoffMarker.bindPopup(`<b>🏁 الوجهة:</b><br>${addressName}`).openPopup();
+                    }
                 } catch (err) {
-                    document.getElementById('pickup-loc').value = `خط عرض: ${lat.toFixed(4)}, خط طول: ${lon.toFixed(4)}`;
+                    alert('تعذر جلب اسم الشارع، حاول مرة أخرى.');
                 }
             });
+        }
+
+        function setSelectionMode(mode) {
+            currentMode = mode;
+            document.getElementById('btn-mode-pickup').classList.remove('active');
+            document.getElementById('btn-mode-dropoff').classList.remove('active');
+
+            if (mode === 'pickup') {
+                document.getElementById('btn-mode-pickup').classList.add('active');
+                document.getElementById('map-instruction').innerText = 'انقر على الخريطة لتحديد مكان الانطلاق بدقة';
+            } else {
+                document.getElementById('btn-mode-dropoff').classList.add('active');
+                document.getElementById('map-instruction').innerText = 'انقر على الخريطة لتحديد وجهة الوصول بدقة';
+            }
         }
 
         function selectVehicle(type, element) {
@@ -186,11 +210,11 @@
             const dropoff = document.getElementById('dropoff-loc').value.trim();
 
             if (!pickup) {
-                alert('يرجى النقر على الخريطة لتحديد نقطة الانطلاق والشارع بدقة.');
+                alert('يرجى تحديد نقطة الانطلاق على الخريطة أولاً.');
                 return;
             }
             if (!dropoff) {
-                alert('يرجى إدخال وجهة الوصول المطلوبة.');
+                alert('يرجى تحديد وجهة الوصول على الخريطة أولاً.');
                 return;
             }
 
