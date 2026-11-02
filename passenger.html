@@ -83,13 +83,13 @@
         </div>
 
         <div class="card-box" id="booking-card">
-            <div class="card-title">🗺️ الخريطة الحية - حدد موقعك ووجهتك</div>
+            <div class="card-title">🗺️ الخريطة الحية - مسار السير</div>
 
             <div class="map-container">
                 <div id="map"></div>
                 <button class="gps-btn" onclick="goToCurrentLocation()">🎯 موقعي</button>
             </div>
-            <div style="font-size: 11px; color: #38bdf8; text-align: center; margin-bottom: 10px;">اسحب الدبابيس على الخريطة أو اكتب العنوان مباشرة</div>
+            <div style="font-size: 11px; color: #38bdf8; text-align: center; margin-bottom: 10px;">اسحب الدبابيس أو ابحث لرسم مسار الرحلة</div>
 
             <!-- نقطة الانطلاق مع زر البحث -->
             <div class="form-group">
@@ -150,6 +150,7 @@
         let selectedVehicleType = 'ملاكي';
         let map;
         let pickupMarker, dropoffMarker;
+        let routePolyline = null; // خط مسار السير
 
         function initRiderPage() {
             const stored = localStorage.getItem('combo_user');
@@ -169,26 +170,53 @@
                 attribution: '&copy; OpenStreetMap'
             }).addTo(map);
 
+            // إحداثيات مبدئية الانطلاق والوصول
+            let pLat = 30.0444, pLng = 31.2357;
+            let dLat = 30.0550, dLng = 31.2450;
+
             // دبوس الانطلاق (أخضر)
-            pickupMarker = L.marker([30.0444, 31.2357], {draggable: true}).addTo(map)
-                .bindPopup('موقع الانطلاق');
+            pickupMarker = L.marker([pLat, pLng], {draggable: true}).addTo(map)
+                .bindPopup('نقطة الانطلاق');
 
             // دبوس الوصول (أحمر)
-            dropoffMarker = L.marker([30.0500, 31.2500], {draggable: true}).addTo(map)
-                .bindPopup('موقع الوصول');
+            dropoffMarker = L.marker([dLat, dLng], {draggable: true}).addTo(map)
+                .bindPopup('نقطة الوصول');
+
+            // رسم مسار السير الأولي بين النقطتين
+            updateRouteLine();
 
             pickupMarker.on('dragend', async function(e) {
                 const pos = e.target.getLatLng();
-                updateAddressFromLatLng(pos.lat, pos.lng, 'pickup');
+                await updateAddressFromLatLng(pos.lat, pos.lng, 'pickup');
+                updateRouteLine();
             });
 
             dropoffMarker.on('dragend', async function(e) {
                 const pos = e.target.getLatLng();
-                updateAddressFromLatLng(pos.lat, pos.lng, 'dropoff');
+                await updateAddressFromLatLng(pos.lat, pos.lng, 'dropoff');
+                updateRouteLine();
             });
 
-            updateAddressFromLatLng(30.0444, 31.2357, 'pickup');
-            updateAddressFromLatLng(30.0500, 31.2500, 'dropoff');
+            updateAddressFromLatLng(pLat, pLng, 'pickup');
+            updateAddressFromLatLng(dLat, dLng, 'dropoff');
+        }
+
+        // دالة رسم وتحديث خط مسار السير (Route Line) بين الدبوسين
+        function updateRouteLine() {
+            const pLatLng = pickupMarker.getLatLng();
+            const dLatLng = dropoffMarker.getLatLng();
+
+            if (routePolyline) {
+                map.removeLayer(routePolyline);
+            }
+
+            // رسم خط تفاعلي فخم بلون أزرق (زي تطبيق أوبر) يربط النقطتين
+            routePolyline = L.polyline([pLatLng, dLatLng], {
+                color: '#38bdf8',
+                weight: 5,
+                opacity: 0.8,
+                dashArray: '8, 8' // خط متقطع أنيق يدل على المسار
+            }).addTo(map);
         }
 
         async function updateAddressFromLatLng(lat, lng, type) {
@@ -219,14 +247,16 @@
                     const lon = parseFloat(results[0].lon);
                     const displayName = results[0].display_name;
 
-                    map.setView([lat, lon], 15);
                     document.getElementById(inputId).value = displayName;
 
                     if (type === 'pickup') {
                         pickupMarker.setLatLng([lat, lon]);
+                        map.setView([lat, lon], 14);
                     } else {
                         dropoffMarker.setLatLng([lat, lon]);
+                        map.setView([lat, lon], 14);
                     }
+                    updateRouteLine(); // تحديث المسار فور البحث
                 }
             } catch (e) {}
         }
@@ -236,9 +266,10 @@
                 navigator.geolocation.getCurrentPosition(position => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
-                    map.setView([lat, lon], 16);
+                    map.setView([lat, lon], 15);
                     pickupMarker.setLatLng([lat, lon]);
                     updateAddressFromLatLng(lat, lon, 'pickup');
+                    updateRouteLine();
                 });
             }
         }
@@ -266,7 +297,7 @@
         }
 
         function logout() {
-            localStorage.removeItem('combo_user');
+            localStorage.-removeItem('combo_user');
             window.location.href = 'rider-register.html';
         }
 
