@@ -1,251 +1,55 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>موقف - كومبو | الراكب</title>
-  
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; padding: 12px; background: #f4f4f9; direction: rtl; text-align: right; margin: 0; }
-    .card { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    input, select, button { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
-    button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
-    button:hover { background: #218838; }
-    .btn-secondary { background: #007bff; }
-    .btn-secondary:hover { background: #0056b3; }
-    .btn-gps { background: #17a2b8; }
-    .btn-danger { background: #dc3545; }
-    .mode-selector { display: flex; gap: 8px; margin-bottom: 12px; }
-    .mode-btn { flex: 1; padding: 10px; background: #e9ecef; border: 2px solid #ccc; color: #333; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; font-size: 14px; }
-    .mode-btn.active { background: #007bff; color: white; border-color: #0056b3; }
-    #map { height: 320px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
-    .hidden { display: none; }
-    .leaflet-routing-container { display: none !important; }
-    #trip-status { background: #e8f4fd; border: 1px solid #b6effb; color: #055160; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px; line-height: 1.6; display: none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة كومبو - لوحة الراكب</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: #fff; text-align: center; }
+        .card { background: #1e293b; padding: 20px; border-radius: 12px; max-width: 400px; margin: auto; border: 1px solid #334155; }
+        .user-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #38bdf8; }
+        .btn { background: #2563eb; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+    </style>
 </head>
 <body>
 
-  <!-- 1. شاشة تسجيل الدخول -->
-  <div id="auth-section" class="card">
-    <h2 style="text-align: center;">🚏 مشروع كومبو - الراكب</h2>
-    <input type="text" id="user_name" placeholder="اسمك الكريم" value="أحمد">
-    <input type="tel" id="user_phone" placeholder="رقم الموبايل" value="01112142750">
-    
-    <!-- زر الدخول المباشر المظبوط -->
-    <button class="btn-secondary" type="button" onclick="executeLogin()">دخول وحجز رحلة 🚀</button>
-  </div>
-
-  <!-- 2. واجهة الحجز -->
-  <div id="app-section" class="card hidden">
-    <h3 style="margin-top:0;" id="app-title">🚏 تحديد خط السير والموقف</h3>
-
-    <div class="mode-selector">
-      <div id="mode-shared" class="mode-btn active" onclick="switchRideMode('shared')">🚐 خط سير / موقف (تشاركي)</div>
-      <div id="mode-private" class="mode-btn" onclick="switchRideMode('private')">🚗 رحلة خاصة (ملاكي)</div>
-    </div>
-    
-    <div id="booking-controls">
-      <button class="btn-gps" type="button" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
-
-      <div id="shared-options">
-        <label style="font-weight:bold; font-size:13px; color:#555;">وسيلة النقل:</label>
-        <select id="vehicle_type">
-          <option value="microbus">🚐 ميكروباص (خطوط سير ومواقف)</option>
-          <option value="suzuki">🚐 سوزوكي (تشاركي مرن)</option>
-          <option value="private_shared">🚗 ملاكي تشاركي (حجز مقاعد)</option>
-        </select>
-
-        <label style="font-weight:bold; font-size:13px; color:#555; margin-top:6px; display:block;">عدد المقاعد:</label>
-        <select id="seats_count">
-          <option value="1">مقعد واحد (1)</option>
-          <option value="2">مقعدان (2)</option>
-          <option value="3">3 مقاعد</option>
-          <option value="4">4 مقاعد</option>
-        </select>
-      </div>
-      
-      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">موقف الانطلاق:</label>
-      <input type="text" id="pickup_loc" placeholder="اسحب الدبوس على الخريطة">
-
-      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">وجهة الوصول:</label>
-      <input type="text" id="dropoff_loc" placeholder="اسحب الدبوس الأحمر">
+    <div class="card">
+        <h2>مشروع كومبو - الراكب 🚏</h2>
+        
+        <!-- مكان ظهور صورة المستخدم -->
+        <div id="user-image-container"></div>
+        
+        <h3 id="display-name" style="color: #38bdf8; margin: 5px 0;">جاري التحميل...</h3>
+        <p id="display-phone" style="color: #94a3b8; font-size: 14px;"></p>
+        
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 15px 0;">
+        
+        <p style="font-size: 14px;">مرحباً بك في منصتك لحجز الرحلات والتوصيل</p>
+        
+        <button class="btn" onclick="logout()">تسجيل الخروج</button>
     </div>
 
-    <div id="trip-status">اسحب الدبابيس على الخريطة لتحديد خط السير...</div>
+    <script>
+        // جلب بيانات المستخدم المسجل من الذاكرة المحلية
+        const userData = JSON.parse(localStorage.getItem('combo_user'));
 
-    <button id="action-btn" type="button" onclick="requestRide()" style="background:#28a745;">🚀 تأكيد حجز المقاعد والرحلة</button>
-    <button id="cancel-btn" type="button" class="btn-danger hidden" onclick="cancelRide()">❌ إلغاء الطلب</button>
+        if (!userData) {
+            alert('يرجى تسجيل الدخول أولاً!');
+            window.location.href = 'index.html';
+        } else {
+            // عرض البيانات الحقيقية للمستخدم
+            document.getElementById('display-name').innerText = userData.full_name || 'مستخدم كومبو';
+            document.getElementById('display-phone').innerText = userData.phone || '';
 
-    <div id="map"></div>
-  </div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <script>
-    const SUPABASE_URL = 'https://pmpzilqpcomoodaksbhw.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    let map, routingControl;
-    let pickupCoords = null, dropoffCoords = null;
-    let pickupMarker = null, dropoffMarker = null;
-    let currentMode = 'shared';
-    let currentTripId = null;
-
-    const greenIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-    });
-
-    const redIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-    });
-
-    function executeLogin() {
-      const name = document.getElementById('user_name').value || 'أحمد';
-      const phone = document.getElementById('user_phone').value;
-      if (!phone) { alert('أدخل رقم الموبايل من فضلك'); return; }
-      
-      localStorage.setItem('passenger_name', name);
-      localStorage.setItem('passenger_phone', phone);
-
-      // إخفاء شاشة الدخول وإظهار شاشة الحجز والخريطة فوراً
-      document.getElementById('auth-section').style.display = 'none';
-      document.getElementById('app-section').style.display = 'block';
-      
-      setTimeout(initMap, 400);
-    }
-
-    function switchRideMode(mode) {
-      currentMode = mode;
-      document.getElementById('mode-shared').classList.toggle('active', mode === 'shared');
-      document.getElementById('mode-private').classList.toggle('active', mode === 'private');
-      document.getElementById('shared-options').style.display = (mode === 'shared') ? 'block' : 'none';
-      if (pickupCoords && dropoffCoords) drawRoute();
-    }
-
-    function initMap() {
-      if (map) return;
-      map = L.map('map').setView([30.0444, 31.2357], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-      const center = map.getCenter();
-      pickupCoords = center;
-      pickupMarker = L.marker(center, {icon: greenIcon, draggable: true}).addTo(map);
-      document.getElementById('pickup_loc').value = `${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`;
-
-      pickupMarker.on('dragend', function(e) {
-        pickupCoords = e.target.getLatLng();
-        document.getElementById('pickup_loc').value = `${pickupCoords.lat.toFixed(4)}, ${pickupCoords.lng.toFixed(4)}`;
-        if (dropoffCoords) drawRoute();
-      });
-
-      const dropoffDefault = L.latLng(center.lat + 0.015, center.lng + 0.015);
-      dropoffCoords = dropoffDefault;
-      dropoffMarker = L.marker(dropoffDefault, {icon: redIcon, draggable: true}).addTo(map);
-      document.getElementById('dropoff_loc').value = `${dropoffDefault.lat.toFixed(4)}, ${dropoffDefault.lng.toFixed(4)}`;
-
-      dropoffMarker.on('dragend', function(e) {
-        dropoffCoords = e.target.getLatLng();
-        document.getElementById('dropoff_loc').value = `${dropoffCoords.lat.toFixed(4)}, ${dropoffCoords.lng.toFixed(4)}`;
-        if (pickupCoords) drawRoute();
-      });
-
-      drawRoute();
-    }
-
-    function drawRoute() {
-      if (!pickupCoords || !dropoffCoords) return;
-      if (routingControl) map.removeControl(routingControl);
-      
-      routingControl = L.Routing.control({
-        waypoints: [pickupCoords, dropoffCoords],
-        routeWhileDragging: false,
-        addWaypoints: false,
-        createMarker: function() { return null; },
-        lineOptions: { styles: [{ color: '#007bff', opacity: 0.85, weight: 6 }] }
-      }).addTo(map);
-
-      routingControl.on('routesfound', function(e) {
-        const routes = e.routes;
-        if (routes && routes.length > 0) {
-          const distanceKm = (routes[0].summary.totalDistance / 1000).toFixed(1);
-          let estimatedPrice = (currentMode === 'shared') ? 
-            Math.round((5 + (distanceKm * 2.5)) * parseInt(document.getElementById('seats_count').value)) : 
-            Math.round(10 + (distanceKm * 5));
-
-          const statusDiv = document.getElementById('trip-status');
-          statusDiv.style.display = 'block';
-          statusDiv.innerHTML = `📊 المسافة: ${distanceKm} كم | التكلفة التقريبية: <b>${estimatedPrice} جنيه</b>`;
+            if (userData.profile_image) {
+                document.getElementById('user-image-container').innerHTML = `<img src="${userData.profile_image}" class="user-img" alt="صورة البروفايل">`;
+            }
         }
-      });
-    }
 
-    function getMyLocation() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(position => {
-          pickupCoords = L.latLng(position.coords.latitude, position.coords.longitude);
-          pickupMarker.setLatLng(pickupCoords);
-          document.getElementById('pickup_loc').value = `${pickupCoords.lat.toFixed(4)}, ${pickupCoords.lng.toFixed(4)}`;
-          map.setView(pickupCoords, 16);
-          if (dropoffCoords) drawRoute();
-        });
-      }
-    }
-
-    async function requestRide() {
-      const pin = Math.floor(1000 + Math.random() * 9000);
-      const vehicleType = (currentMode === 'shared') ? document.getElementById('vehicle_type').value : 'private_special';
-      const seatsCount = (currentMode === 'shared') ? parseInt(document.getElementById('seats_count').value) : 1;
-      
-      const { data, error } = await supabase.from('trips').insert([
-        {
-          passenger_name: localStorage.getItem('passenger_name'),
-          passenger_phone: localStorage.getItem('passenger_phone'),
-          pickup_location: document.getElementById('pickup_loc').value,
-          dropoff_location: document.getElementById('dropoff_loc').value,
-          vehicle_type: vehicleType,
-          seats_count: seatsCount,
-          pin_code: pin,
-          status: 'pending',
-          pickup_lat: pickupCoords.lat,
-          pickup_lng: pickupCoords.lng,
-          dropoff_lat: dropoffCoords.lat,
-          dropoff_lng: dropoffCoords.lng
+        function logout() {
+            localStorage.removeItem('combo_user');
+            window.location.href = 'index.html';
         }
-      ]).select();
-
-      if (error) { alert('خطأ في إرسال الرحلة لقاعدة البيانات'); return; }
-
-      if (data && data.length > 0) {
-        currentTripId = data[0].id;
-        supabase.channel(`trip_${currentTripId}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${currentTripId}` }, payload => {
-          if (payload.new.status === 'accepted') {
-            document.getElementById('trip-status').innerHTML = `🎉 تم قبول الرحلة! كود التحقق (PIN): <b>${payload.new.pin_code}</b>`;
-          }
-        }).subscribe();
-      }
-
-      document.getElementById('booking-controls').classList.add('hidden');
-      document.getElementById('action-btn').classList.add('hidden');
-      document.getElementById('cancel-btn').classList.remove('hidden');
-      document.getElementById('trip-status').style.display = 'block';
-      document.getElementById('trip-status').innerHTML = `🔄 تم إرسال الطلب بنجاح! كود الـ PIN الخاص بك: <b style="color:#d9534f; font-size:18px;">${pin}</b>`;
-    }
-
-    async function cancelRide() {
-      if (currentTripId) await supabase.from('trips').update({ status: 'cancelled' }).eq('id', currentTripId);
-      location.reload();
-    }
-  </script>
+    </script>
 </body>
 </html>
