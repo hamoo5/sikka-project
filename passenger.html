@@ -21,18 +21,13 @@
         .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; padding: 18px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); margin-bottom: 16px; }
         .card-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
 
-        .map-container { position: relative; width: 100%; height: 220px; margin-bottom: 10px; }
+        .map-container { position: relative; width: 100%; height: 240px; margin-bottom: 10px; }
         #map { width: 100%; height: 100%; border-radius: 14px; border: 1px solid #334155; z-index: 1; }
-
-        .pin-switcher { display: flex; gap: 6px; margin-bottom: 8px; }
-        .pin-switch-btn { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid #334155; background: #050b14; color: #94a3b8; font-size: 11px; font-weight: 700; cursor: pointer; text-align: center; }
-        .pin-switch-btn.active-pickup { border-color: #22c55e; background: rgba(34, 197, 94, 0.15); color: #22c55e; }
-        .pin-switch-btn.active-dropoff { border-color: #ef4444; background: rgba(239, 68, 68, 0.15); color: #ef4444; }
 
         .gps-btn {
             position: absolute; bottom: 12px; left: 12px; z-index: 1000;
             background: #0f172a; color: #38bdf8; border: 1px solid #38bdf8;
-            padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 700;
+            padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 700;
             cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
         
@@ -90,22 +85,17 @@
         <div class="card-box" id="booking-card">
             <div class="card-title">🗺️ الخريطة الحية - حدد موقعك ووجهتك</div>
 
-            <div class="pin-switcher">
-                <div class="pin-switch-btn active-pickup" id="switch-pickup" onclick="setActivePin('pickup')">📍 تحريك دبوس الانطلاق</div>
-                <div class="pin-switch-btn" id="switch-dropoff" onclick="setActivePin('dropoff')">🏁 تحريك دبوس الوصول</div>
-            </div>
-
             <div class="map-container">
                 <div id="map"></div>
                 <button class="gps-btn" onclick="goToCurrentLocation()">🎯 موقعي</button>
             </div>
-            <div style="font-size: 11px; color: #38bdf8; text-align: center; margin-bottom: 10px;" id="map-hint">حرك الخريطة لتعديل مكان الانطلاق الأخضر</div>
+            <div style="font-size: 11px; color: #38bdf8; text-align: center; margin-bottom: 10px;">اسحب الدبابيس على الخريطة أو اكتب العنوان مباشرة</div>
 
             <!-- نقطة الانطلاق مع زر البحث -->
             <div class="form-group">
                 <label class="label">1. نقطة الانطلاق (مكان الركوب)</label>
                 <div class="input-row">
-                    <input type="text" id="pickup-loc" class="input-box" placeholder="اكتب مكان أو حرك الدبوس...">
+                    <input type="text" id="pickup-loc" class="input-box" placeholder="اختر من الخريطة أو اكتب...">
                     <button class="search-btn" onclick="searchLocation('pickup')">بحث 🔍</button>
                 </div>
             </div>
@@ -114,7 +104,7 @@
             <div class="form-group">
                 <label class="label">2. نقطة الوصول (مكان النزول)</label>
                 <div class="input-row">
-                    <input type="text" id="dropoff-loc" class="input-box" placeholder="مثال: مدينة نصر، وسط البلد...">
+                    <input type="text" id="dropoff-loc" class="input-box" placeholder="مثال: وسط البلد، مكرم عبيد...">
                     <button class="search-btn" onclick="searchLocation('dropoff')">بحث 🔍</button>
                 </div>
             </div>
@@ -160,7 +150,6 @@
         let selectedVehicleType = 'ملاكي';
         let map;
         let pickupMarker, dropoffMarker;
-        let activePinType = 'pickup';
 
         function initRiderPage() {
             const stored = localStorage.getItem('combo_user');
@@ -180,9 +169,11 @@
                 attribution: '&copy; OpenStreetMap'
             }).addTo(map);
 
+            // دبوس الانطلاق (أخضر)
             pickupMarker = L.marker([30.0444, 31.2357], {draggable: true}).addTo(map)
                 .bindPopup('موقع الانطلاق');
 
+            // دبوس الوصول (أحمر)
             dropoffMarker = L.marker([30.0500, 31.2500], {draggable: true}).addTo(map)
                 .bindPopup('موقع الوصول');
 
@@ -196,40 +187,8 @@
                 updateAddressFromLatLng(pos.lat, pos.lng, 'dropoff');
             });
 
-            map.on('click', function(e) {
-                const lat = e.latlng.lat;
-                const lng = e.latlng.lng;
-
-                if (activePinType === 'pickup') {
-                    pickupMarker.setLatLng([lat, lng]);
-                    updateAddressFromLatLng(lat, lng, 'pickup');
-                } else {
-                    dropoffMarker.setLatLng([lat, lng]);
-                    updateAddressFromLatLng(lat, lng, 'dropoff');
-                }
-            });
-
             updateAddressFromLatLng(30.0444, 31.2357, 'pickup');
             updateAddressFromLatLng(30.0500, 31.2500, 'dropoff');
-        }
-
-        function setActivePin(type) {
-            activePinType = type;
-            const pickupBtn = document.getElementById('switch-pickup');
-            const dropoffBtn = document.getElementById('switch-dropoff');
-            const hint = document.getElementById('map-hint');
-
-            if (type === 'pickup') {
-                pickupBtn.className = 'pin-switch-btn active-pickup';
-                dropoffBtn.className = 'pin-switch-btn';
-                hint.innerText = 'حرك الخريطة أو انقر لتعديل مكان الانطلاق الأخضر';
-                map.panTo(pickupMarker.getLatLng());
-            } else {
-                dropoffBtn.className = 'pin-switch-btn active-dropoff';
-                pickupBtn.className = 'pin-switch-btn';
-                hint.innerText = 'حرك الخريطة أو انقر لتعديل مكان الوصول الأحمر';
-                map.panTo(dropoffMarker.getLatLng());
-            }
         }
 
         async function updateAddressFromLatLng(lat, lng, type) {
@@ -245,15 +204,11 @@
             }
         }
 
-        // دالة البحث بالاسم لتوجيه الدبوس والخريطة للمكان المطلوب
         async function searchLocation(type) {
             const inputId = type === 'pickup' ? 'pickup-loc' : 'dropoff-loc';
             const query = document.getElementById(inputId).value.trim();
 
-            if (!query) {
-                alert('يرجى كتابة اسم المكان أولاً للبحث عنه.');
-                return;
-            }
+            if (!query) return;
 
             try {
                 let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&accept-language=ar&limit=1`);
@@ -272,13 +227,8 @@
                     } else {
                         dropoffMarker.setLatLng([lat, lon]);
                     }
-                    alert('تم تحديد الموقع بنجاح: ' + displayName);
-                } else {
-                    alert('لم يتم العثور على هذا المكان، حاول كتابة اسم أوضح.');
                 }
-            } catch (e) {
-                alert('حدث خطأ أثناء البحث.');
-            }
+            } catch (e) {}
         }
 
         function goToCurrentLocation() {
@@ -287,18 +237,9 @@
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
                     map.setView([lat, lon], 16);
-                    if (activePinType === 'pickup') {
-                        pickupMarker.setLatLng([lat, lon]);
-                        updateAddressFromLatLng(lat, lon, 'pickup');
-                    } else {
-                        dropoffMarker.setLatLng([lat, lon]);
-                        updateAddressFromLatLng(lat, lon, 'dropoff');
-                    }
-                }, () => {
-                    alert('تعذر تحديد موقعك الحالي.');
+                    pickupMarker.setLatLng([lat, lon]);
+                    updateAddressFromLatLng(lat, lon, 'pickup');
                 });
-            } else {
-                alert('متصفحك لا يدعم تحديد الموقع.');
             }
         }
 
