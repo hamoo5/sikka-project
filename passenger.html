@@ -178,7 +178,6 @@
         let baseRouteDurationMin = 0;
         let currentDistanceKm = 0;
 
-        // دبابيس حقيقية (أخضر للانطلاق، أحمر للوصول)
         const greenPinIcon = L.divIcon({
             className: 'custom-pin',
             html: '<div style="background-color: #22c55e; width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.4); border: 2px solid #fff;"><div style="width: 6px; height: 6px; background: #fff; border-radius: 50%; transform: rotate(45deg);"></div></div>',
@@ -238,23 +237,20 @@
             updateAddressFromLatLng(dLat, dLng, 'dropoff');
         }
 
-        // خوارزمية أوقات الذروة الحقيقية المربوطة بالساعة الحالية
+        // ألوان مألوفة وواضحة جداً للمسار (أزرق احترافي للطريق العادي، أخضر لو سريع، أحمر لو ذروة وزحمة)
         function getTrafficColorAndMultiplier() {
             const currentHour = new Date().getHours();
             
-            // فترات الذروة (مثال: من 8 لـ 10 صباحاً، ومن 3 لـ 7 مساءً) تعتبر زحمة شديدة
             const isMorningRush = (currentHour >= 8 && currentHour <= 10);
             const isEveningRush = (currentHour >= 15 && currentHour <= 19);
-            
-            // فترات الليل المتأخر (من 12 لـ 5 صباحاً) تكون الشوارع فارغة تماماً
             const isNightTime = (currentHour >= 0 && currentHour < 6);
 
             if (isMorningRush || isEveningRush) {
-                return { color: '#ef4444', trafficFactor: 1.5 }; // أحمر (زحمة ذروة) وزيادة الوقت المقدر
+                return { color: '#ef4444', trafficFactor: 1.4 }; // أحمر مألوف (وقت زحمة)
             } else if (isNightTime) {
-                return { color: '#22c55e', trafficFactor: 0.8 }; // أخضر (طريق سالك وفارغ تماماً)
+                return { color: '#22c55e', trafficFactor: 0.8 }; // أخضر مألوف (طريق سالك)
             } else {
-                return { color: '#f59e0b', trafficFactor: 1.1 }; // برتقالي (حركة مرور متوسطة وعادية)
+                return { color: '#2563eb', trafficFactor: 1.0 }; // أزرق مألوف ورايق (طريق طبيعي زي أكبر التطبيقات)
             }
         }
 
@@ -279,13 +275,12 @@
                         map.removeLayer(routeLayer);
                     }
 
-                    // تطبيق خوارزمية أوقات الذروة لتحديد لون الخط على الخريطة
                     const trafficInfo = getTrafficColorAndMultiplier();
 
                     routeLayer = L.polyline(coords, {
                         color: trafficInfo.color,
                         weight: 6,
-                        opacity: 0.85
+                        opacity: 0.9
                     }).addTo(map);
                 }
             } catch (err) {
@@ -295,7 +290,6 @@
 
         function updateTripCalculations() {
             const trafficInfo = getTrafficColorAndMultiplier();
-            // حساب الوقت بناءً على مسافة الشوارع، نوع المركبة، ومعامل وقت الذروة الحالي
             let finalDuration = Math.ceil(baseRouteDurationMin * timeMultiplier * trafficInfo.trafficFactor);
             if (finalDuration < 2) finalDuration = 2;
             document.getElementById('trip-duration').innerText = finalDuration + ' دقيقة';
