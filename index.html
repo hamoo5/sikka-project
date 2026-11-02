@@ -3,21 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>كومبو - الصفحة الرئيسية</title>
+  <title>مشروع كومبو - الرئيسية</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 30px; background: #f4f4f9; }
-    h1 { color: #333; }
-    .btn { display: block; background: #007bff; color: white; padding: 15px; margin: 15px auto; width: 80%; max-width: 300px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 18px; }
-    .btn.captain { background: #28a745; }
-    .btn.admin { background: #dc3545; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; direction: rtl; text-align: center; }
+    .card { background: #fff; padding: 30px; border-radius: 16px; box-shadow: 0 6px 15px rgba(0,0,0,0.08); width: 90%; max-width: 380px; }
+    h2 { color: #333; margin-bottom: 25px; font-size: 22px; }
+    .btn { display: block; width: 100%; padding: 14px; margin: 12px 0; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; color: white; text-decoration: none; text-align: center; box-sizing: border-box; cursor: pointer; transition: 0.2s; }
+    .btn-passenger { background: #007bff; }
+    .btn-passenger:hover { background: #0056b3; }
+    .btn-captain { background: #28a745; }
+    .btn-captain:hover { background: #218838; }
+    .btn-admin { background: #dc3545; }
+    .btn-admin:hover { background: #c82333; }
   </style>
 </head>
 <body>
-  <h1>مرحباً بك في مشروع «كومبو»</h1>
-  <p>اختر واجهة الاستخدام:</p>
 
-  <a href="passenger.html" class="btn">🚗 واجهة الراكب</a>
-  <a href="captain.html" class="btn captain">🚐 واجهة الكابتن</a>
-  <a href="admin.html" class="btn admin">⚙️ لوحة الإدارة</a>
+  <div class="card">
+    <h2>مرحباً بك في مشروع «كومبو»</h2>
+    <p style="color: #666; font-size: 14px; margin-bottom: 20px;">اختر واجهة الاستخدام:</p>
+    
+    <!-- زر واجهة الراكب -->
+    <a href="passenger.html" class="btn btn-passenger">واجهة الراكب 🚗</a>
+    
+    <!-- زر واجهة الكابتن -->
+    <a href="captain.html" class="btn btn-captain">واجهة الكابتن 🚐</a>
+    
+    <!-- زر لوحة الإدارة -->
+    <a href="admin.html" class="btn btn-admin">لوحة الإدارة ⚙️</a>
+  </div>
+
 </body>
 </html>
