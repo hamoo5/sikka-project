@@ -31,29 +31,24 @@
     <input type="tel" id="captain_phone" placeholder="رقم الموبايل">
     <label style="font-weight:bold; font-size:13px; color:#555;">نوع مركبتك في الخط:</label>
     <select id="captain_vehicle">
-      <option value="microbus">🚐 ميكروباص (موقف خط سير)</option>
+      <option value="microbus">🚐 ميكروباص (خطوط سير ومواقف)</option>
       <option value="suzuki">🚐 سوزوكي (تشاركي مرن)</option>
-      <option value="private_shared">🚗 ملاكي تشاركي</option>
+      <option value="private_shared">🚗 ملاكي تشاركي (حجز مقاعد)</option>
+      <option value="private_special">🚗 رحلة خاصة (ملاكي من الباب للباب)</option>
     </select>
-    <button class="btn-secondary" onclick="loginCaptain()">فتح لوحة التحكم 🚀</button>
+    <button class="btn-secondary" onclick="loginCaptain()">فتح لوحة التحكم ورادار الخط 🚀</button>
   </div>
 
   <!-- 2. لوحة تحكم الكابتن -->
   <div id="captain-dashboard" class="card hidden">
     <h3 style="margin-top:0;" id="dashboard-title">📡 رادار طلبات الموقف والخطوط</h3>
+    <p id="captain-status-text" style="font-size: 13px; color: #666; margin-bottom: 10px;"></p>
     
     <div id="requests-container">
-      <div class="trip-card">
-        <p><b>👤 الراكب:</b> أحمد محمد</p>
-        <p><b>🚐 الخدمة:</b> ميكروباص (خط سير موقف)</p>
-        <p><b>💺 المقاعد المحجوزة:</b> 2 مقعد</p>
-        <p><b>📍 التحرك:</b> شارع حبيب سلبي ➔ شارع عزيز بقطر</p>
-        <p><b>🔑 كود التحقق (PIN):</b> <span style="color:#d9534f; font-weight:bold; font-size:16px;">7141</span></p>
-        <button onclick="acceptTrip()" style="background:#28a745; margin-top:5px;">✅ قبول الرحلة وبدء التحميل</button>
-      </div>
+      <p style="text-align: center; color: #777;">جاري البحث عن طلبات قريبة على خط سيرك...</p>
     </div>
 
-    <button id="finish-btn" class="btn-danger hidden" onclick="finishTrip()">🏁 إنهاء الرحلة وتسليم الركاب</button>
+    <button id="finish-btn" class="btn-danger hidden" onclick="finishTrip()">🏁 إنهاء الرحلة الحالية وتسليم الركاب</button>
 
     <div id="map"></div>
   </div>
@@ -64,8 +59,9 @@
   <script type="module">
     import { supabase } from './supabase.js';
 
-    let map, routingControl;
+    let map;
     let captainMarker = null;
+    let activeTripId = null;
 
     const carIcon = L.icon({
       iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
@@ -75,10 +71,19 @@
 
     window.loginCaptain = function() {
       const name = document.getElementById('captain_name').value;
+      const vehicle = document.getElementById('captain_vehicle').value;
       if (!name) { alert('أدخل اسم الكابتن من فضلك'); return; }
+
+      localStorage.setItem('captain_name', name);
+      localStorage.setItem('captain_vehicle', vehicle);
+
       document.getElementById('captain-auth').classList.add('hidden');
       document.getElementById('captain-dashboard').classList.remove('hidden');
+      document.getElementById('captain-status-text').innerHTML = `🟢 حالتك: متاح وجاهز للتحميل على مركبة: <b>${vehicle}</b>`;
+      
       setTimeout(initMap, 200);
+      fetchPendingTrips(vehicle);
+      subscribeToNewTrips(vehicle);
     };
 
     function initMap() {
@@ -88,25 +93,85 @@
         attribution: '&copy; OpenStreetMap' 
       }).addTo(map);
 
-      // وضع مكان الكابتن الابتدائي في وسط القاهرة
       captainMarker = L.marker([30.0444, 31.2357], {icon: carIcon}).addTo(map)
         .bindPopup('🚐 موقعك الحالي (الكابتن)').openPopup();
     }
 
-    window.acceptTrip = function() {
-      alert('تم قبول الرحلة بنجاح! توجه الآن إلى موقف الانطلاق لاستقبال الركاب وتأكيد كود الـ PIN.');
+    async function fetchPendingTrips(vehicleType) {
+      const { data, error } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('vehicle_type', vehicleType)
+        .eq('status', 'pending');
+
+      if (error) {
+        console.error('Error fetching trips:', error);
+        return;
+      }
+
+      renderRequests(data);
+    }
+
+    function subscribeToNewTrips(vehicleType) {
+      supabase
+        .channel('captain_radar')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trips' }, payload => {
+          if (payload.new.vehicle_type === vehicleType && payload.new.status === 'pending') {
+            fetchPendingTrips(vehicleType);
+          }
+        })
+        .subscribe();
+    }
+
+    function renderRequests(trips) {
+      const container = document.getElementById('requests-container');
+      if (!trips || trips.length === 0) {
+        container.innerHTML = `<p style="text-align: center; color: #777;">لا توجد طلبات جديدة حالياً لمركبتك. انتظر ركاب المواقف والخطوط...</p>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      trips.forEach(trip => {
+        container.innerHTML += `
+          <div class="trip-card">
+            <p><b>👤 الراكب:</b> ${trip.passenger_name || 'راكب'}</p>
+            <p><b>🚐 الخدمة:</b> ${trip.vehicle_type}</p>
+            <p><b>💺 المقاعد المحجوزة:</b> ${trip.seats_count} مقعد</p>
+            <p><b>📍 التحرك:</b> ${trip.pickup_location} ➔ ${trip.dropoff_location}</p>
+            <p><b>🔑 كود التحقق (PIN):</b> <span style="color:#d9534f; font-weight:bold; font-size:16px;">${trip.pin_code}</span></p>
+            <button onclick="acceptTrip('${trip.id}')" style="background:#28a745; margin-top:5px;">✅ قبول الرحلة وبدء التحميل</button>
+          </div>
+        `;
+      });
+    }
+
+    window.acceptTrip = async function(tripId) {
+      activeTripId = tripId;
+      const { error } = await supabase
+        .from('trips')
+        .update({ status: 'accepted' })
+        .eq('id', tripId);
+
+      if (error) {
+        alert('حدث خطأ أثناء قبول الرحلة');
+        return;
+      }
+
+      alert('تم قبول الرحلة بنجاح! توجه إلى الموقف لاستقبال الراكب وتأكيد كود الـ PIN.');
       document.getElementById('requests-container').innerHTML = `
         <div class="trip-card" style="background:#e2f0d9; border-color:#c8e6c9;">
-          <p style="color:#2d572c; font-weight:bold;">🟢 الرحلة جارية الآن...</p>
-          <p><b>🔑 كود التحقق المطلوب من الراكب:</b> 7141</p>
-          <p>أكد الكود مع الراكب عند صعوده للمركبة في الموقف.</p>
+          <p style="color:#2d572c; font-weight:bold;">🟢 رحلة نشطة حالياً...</p>
+          <p>تأكد من كود الـ PIN مع الراكب عند صعوده للمركبة في الموقف.</p>
         </div>
       `;
       document.getElementById('finish-btn').classList.remove('hidden');
       document.getElementById('dashboard-title').innerText = "🚐 رحلة نشطة - خدمة الموقف";
     };
 
-    window.finishTrip = function() {
+    window.finishTrip = async function() {
+      if (activeTripId) {
+        await supabase.from('trips').update({ status: 'completed' }).eq('id', activeTripId);
+      }
       alert('تم إنهاء الرحلة بنجاح وإغلاق الحسابات!');
       location.reload();
     };
