@@ -21,7 +21,7 @@
         .card-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; padding: 18px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); margin-bottom: 16px; }
         .card-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
 
-        .map-container { position: relative; width: 100%; height: 240px; margin-bottom: 10px; }
+        .map-container { position: relative; width: 100%; height: 220px; margin-bottom: 10px; }
         #map { width: 100%; height: 100%; border-radius: 14px; border: 1px solid #334155; z-index: 1; }
 
         .gps-btn {
@@ -48,14 +48,15 @@
         }
         .search-btn:hover { background: #334155; }
 
-        .vehicle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+        /* شبكة المركبات (أربع فئات الآن) */
+        .vehicle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
         .v-card {
             background: #050b14; border: 1px solid #334155;
-            padding: 10px 6px; border-radius: 12px; text-align: center;
+            padding: 8px 4px; border-radius: 12px; text-align: center;
             cursor: pointer; transition: all 0.2s;
         }
         .v-card.active { border-color: #38bdf8; background: rgba(56, 189, 248, 0.08); }
-        .v-name { font-size: 12px; font-weight: 700; color: #cbd5e1; margin-top: 4px; }
+        .v-name { font-size: 11px; font-weight: 700; color: #cbd5e1; margin-top: 4px; }
         .v-card.active .v-name { color: #38bdf8; }
 
         .btn-request {
@@ -111,15 +112,19 @@
                 <label class="label">فئة المركبة</label>
                 <div class="vehicle-grid">
                     <div class="v-card active" onclick="selectVehicle('ملاكي', this)">
-                        <div style="font-size: 18px;">🚗</div>
+                        <div style="font-size: 16px;">🚗</div>
                         <div class="v-name">ملاكي</div>
                     </div>
+                    <div class="v-card" onclick="selectVehicle('سكوتر', this)">
+                        <div style="font-size: 16px;">🛵</div>
+                        <div class="v-name">سكوتر</div>
+                    </div>
                     <div class="v-card" onclick="selectVehicle('سوزوكي', this)">
-                        <div style="font-size: 18px;">🚐</div>
+                        <div style="font-size: 16px;">🚐</div>
                         <div class="v-name">سوزوكي</div>
                     </div>
                     <div class="v-card" onclick="selectVehicle('ميكروباص', this)">
-                        <div style="font-size: 18px;">🚌</div>
+                        <div style="font-size: 16px;">🚌</div>
                         <div class="v-name">ميكروباص</div>
                     </div>
                 </div>
@@ -148,7 +153,7 @@
         let selectedVehicleType = 'ملاكي';
         let map;
         let pickupMarker, dropoffMarker;
-        let routeLayer = null; // طبقة مسار الشوارع الفعلية
+        let routeLayer = null;
 
         function initRiderPage() {
             const stored = localStorage.getItem('combo_user');
@@ -195,7 +200,6 @@
             updateAddressFromLatLng(dLat, dLng, 'dropoff');
         }
 
-        // جلب مسار السير الحقيقي المار عبر الشوارع باستخدام OSRM API
         async function fetchAndDrawRoute(startCoord, endCoord) {
             try {
                 const url = `https://router.project-osrm.org/route/v1/driving/${startCoord[0]},${startCoord[1]};${endCoord[0]},${endCoord[1]}?overview=full&geometries=geojson`;
@@ -209,7 +213,6 @@
                         map.removeLayer(routeLayer);
                     }
 
-                    // رسم المسار الفعلي الملتف مع الشوارع بلون أزرق فخم زي جوجل ماب
                     routeLayer = L.polyline(coords, {
                         color: '#2563eb',
                         weight: 6,
@@ -217,7 +220,7 @@
                     }).addTo(map);
                 }
             } catch (err) {
-                console.log('تعذر جلب مسار الشوارع، يتم الاعتماد على المسار المباشر');
+                console.log('تعذر جلب مسار الشوارع');
             }
         }
 
