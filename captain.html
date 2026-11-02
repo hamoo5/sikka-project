@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>موقف - Mahattat</title>
+  <title>موقف - لوحة الكابتن</title>
   
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
@@ -15,76 +15,45 @@
     button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
     button:hover { background: #218838; }
     .btn-secondary { background: #007bff; }
-    .btn-gps { background: #17a2b8; }
     .btn-danger { background: #dc3545; }
-    .mode-selector { display: flex; gap: 8px; margin-bottom: 12px; }
-    .mode-btn { flex: 1; padding: 10px; background: #e9ecef; border: 2px solid #ccc; color: #333; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; }
-    .mode-btn.active { background: #007bff; color: white; border-color: #0056b3; }
-    #map { height: 320px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
     .hidden { display: none; }
+    #map { height: 320px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
     .leaflet-routing-container { display: none !important; }
-    #trip-status { background: #e8f4fd; border: 1px solid #b6effb; color: #055160; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px; line-height: 1.6; display: none; }
+    .trip-card { background: #e8f4fd; border: 1px solid #b6effb; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
 
-  <!-- 1. تسجيل الدخول -->
-  <div id="auth-section" class="card">
-    <h2 style="text-align: center;">🚏 تطبيق موقف - Mahattat</h2>
-    <input type="text" id="user_name" placeholder="اسمك الكريم (اختياري)">
-    <input type="tel" id="user_phone" placeholder="رقم الموبايل">
-    <button class="btn-secondary" onclick="handleAuth()">دخول وحجز رحلة 🚀</button>
+  <!-- 1. تسجيل دخول الكابتن -->
+  <div id="captain-auth" class="card">
+    <h2 style="text-align: center;">🚐 دخول الكابتن - موقف</h2>
+    <input type="text" id="captain_name" placeholder="اسم الكابتن">
+    <input type="tel" id="captain_phone" placeholder="رقم الموبايل">
+    <label style="font-weight:bold; font-size:13px; color:#555;">نوع مركبتك في الخط:</label>
+    <select id="captain_vehicle">
+      <option value="microbus">🚐 ميكروباص (موقف خط سير)</option>
+      <option value="suzuki">🚐 سوزوكي (تشاركي مرن)</option>
+      <option value="private_shared">🚗 ملاكي تشاركي</option>
+    </select>
+    <button class="btn-secondary" onclick="loginCaptain()">فتح لوحة التحكم 🚀</button>
   </div>
 
-  <!-- 2. واجهة الحجز والتحديد -->
-  <div id="app-section" class="card hidden">
-    <h3 style="margin-top:0;" id="app-title">🚏 تحديد الرحلة والموقف</h3>
-
-    <!-- اختيار نظام الرحلة -->
-    <div class="mode-selector">
-      <div id="mode-shared" class="mode-btn active" onclick="switchRideMode('shared')">🚐 خط سير / موقف (تشاركي)</div>
-      <div id="mode-private" class="mode-btn" onclick="switchRideMode('private')">🚗 رحلة خاصة (ملاكي)</div>
-    </div>
+  <!-- 2. لوحة تحكم الكابتن -->
+  <div id="captain-dashboard" class="card hidden">
+    <h3 style="margin-top:0;" id="dashboard-title">📡 رادار طلبات الموقف والخطوط</h3>
     
-    <div id="booking-controls">
-      <button class="btn-gps" onclick="getMyLocation()">📍 تحديد موقعي الحالي (GPS)</button>
-
-      <!-- تفاصيل النقل التشاركي (المواقف والكراسي) -->
-      <div id="shared-options">
-        <label style="font-weight:bold; font-size:13px; color:#555;">وسيلة النقل التشاركية:</label>
-        <select id="vehicle_type">
-          <option value="microbus">🚐 ميكروباص (خطوط سير ومواقف)</option>
-          <option value="suzuki">🚐 سوزوكي (رحلات تشاركية مرنة)</option>
-          <option value="private_shared">🚗 ملاكي تشاركي (حجز مقاعد)</option>
-        </select>
-
-        <label style="font-weight:bold; font-size:13px; color:#555;">عدد المقاعد المحجوزة:</label>
-        <select id="seats_count">
-          <option value="1">مقعد واحد (1)</option>
-          <option value="2">مقعدان (2)</option>
-          <option value="3">3 مقاعد</option>
-          <option value="4">4 مقاعد</option>
-        </select>
-      </div>
-      
-      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:6px; display:block;">موقف/نقطة الانطلاق (أخضر 🟢):</label>
-      <div style="display:flex; gap:5px;">
-        <input type="text" id="pickup_loc" placeholder="اكتب الموقف أو اختر من الخريطة" style="margin:0;">
-        <button style="width:30%; margin:0; background:#007bff;" onclick="searchPickupLocation()">بحث</button>
-      </div>
-
-      <label style="font-weight:bold; font-size:13px; color:#555; margin-top:8px; display:block;">موقف/وجهة الوصول (أحمر 🔴):</label>
-      <div style="display:flex; gap:5px;">
-        <input type="text" id="dropoff_loc" placeholder="اكتب موقف الوصول أو اضغط الخريطة" style="margin:0;">
-        <button style="width:30%; margin:0; background:#007bff;" onclick="searchDropoffLocation()">بحث</button>
+    <div id="requests-container">
+      <div class="trip-card">
+        <p><b>👤 الراكب:</b> أحمد محمد</p>
+        <p><b>🚐 الخدمة:</b> ميكروباص (خط سير موقف)</p>
+        <p><b>💺 المقاعد المحجوزة:</b> 2 مقعد</p>
+        <p><b>📍 التحرك:</b> شارع حبيب سلبي ➔ شارع عزيز بقطر</p>
+        <p><b>🔑 كود التحقق (PIN):</b> <span style="color:#d9534f; font-weight:bold; font-size:16px;">7141</span></p>
+        <button onclick="acceptTrip()" style="background:#28a745; margin-top:5px;">✅ قبول الرحلة وبدء التحميل</button>
       </div>
     </div>
 
-    <!-- تفاصيل التكلفة والتتبع -->
-    <div id="trip-status">حدد نقاط الحركة لحساب تفاصيل خط السير...</div>
-
-    <button id="action-btn" onclick="requestRide()" style="background:#28a745;">🚀 تأكيد حجز المقاعد والرحلة</button>
-    <button id="cancel-btn" class="btn-danger hidden" onclick="cancelRide()">❌ إلغاء الطلب</button>
+    <button id="finish-btn" class="btn-danger hidden" onclick="finishTrip()">🏁 إنهاء الرحلة وتسليم الركاب</button>
 
     <div id="map"></div>
   </div>
@@ -96,188 +65,49 @@
     import { supabase } from './supabase.js';
 
     let map, routingControl;
-    let pickupCoords = null, dropoffCoords = null;
-    let pickupMarker = null, dropoffMarker = null, captainMarker = null;
-    let currentMode = 'shared'; // shared | private
+    let captainMarker = null;
 
-    const greenIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    const carIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
       iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
     });
 
-    const redIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-    });
-
-    window.switchRideMode = function(mode) {
-      currentMode = mode;
-      document.getElementById('mode-shared').classList.toggle('active', mode === 'shared');
-      document.getElementById('mode-private').classList.toggle('active', mode === 'private');
-      document.getElementById('shared-options').style.display = (mode === 'shared') ? 'block' : 'none';
-      if (pickupCoords && dropoffCoords) drawRoute();
-    };
-
-    window.handleAuth = function() {
-      const phone = document.getElementById('user_phone').value;
-      if (!phone || phone.length < 10) { alert('أدخل رقم موبايل صحيح من فضلك'); return; }
-      document.getElementById('auth-section').classList.add('hidden');
-      document.getElementById('app-section').classList.remove('hidden');
+    window.loginCaptain = function() {
+      const name = document.getElementById('captain_name').value;
+      if (!name) { alert('أدخل اسم الكابتن من فضلك'); return; }
+      document.getElementById('captain-auth').classList.add('hidden');
+      document.getElementById('captain-dashboard').classList.remove('hidden');
       setTimeout(initMap, 200);
     };
 
     function initMap() {
       if (map) return;
       map = L.map('map').setView([30.0444, 31.2357], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
-
-      map.on('click', async function(e) {
-        if (!document.getElementById('cancel-btn').classList.contains('hidden')) return;
-        const coords = L.latLng(e.latlng.lat, e.latlng.lng);
-        const address = await getAddressName(coords.lat, coords.lng);
-
-        if (!pickupCoords) {
-          pickupCoords = coords;
-          document.getElementById('pickup_loc').value = address;
-          if (pickupMarker) { pickupMarker.setLatLng(coords); } 
-          else { pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map); }
-          map.setView(coords, 14);
-        } else if (!dropoffCoords) {
-          dropoffCoords = coords;
-          document.getElementById('dropoff_loc').value = address;
-          if (dropoffMarker) { dropoffMarker.setLatLng(coords); } 
-          else { dropoffMarker = L.marker(coords, {icon: redIcon}).addTo(map); }
-          drawRoute();
-        } else {
-          pickupCoords = coords;
-          document.getElementById('pickup_loc').value = address;
-          if (pickupMarker) pickupMarker.setLatLng(coords);
-          dropoffCoords = null;
-          document.getElementById('dropoff_loc').value = '';
-          if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
-          if (routingControl) map.removeControl(routingControl);
-          document.getElementById('trip-status').style.display = 'none';
-        }
-      });
-    }
-
-    async function getAddressName(lat, lng) {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`);
-        const data = await res.json();
-        if (data && data.display_name) return data.display_name.split(',').slice(0, 3).join(',');
-      } catch (e) {}
-      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    }
-
-    window.searchPickupLocation = async function() {
-      let query = document.getElementById('pickup_loc').value;
-      if (!query) return;
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", مصر")}&limit=1&accept-language=ar`);
-        const results = await res.json();
-        if (results.length > 0) {
-          pickupCoords = L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon));
-          if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
-          else pickupMarker = L.marker(pickupCoords, {icon: greenIcon}).addTo(map);
-          map.setView(pickupCoords, 15);
-          if (pickupCoords && dropoffCoords) drawRoute();
-        }
-      } catch (e) {}
-    };
-
-    window.searchDropoffLocation = async function() {
-      let query = document.getElementById('dropoff_loc').value;
-      if (!query) return;
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", مصر")}&limit=1&accept-language=ar`);
-        const results = await res.json();
-        if (results.length > 0) {
-          dropoffCoords = L.latLng(parseFloat(results[0].lat), parseFloat(results[0].lon));
-          if (dropoffMarker) dropoffMarker.setLatLng(dropoffCoords);
-          else dropoffMarker = L.marker(dropoffCoords, {icon: redIcon}).addTo(map);
-          map.setView(dropoffCoords, 15);
-          if (pickupCoords && dropoffCoords) drawRoute();
-        }
-      } catch (e) {}
-    };
-
-    function drawRoute() {
-      if (!pickupCoords || !dropoffCoords) return;
-      if (routingControl) map.removeControl(routingControl);
-      
-      routingControl = L.Routing.control({
-        waypoints: [pickupCoords, dropoffCoords],
-        routeWhileDragging: false,
-        addWaypoints: false,
-        createMarker: function() { return null; },
-        lineOptions: { styles: [{ color: '#007bff', opacity: 0.85, weight: 6 }] }
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+        attribution: '&copy; OpenStreetMap' 
       }).addTo(map);
 
-      routingControl.on('routesfound', function(e) {
-        const routes = e.routes;
-        if (routes && routes.length > 0) {
-          const distanceKm = (routes[0].summary.totalDistance / 1000).toFixed(1);
-          const durationMin = Math.round(routes[0].summary.totalTime / 60);
-          
-          let estimatedPrice = 0;
-          if (currentMode === 'shared') {
-            const seats = parseInt(document.getElementById('seats_count').value);
-            estimatedPrice = Math.round((5 + (distanceKm * 2.5)) * seats); // تسعير تشاركي مخفض للمقعد
-          } else {
-            estimatedPrice = Math.round(10 + (distanceKm * 5)); // تسعير خاص للملاكي
-          }
-
-          const statusDiv = document.getElementById('trip-status');
-          statusDiv.style.display = 'block';
-          statusDiv.innerHTML = `
-            📊 <b>تفاصيل رحلة (${currentMode === 'shared' ? 'موقف / تشاركي' : 'خاص ملاكي'}):</b><br>
-            📏 المسافة: ${distanceKm} كم | ⏱️ الوقت: ${durationMin} دقيقة<br>
-            💰 التكلفة المقدرة: <b>${estimatedPrice} جنيه</b>
-          `;
-        }
-      });
+      // وضع مكان الكابتن الابتدائي في وسط القاهرة
+      captainMarker = L.marker([30.0444, 31.2357], {icon: carIcon}).addTo(map)
+        .bindPopup('🚐 موقعك الحالي (الكابتن)').openPopup();
     }
 
-    window.getMyLocation = function() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(async position => {
-          const coords = L.latLng(position.coords.latitude, position.coords.longitude);
-          pickupCoords = coords;
-          document.getElementById('pickup_loc').value = await getAddressName(coords.lat, coords.lng);
-          if (pickupMarker) pickupMarker.setLatLng(coords);
-          else pickupMarker = L.marker(coords, {icon: greenIcon}).addTo(map);
-          map.setView(coords, 16);
-          if (pickupCoords && dropoffCoords) drawRoute();
-        });
-      }
-    };
-
-    window.requestRide = function() {
-      const pickup = document.getElementById('pickup_loc').value;
-      const dropoff = document.getElementById('dropoff_loc').value;
-      if (!pickup || !dropoff) { alert('حدد موقف الانطلاق والوصول'); return; }
-
-      const pin = Math.floor(1000 + Math.random() * 9000); // كود PIN مكون من 4 أرقام
-      
-      document.getElementById('booking-controls').classList.add('hidden');
-      document.getElementById('action-btn').classList.add('hidden');
-      document.getElementById('cancel-btn').classList.remove('hidden');
-      document.getElementById('app-title').innerText = "🚏 جاري حجز مقعدك وتواصل الكابتن...";
-      
-      const statusDiv = document.getElementById('trip-status');
-      statusDiv.style.display = 'block';
-      statusDiv.innerHTML = `
-        🔄 <b>تم طلب الرحلة بنجاح!</b><br>
-        🔑 كود الركوب الخاص بك (PIN): <b style="font-size:18px; color:#d9534f;">${pin}</b><br>
-        في انتظار تأكيد الكابتن لخط السير والمقاعد...
+    window.acceptTrip = function() {
+      alert('تم قبول الرحلة بنجاح! توجه الآن إلى موقف الانطلاق لاستقبال الركاب وتأكيد كود الـ PIN.');
+      document.getElementById('requests-container').innerHTML = `
+        <div class="trip-card" style="background:#e2f0d9; border-color:#c8e6c9;">
+          <p style="color:#2d572c; font-weight:bold;">🟢 الرحلة جارية الآن...</p>
+          <p><b>🔑 كود التحقق المطلوب من الراكب:</b> 7141</p>
+          <p>أكد الكود مع الراكب عند صعوده للمركبة في الموقف.</p>
+        </div>
       `;
+      document.getElementById('finish-btn').classList.remove('hidden');
+      document.getElementById('dashboard-title').innerText = "🚐 رحلة نشطة - خدمة الموقف";
     };
 
-    window.cancelRide = function() {
-      alert('تم إلغاء طلب الحجز.');
+    window.finishTrip = function() {
+      alert('تم إنهاء الرحلة بنجاح وإغلاق الحسابات!');
       location.reload();
     };
   </script>
