@@ -1,186 +1,134 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>موقف - لوحة الكابتن</title>
-  
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; padding: 12px; background: #f4f4f9; direction: rtl; text-align: right; margin: 0; }
-    .card { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    input, select, button { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
-    button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
-    button:hover { background: #218838; }
-    .btn-secondary { background: #007bff; }
-    .btn-danger { background: #dc3545; }
-    .hidden { display: none; }
-    #map { height: 320px; width: 100%; border-radius: 10px; margin: 10px 0; border: 1px solid #ccc; z-index: 1; }
-    .leaflet-routing-container { display: none !important; }
-    .trip-card { background: #e8f4fd; border: 1px solid #b6effb; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة كومبو - لوحة الكابتن</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: #fff; box-sizing: border-box; }
+        .card { background: #1e293b; padding: 20px; border-radius: 12px; max-width: 450px; margin: auto; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .input-field { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; background: #0f172a; border: 1px solid #334155; color: #fff; font-size: 14px; box-sizing: border-box; }
+        .btn { background: #2563eb; color: #fff; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; }
+        .btn:hover { background: #1d4ed8; }
+        .file-label { display: block; text-align: right; font-size: 13px; color: #38bdf8; margin-top: 10px; font-weight: bold; }
+        .user-img { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #38bdf8; }
+    </style>
 </head>
 <body>
 
-  <!-- 1. تسجيل دخول الكابتن -->
-  <div id="captain-auth" class="card">
-    <h2 style="text-align: center;">🚐 دخول الكابتن - موقف</h2>
-    <input type="text" id="captain_name" placeholder="اسم الكابتن" value="حمدي">
-    <input type="tel" id="captain_phone" placeholder="رقم الموبايل" value="01118845665">
-    <label style="font-weight:bold; font-size:13px; color:#555;">نوع مركبتك في الخط:</label>
-    <select id="captain_vehicle">
-      <option value="microbus">🚐 ميكروباص (خطوط سير ومواقف)</option>
-      <option value="suzuki">🚐 سوزوكي (تشاركي مرن)</option>
-      <option value="private_shared">🚗 ملاكي تشاركي (حجز مقاعد)</option>
-      <option value="private_special">🚗 رحلة خاصة (ملاكي من الباب للباب)</option>
-    </select>
-    <button class="btn-secondary" id="captain-login-btn" type="button">فتح لوحة التحكم ورادار الخط 🚀</button>
-  </div>
-
-  <!-- 2. لوحة تحكم الكابتن -->
-  <div id="captain-dashboard" class="card hidden">
-    <h3 style="margin-top:0;" id="dashboard-title">📡 رادار طلبات الموقف والخطوط</h3>
-    <p id="captain-status-text" style="font-size: 13px; color: #666; margin-bottom: 10px;"></p>
-    
-    <div id="requests-container">
-      <p style="text-align: center; color: #777;">جاري البحث عن طلبات قريبة على خط سيرك...</p>
+    <div class="card" id="welcome-section" style="display:none; text-align: center;">
+        <h2>لوحة الكابتن - كومبو 🚗</h2>
+        <div id="driver-img-container"></div>
+        <h3 id="driver-name" style="color: #38bdf8; margin: 5px 0;"></h3>
+        <p id="driver-phone" style="color: #94a3b8; font-size: 14px;"></p>
+        <p style="background: #0f172a; padding: 10px; border-radius: 8px; font-size: 14px;">رصيد المحفظة: <span id="driver-wallet" style="color: #22c55e; font-weight: bold;"></span> جنيه</p>
+        <button class="btn" style="background: #dc2626;" onclick="logout()">تسجيل الخروج</button>
     </div>
 
-    <button id="finish-btn" type="button" class="btn-danger hidden" onclick="finishTrip()">🏁 إنهاء الرحلة الحالية وتسليم الركاب</button>
+    <div class="card" id="complete-profile-section" style="display:none;">
+        <h2 style="text-align: center; color: #38bdf8; margin-top: 0;">استكمال بيانات الكابتن 📝</h2>
+        <p style="font-size: 13px; color: #94a3b8; text-align: center; margin-bottom: 15px;">يجب رفع الصورة الشخصية وبيانات السيارة للبدء</p>
+        
+        <span class="file-label">الصورة الشخصية (إجباري):</span>
+        <input type="file" id="driver-image" class="input-field" accept="image/*" style="padding: 8px;">
 
-    <div id="map"></div>
-  </div>
+        <input type="text" id="car-model" class="input-field" placeholder="نوع وموديل السيارة (مثال: شيفروليه آبيو)">
+        <input type="text" id="car-color" class="input-field" placeholder="لون السيارة (مثال: أبيض / فضي)">
+        <input type="text" id="plate-number" class="input-field" placeholder="رقم اللوحة المعدنية (مثال: أ ب ج 1234)">
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <button class="btn" onclick="saveDriverData()">حفظ البيانات والانطلاق 🚀</button>
+    </div>
 
-  <script>
-    const SUPABASE_URL = 'https://pmpzilqpcomoodaksbhw.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    <script>
+        const SUPABASE_URL = 'https://pmpzilqpcomoodaksbhw.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_tjYI1IKegMFywNCqGPdKng_fSGIe7Zx';
+        let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    let map;
-    let captainMarker = null;
-    let activeTripId = null;
+        const userData = JSON.parse(localStorage.getItem('combo_user'));
 
-    const carIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-    });
+        if (!userData || userData.user_type !== 'driver') {
+            alert('يرجى تسجيل الدخول ككابتن أولاً!');
+            window.location.href = 'index.html';
+        } else {
+            checkDriverProfile();
+        }
 
-    function loginCaptain() {
-      const name = document.getElementById('captain_name').value;
-      const vehicle = document.getElementById('captain_vehicle').value;
-      if (!name) { alert('أدخل اسم الكابتن من فضلك'); return; }
+        async function checkDriverProfile() {
+            // جلب أحدث بيانات الكابتن من قاعدة البيانات للتأكد هل أكمل بياناته أم لا
+            let { data, error } = await supabaseClient.from('profiles').select('*').eq('id', userData.id).single();
+            
+            if (data) {
+                // تحديث الذاكرة المحلية بالبيانات المحدثة
+                localStorage.setItem('combo_user', JSON.stringify(data));
+                
+                if (!data.profile_image || !data.car_model || !data.plate_number) {
+                    // لو البيانات ناقصة، اظهر شاشة استكمال البيانات الإجبارية
+                    document.getElementById('complete-profile-section').style.display = 'block';
+                } else {
+                    // لو البيانات مكتملة، اظهر لوحة تحكم الكابتن
+                    document.getElementById('welcome-section').style.display = 'block';
+                    document.getElementById('driver-name').innerText = data.full_name;
+                    document.getElementById('driver-phone').innerText = data.phone;
+                    document.getElementById('driver-wallet').innerText = data.wallet_balance || '0.00';
+                    if (data.profile_image) {
+                        document.getElementById('driver-img-container').innerHTML = `<img src="${data.profile_image}" class="user-img" alt="صورة الكابتن">`;
+                    }
+                }
+            }
+        }
 
-      localStorage.setItem('captain_name', name);
-      localStorage.setItem('captain_vehicle', vehicle);
+        function convertImageToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
 
-      document.getElementById('captain-auth').classList.add('hidden');
-      document.getElementById('captain-dashboard').classList.remove('hidden');
-      document.getElementById('captain-status-text').innerHTML = `🟢 حالتك: متاح وجاهز للتحميل على مركبة: <b>${vehicle}</b>`;
-      
-      setTimeout(initMap, 200);
-      fetchPendingTrips(vehicle);
-      subscribeToNewTrips(vehicle);
-    }
+        async function saveDriverData() {
+            const imageFile = document.getElementById('driver-image').files[0];
+            const carModel = document.getElementById('car-model').value.trim();
+            const carColor = document.getElementById('car-color').value.trim();
+            const plateNumber = document.getElementById('plate-number').value.trim();
 
-    // ربط الحدث مباشرة لزرار دخول الكابتن
-    document.getElementById('captain-login-btn').addEventListener('click', loginCaptain);
+            if (!imageFile || !carModel || !carColor || !plateNumber) {
+                alert('عذراً، يجب إدخال الصورة الشخصية، نوع السيارة، لونها ورقم اللوحة بالكامل للاستمرار.');
+                return;
+            }
 
-    function initMap() {
-      if (map) return;
-      map = L.map('map').setView([30.0444, 31.2357], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-        attribution: '&copy; OpenStreetMap' 
-      }).addTo(map);
+            let imageUrl = '';
+            try {
+                imageUrl = await convertImageToBase64(imageFile);
+            } catch (e) {
+                alert('خطأ في قراءة الصورة، يجرب اختيار صوره أخرى.');
+                return;
+            }
 
-      captainMarker = L.marker([30.0444, 31.2357], {icon: carIcon}).addTo(map)
-        .bindPopup('🚐 موقعك الحالي (الكابتن)').openPopup();
-    }
+            // تحديث البيانات في جدول profiles في Supabase
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({
+                    profile_image: imageUrl,
+                    car_model: carModel,
+                    car_color: carColor,
+                    plate_number: plateNumber
+                })
+                .eq('id', userData.id);
 
-    async function fetchPendingTrips(vehicleType) {
-      const { data, error } = await supabase
-        .from('trips')
-        .select('*')
-        .eq('vehicle_type', vehicleType)
-        .eq('status', 'pending');
+            if (error) {
+                alert('خطأ أثناء حفظ البيانات: ' + error.message);
+                return;
+            }
 
-      if (error) {
-        console.error('Error fetching trips:', error);
-        return;
-      }
+            alert('تم حفظ بياناتك بنجاح يا كابتن!');
+            location.reload();
+        }
 
-      renderRequests(data);
-    }
-
-    function subscribeToNewTrips(vehicleType) {
-      supabase
-        .channel('captain_radar')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trips' }, payload => {
-          if (payload.new.vehicle_type === vehicleType && payload.new.status === 'pending') {
-            fetchPendingTrips(vehicleType);
-          }
-        })
-        .subscribe();
-    }
-
-    function renderRequests(trips) {
-      const container = document.getElementById('requests-container');
-      if (!trips || trips.length === 0) {
-        container.innerHTML = `<p style="text-align: center; color: #777;">لا توجد طلبات جديدة حالياً لمركبتك. انتظر ركاب المواقف والخطوط...</p>`;
-        return;
-      }
-
-      container.innerHTML = '';
-      trips.forEach(trip => {
-        container.innerHTML += `
-          <div class="trip-card">
-            <p><b>👤 الراكب:</b> ${trip.passenger_name || 'راكب'}</p>
-            <p><b>🚐 الخدمة:</b> ${trip.vehicle_type}</p>
-            <p><b>💺 المقاعد المحجوزة:</b> ${trip.seats_count} مقعد</p>
-            <p><b>📍 التحرك:</b> ${trip.pickup_location} ➔ ${trip.dropoff_location}</p>
-            <p><b>🔑 كود التحقق (PIN):</b> <span style="color:#d9534f; font-weight:bold; font-size:16px;">${trip.pin_code}</span></p>
-            <button type="button" onclick="acceptTrip('${trip.id}')" style="background:#28a745; margin-top:5px;">✅ قبول الرحلة وبدء التحميل</button>
-          </div>
-        `;
-      });
-    }
-
-    async function acceptTrip(tripId) {
-      activeTripId = tripId;
-      const { error } = await supabase
-        .from('trips')
-        .update({ status: 'accepted' })
-        .eq('id', tripId);
-
-      if (error) {
-        alert('حدث خطأ أثناء قبول الرحلة');
-        return;
-      }
-
-      alert('تم قبول الرحلة بنجاح! توجه إلى الموقف لاستقبال الراكب وتأكيد كود الـ PIN.');
-      document.getElementById('requests-container').innerHTML = `
-        <div class="trip-card" style="background:#e2f0d9; border-color:#c8e6c9;">
-          <p style="color:#2d572c; font-weight:bold;">🟢 رحلة نشطة حالياً...</p>
-          <p>تأكد من كود الـ PIN مع الراكب عند صعوده للمركبة في الموقف.</p>
-        </div>
-      `;
-      document.getElementById('finish-btn').classList.remove('hidden');
-      document.getElementById('dashboard-title').innerText = "🚐 رحلة نشطة - خدمة الموقف";
-    }
-
-    async function finishTrip() {
-      if (activeTripId) {
-        await supabase.from('trips').update({ status: 'completed' }).eq('id', activeTripId);
-      }
-      alert('تم إنهاء الرحلة بنجاح وإغلاق الحسابات!');
-      location.reload();
-    }
-  </script>
+        function logout() {
+            localStorage.removeItem('combo_user');
+            window.location.href = 'index.html';
+        }
+    </script>
 </body>
 </html>
